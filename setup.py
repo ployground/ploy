@@ -11,6 +11,7 @@ setup(
     name="mr.awsome",
     author='Florian Schulze',
     author_email='florian.schulze@gmx.net',
+    url='http://github.com/fschulze/mr.awsome',
     include_package_data=True,
     zip_safe=False,
     packages=['mr'],
