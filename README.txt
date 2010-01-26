@@ -10,6 +10,7 @@ deployments and creating backups - each with just one call from the
 commandline. Aw(e)some, indeed, if we may say so...
 
 **Installation**
+
 mr.awsome currently requires buildout for installation, because there is no
 entry point defined in the egg and the entry point requires an argument to be
 set. You can do it with a part like the following::
@@ -29,20 +30,20 @@ variables::
 
   AWS_ACCESS_KEY_ID
   AWS_SECRET_ACCESS_KEY
-  You can find their values at `http://aws.amazon.com`_ under *'Your
-  Account'-'Security Credentials'.*
 
-All other information about server instances is located in aws.conf, which
+You can find their values at `http://aws.amazon.com`_ under *'Your Account'-'Security Credentials'.*
+
+All other information about server instances is located in ``aws.conf``, which
 needs to reside in the configpath set in the buildout part.
-To create a server instance, you first have to declare a security group in
-your aws.conf like this::
+
+Before you can create a server instance with the ``create`` command described below, you first have to declare a security group in
+your ``aws.conf`` like this::
 
   [securitygroup:demo-server]
   description = Our Demo-Server
   connections =
   tcp 22 22 0.0.0.0/0
   tcp 80 80 0.0.0.0/0
-
 
 The security group is used for both the firewall settings, as documented in
 the AWS docs, and to find the server instance associated with it.
@@ -74,50 +75,40 @@ Most of the time these are bash scripts like this (for Ubuntu in this case)::
   export DEBIAN_FRONTEND=noninteractive
   apt-get update && apt-get upgrade -y
 
-The `set -e -x` is for debugging. You can see the commands which ran and their
-output in /var/log/syslog once you are logged into the server.
+The ``set -e -x`` is for debugging. You can see the commands which ran and their output in ``/var/log/syslog`` once you are logged into the server.
 
-
-The startup scripts have a maximum size of 16 kb. You can check the size with
-the ``debug`` command of the aws script.
-
+The startup scripts have a maximum size of 16kb. You can check the size with
+the ``debug`` command of the ``aws`` script.
 
 The startup script is basically a template for the Python string format
 method (See `http://docs.python.org/library/string.html#formatstrings`_). So
 anything inside curly brackets is expanded. To get normal curly brackets,
-when you write bash functions etc, just double them like this:
+when you write bash functions etc, just double them like this::
 
+  function LOG() {{ echo "$*"; }}
 
-function LOG() {{ echo "$*"; }}
+If you want to include any files for something like ssh ``authorized_keys``, you do something the following::
 
+  authorized_keys: file,escape_eol ssh-authorized_keys
 
-If you want to include any files for something like ssh authorized_keys, you
-do something the following:
-
-
-authorized_keys: file,escape_eol ssh-authorized_keys
-
-
-#!/bin/bash
-...
-/bin/bash -c "echo -e \"{authorized_keys}\" >> /root/.ssh/authorized_keys"
+  #!/bin/bash
+  ...
+  /bin/bash -c "echo -e \"{authorized_keys}\" >> /root/.ssh/authorized_keys"
 
 
 So the startup script basically has rfc822 syntax (internally the e-mail
-parser is used). The "file,escape_eol" tells the script that the "ssh-
-authorized_keys" string should be used as a filename for a file which is then
-read and the "\n" characters are escaped so the resulting string can be used
-in the "echo -e" command.
-
+parser is used). The ``file,escape_eol`` tells the script that the ``ssh-
+authorized_keys`` string should be used as a filename for a file which is then
+read and the ``\n`` characters are escaped so the resulting string can be used
+in the ``echo -e`` command.
 
 You have the following possibilities (brain dump, needs fleshing out):
--   file
--   base64
--   format
--   template
--   gzip
--   escape_eol
-
+ -   file
+ -   base64
+ -   format
+ -   template
+ -   gzip
+ -   escape_eol
 
 In addition to that, you have access to some more variables. For example full
 access to the server config in the aws.conf. With servers[demo-
@@ -126,36 +117,33 @@ the server (this only works with other servers already started, not the one
 for which the startup script is for, since the DNS isn't set at the time the
 script is created).
 
-
 **Controlling instances**
 
-
--   start
--   stop
--   status
-
+ -   start
+ -   stop
+ -   status
 
 **Snapshots**
+
 (Needs description of volumes in "Configuration")
 
-
 **SSH integration**
-mr.awsome provides an additional tool assh to easily perform ssh based
-operations against named EC2 instances. Particularly, it encapsulates the
-entire ssh-fingerprint mechanism, as EC2 instances are often short-lived and
-normally trigger warnings, especially, if you are using elastic IPs.
-Note: it does so not by simply turning off these checks, but by transparently
-updating its own fingerprint list (it relies on the console output of the
-instance to provide the fingerprint via the AWS API, some imags may not be
-configured to do so) when adding new instances.
 
+mr.awsome provides an additional tool ``assh`` to easily perform SSH based
+operations against named EC2 instances. Particularly, it encapsulates the
+entire *SSH fingerprint* mechanism, as EC2 instances are often short-lived and
+normally trigger warnings, especially, if you are using elastic IPs.
+
+  Note:: it does so not by simply turning off these checks, but by transparently updating its own fingerprint list (it relies on the console output of the instance to provide the fingerprint via the AWS API, some imags may not be configured to do so) when adding new instances.
 
 The easiest scenario is simply to create an SSH session with an instance. You
-can either use the ssh subcommand of the aws tool like so:
-aws ssh SERVERNAME
-Alternatively you can use the assh command direct, like so
-assh SERVERNAME
+can either use the ssh subcommand of the aws tool like so::
 
+  aws ssh SERVERNAME
+
+Alternatively you can use the assh command direct, like so::
+
+  assh SERVERNAME
 
 The latter has been provided to support scp and rsync. Here are some
 examples, you get the idea::
