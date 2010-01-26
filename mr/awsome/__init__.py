@@ -521,13 +521,23 @@ class AWS(object):
         parser = optparse.OptionParser(
             usage="%prog ssh <server>",
         )
-
-        if len(sys.argv) < 3:
+        args = sys.argv[2:]
+        iargs = enumerate(args)
+        sid_index = None
+        for i, arg in iargs:
+            if not arg.startswith('-'):
+                sid_index = i
+                break
+            else:
+                if arg[1] in '1246AaCfgKkMNnqsTtVvXxYy':
+                    continue
+                elif arg[1] in 'bcDeFiLlmOopRSw':
+                    continue
+        if sid_index is None:
             print parser.format_help()
             self.list_servers()
             return
-        sid = sys.argv[2]
-        server = self.ec2.servers[sid]
+        server = self.ec2.servers[args[sid_index]]
         try:
             hoststr, known_hosts = server.init_ssh_key()
         except paramiko.SSHException:
@@ -536,10 +546,11 @@ class AWS(object):
         fabric.state.connections[hoststr].close()
         user, host, port = fabric.network.normalize(hoststr)
         known_hosts = os.path.join(self.ec2.configpath, 'known_hosts')
-        args = ['ssh',
-                '%s@%s' % (user, host),
-                '-o', 'UserKnownHostsFile=%s' % known_hosts]
-        subprocess.call(args + sys.argv[3:])
+        args[sid_index:sid_index+1] = ['-o', 'UserKnownHostsFile=%s' % known_hosts,
+                                       '-l', user,
+                                       host]
+        args[0:0] = ['ssh']
+        subprocess.call(args)
 
     def cmd_snapshot(self):
         """Creates a snapshot of the volumes specified in the configuration"""
@@ -582,6 +593,10 @@ class AWS(object):
                     cmd = self.unknown
             cmd()
 
+    def ssh(self, configpath=None):
+        sys.argv.insert(1, "ssh")
+        self(configpath=configpath)
+
     def unknown(self):
         log.error("Unknown command '%s'." % sys.argv[1])
         log.info("Type '%s help' for usage." % os.path.basename(sys.argv[0]))
@@ -589,3 +604,4 @@ class AWS(object):
 
 
 aws = AWS()
+aws_ssh = aws.ssh

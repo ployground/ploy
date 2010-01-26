@@ -4,6 +4,8 @@ Changelog
 0.2 - Unreleased
 ----------------
 
+* The ssh command can now be used with scp and rsync.
+  [fschulze]
 
 
 0.1 - 2010-01-21
