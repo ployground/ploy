@@ -3,6 +3,7 @@ from boto.ec2.securitygroup import GroupOrCIDR
 from StringIO import StringIO
 from textwrap import dedent
 import boto.ec2
+import datetime
 import email
 import fabric.main
 import fabric.network
@@ -571,8 +572,10 @@ class AWS(object):
         volumes = dict((x.id, x) for x in server.conn.get_all_volumes())
         for volume_id in volume_ids:
             volume = volumes[volume_id]
-            log.info("Creating snapshot for volume %s on %s" % (volume_id, sid))
-            volume.create_snapshot()
+            date = datetime.datetime.now().strftime("%Y%m%d%H%M")
+            description = "%s-%s" % (date, volume_id)
+            log.info("Creating snapshot for volume %s on %s (%s)" % (volume_id, sid, description))
+            volume.create_snapshot(description=description)
 
     def __call__(self, configpath=None):
         if configpath is None:

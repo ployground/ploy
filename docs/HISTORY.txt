@@ -4,6 +4,9 @@ Changelog
 0.2 - Unreleased
 ----------------
 
+* Snapshots automatically get a description with date and volume id.
+  [fschulze]
+
 * The ssh command can now be used with scp and rsync.
   [fschulze]
 
