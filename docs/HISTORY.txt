@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.2 - Unreleased
+0.2 - 2010-02-02
 ----------------
 
 * Snapshots automatically get a description with date and volume id.
