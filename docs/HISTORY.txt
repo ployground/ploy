@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.3 - Unreleased
+0.3 - 2010-02-08
 ----------------
 
 * Removed the ``[host_string]`` prefix of the ``do`` command output.
