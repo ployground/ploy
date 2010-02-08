@@ -511,6 +511,22 @@ class AWS(object):
             fabric.state.env.server = server
             fabric.state.env.known_hosts = known_hosts
 
+            class StdFilter(object):
+                def __init__(self, org):
+                    self.org = org
+                    self.flush = self.org.flush
+
+                def write(self, msg):
+                    lines = msg.split('\n')
+                    prefix = '[%s] ' % fabric.state.env.host_string
+                    for index, line in enumerate(lines):
+                        if line.startswith(prefix):
+                            lines[index] = line[len(prefix):]
+                    self.org.write('\n'.join(lines))
+
+            sys.stdout = StdFilter(sys.stdout)
+            sys.stderr = StdFilter(sys.stderr)
+
             fabric.main.main()
         finally:
             if hoststr is not None:

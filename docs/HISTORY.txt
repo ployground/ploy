@@ -4,7 +4,8 @@ Changelog
 0.3 - Unreleased
 ----------------
 
-
+* Removed the ``[host_string]`` prefix of the ``do`` command output.
+  [fschulze]
 
 0.2 - 2010-02-02
 ----------------
