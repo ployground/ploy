@@ -361,8 +361,8 @@ class AWS(object):
     def cmd_help(self):
         """Prints usage"""
         print dedent("""\
-        Usage: develop <command> [server and/or options]
-               develop <server> <command> [options]
+        Usage: aws <command> [server and/or options]
+               aws <server> <command> [options]
 
         Available commands:""")
         for key in dir(self):
