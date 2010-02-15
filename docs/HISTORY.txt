@@ -4,6 +4,10 @@ Changelog
 0.4 - Unreleased
 ----------------
 
+* Better error message when no console output is available for ssh finger
+  print validation.
+  [fschulze]
+
 * Fixed indentation in documentation.
   [natea, fschulze]
 

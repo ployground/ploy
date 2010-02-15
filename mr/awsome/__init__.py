@@ -30,6 +30,8 @@ class AWSHostKeyPolicy(paramiko.MissingHostKeyPolicy):
         if self.instance.public_dns_name == hostname:
             fp_start = False
             output = self.instance.get_console_output().output
+            if output.strip() == '':
+                raise paramiko.SSHException('No console output (yet) for %s' % hostname)
             for line in output.split('\n'):
                 if fp_start:
                     if fingerprint in line:
@@ -491,8 +493,10 @@ class AWS(object):
             server = self.ec2.servers[sid]
             try:
                 hoststr, known_hosts = server.init_ssh_key()
-            except paramiko.SSHException:
-                log.error("Couldn't validate fingerprint for ssh connection. Is the server finished starting up?")
+            except paramiko.SSHException, e:
+                log.error("Couldn't validate fingerprint for ssh connection.")
+                log.error(e)
+                log.error("Is the server finished starting up?")
                 return
             fabfile = server.config.get('fabfile')
             if fabfile is None:
@@ -557,8 +561,10 @@ class AWS(object):
         server = self.ec2.servers[args[sid_index]]
         try:
             hoststr, known_hosts = server.init_ssh_key()
-        except paramiko.SSHException:
-            log.error("Couldn't validate fingerprint for ssh connection. Is the server finished starting up?")
+        except paramiko.SSHException, e:
+            log.error("Couldn't validate fingerprint for ssh connection.")
+            log.error(e)
+            log.error("Is the server finished starting up?")
             return
         fabric.state.connections[hoststr].close()
         user, host, port = fabric.network.normalize(hoststr)
