@@ -1,5 +1,6 @@
 from ConfigParser import RawConfigParser
 from boto.ec2.securitygroup import GroupOrCIDR
+from boto.exception import EC2ResponseError
 from StringIO import StringIO
 from textwrap import dedent
 import boto.ec2
@@ -416,8 +417,41 @@ class AWS(object):
             log.info("Instance state: %s", instance.state)
             log.info("Instance not stopped")
             return
-        instance.stop()
+        try:
+            rc = server.conn.stop_instances([instance.id])
+            instance._update(rc[0])
+        except EC2ResponseError, e:
+            log.error(e.error_message)
+            if 'cannot be stopped' in e.error_message:
+                log.error("Did you mean to terminate the instance?")
+            log.info("Instance not stopped")
+            return
         log.info("Instance stopped")
+
+    def cmd_terminate(self):
+        """Terminates the instance"""
+        parser = optparse.OptionParser(
+            usage="%prog terminate <server>",
+        )
+        options, args = parser.parse_args(sys.argv[2:])
+        if len(args) < 1:
+            print parser.format_help()
+            self.list_servers()
+            return
+        if len(args) > 1:
+            log.error("You need to specify exactly one server")
+            return
+        server = self.ec2.servers[args[0]]
+        instance = server.instance
+        if instance is None:
+            return
+        if instance.state != 'running':
+            log.info("Instance state: %s", instance.state)
+            log.info("Instance not terminated")
+            return
+        rc = server.conn.terminate_instances([instance.id])
+        instance._update(rc[0])
+        log.info("Instance terminated")
 
     def cmd_start(self):
         """Starts the instance"""

@@ -4,6 +4,11 @@ Changelog
 0.4 - Unreleased
 ----------------
 
+* The ``stop`` command actually only stops an instance now (only works with
+  instances booted from an EBS volume) and the new ``terminate`` command now
+  does what ``stop`` did before.
+  [fschulze]
+
 * Better error message when no console output is available for ssh finger
   print validation.
   [fschulze]
