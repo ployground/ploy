@@ -18,7 +18,7 @@ setup(
     namespace_packages=['mr'],
     install_requires=[
         'setuptools',
-        'boto',
-        'Fabric',
+        'boto >= 1.9b',
+        'Fabric >= 0.9.0',
     ],
 )
