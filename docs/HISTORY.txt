@@ -4,6 +4,10 @@ Changelog
 0.4 - Unreleased
 ----------------
 
+* Made startup script optional (not all AMIs support it, especially Windows
+  ones).
+  [fschulze]
+
 * The ``stop`` command actually only stops an instance now (only works with
   instances booted from an EBS volume) and the new ``terminate`` command now
   does what ``stop`` did before.

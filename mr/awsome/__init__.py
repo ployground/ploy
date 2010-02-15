@@ -226,7 +226,9 @@ class Server(object):
         return sgs
 
     def startup_script(self, overrides):
-        startup_script_path = self.config['startup_script']
+        startup_script_path = self.config.get('startup_script', None)
+        if startup_script_path is None:
+            return ''
         if not os.path.isabs(startup_script_path):
             startup_script_path = os.path.join(self.ec2.configpath,
                                                startup_script_path)
