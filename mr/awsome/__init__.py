@@ -237,7 +237,14 @@ class Server(object):
         options.update(dict(
             servers=self.ec2.servers,
         ))
-        result = startup_script(**options)
+        lines = startup_script(**options).split('\n')
+        if lines[0].rstrip() in ('#!/bin/sh', '#!/bin/bash'):
+            result = []
+            for index, line in enumerate(lines):
+                if index > 0 and line.startswith('#'):
+                    continue
+                result.append(line)
+        result = "\n".join(result)
         if len(result) >= 16*1024:
             log.error("Startup script too big.")
             sys.exit(1)

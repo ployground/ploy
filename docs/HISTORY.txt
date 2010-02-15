@@ -4,6 +4,10 @@ Changelog
 0.4 - Unreleased
 ----------------
 
+* Remove comment lines from startup script if it's starting with ``#!/bin/sh``
+  or ``#!/bin/bash``.
+  [fschulze]
+
 * Removed ``-r`` option for ``start`` and ``debug`` commands and replaced it
   with more general ``-o`` option.
   [fschulze]
