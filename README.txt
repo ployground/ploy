@@ -19,8 +19,8 @@ set. You can do it with a part like the following::
   recipe = zc.recipe.egg
   eggs = mr.awsome
   entry-points =
-  aws=mr.awsome:aws
-  assh=mr.awsome:aws_ssh
+    aws=mr.awsome:aws
+    assh=mr.awsome:aws_ssh
   arguments = configpath="${buildout:directory}/etc/deployment"
 
 **Configuration**
@@ -42,8 +42,8 @@ your ``aws.conf`` like this::
   [securitygroup:demo-server]
   description = Our Demo-Server
   connections =
-  tcp 22 22 0.0.0.0/0
-  tcp 80 80 0.0.0.0/0
+    tcp 22 22 0.0.0.0/0
+    tcp 80 80 0.0.0.0/0
 
 The security group is used for both the firewall settings, as documented in
 the AWS docs, and to find the server instance associated with it.

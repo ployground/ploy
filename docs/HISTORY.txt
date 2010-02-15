@@ -4,7 +4,8 @@ Changelog
 0.4 - Unreleased
 ----------------
 
-
+* Fixed indentation in documentation.
+  [natea, fschulze]
 
 0.3 - 2010-02-08
 ----------------
