@@ -4,6 +4,10 @@ Changelog
 0.4 - Unreleased
 ----------------
 
+* Removed ``-r`` option for ``start`` and ``debug`` commands and replaced it
+  with more general ``-o`` option.
+  [fschulze]
+
 * Made startup script optional (not all AMIs support it, especially Windows
   ones).
   [fschulze]

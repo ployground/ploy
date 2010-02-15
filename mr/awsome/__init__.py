@@ -233,10 +233,11 @@ class Server(object):
             startup_script_path = os.path.join(self.ec2.configpath,
                                                startup_script_path)
         startup_script = Template(startup_script_path)
-        result = startup_script(
+        options = overrides.copy()
+        options.update(dict(
             servers=self.ec2.servers,
-            tag=overrides.get('tag', self.config.get('tag')),
-        )
+        ))
+        result = startup_script(**options)
         if len(result) >= 16*1024:
             log.error("Startup script too big.")
             sys.exit(1)
@@ -455,17 +456,31 @@ class AWS(object):
         instance._update(rc[0])
         log.info("Instance terminated")
 
+    def _parse_overrides(options):
+        overrides = dict()
+        if options.overrides is not None:
+            for override in options.overrides:
+                if '=' not in override:
+                    log.error("Invalid format for override '%s', should be NAME=VALUE." % override)
+                    return
+                key, value = override.split('=')
+                key = key.strip()
+                value = value.strip()
+                if key == '':
+                    log.error("Empty key for everride '%s'." % override)
+                    return
+                overrides[key] = value
+        return overrides
+
     def cmd_start(self):
         """Starts the instance"""
-        overrides = dict()
         parser = optparse.OptionParser(
             usage="%prog start [options] <server>",
         )
-        parser.add_option("-r", "--revision", dest="revision",
-                          metavar="REV", help="The revision which should be checked out.")
+        parser.add_option("-o", "--override", action="append", type="string", dest="overrides",
+                          metavar="OVERRIDE", help="Option to override for startup script (name=value).")
         options, args = parser.parse_args(sys.argv[2:])
-        if options.revision is not None:
-            overrides['tag'] = options.revision
+        overrides = self._parse_overrides()
         if len(args) < 1:
             print parser.format_help()
             self.list_servers()
@@ -481,7 +496,6 @@ class AWS(object):
 
     def cmd_debug(self):
         """Prints some debug info for this script"""
-        overrides = dict()
         parser = optparse.OptionParser(
             usage="%prog debug [options] <server>",
         )
@@ -489,11 +503,10 @@ class AWS(object):
                           action="store_true", help="Print more info")
         parser.add_option("-i", "--interactive", dest="interactive",
                           action="store_true", help="Creates a connection and drops you into pdb")
-        parser.add_option("-r", "--revision", dest="revision",
-                          metavar="REV", help="The revision which should be checked out.")
+        parser.add_option("-o", "--override", action="append", type="string", dest="overrides",
+                          metavar="OVERRIDE", help="Option to override for startup script (name=value).")
         options, args = parser.parse_args(sys.argv[2:])
-        if options.revision is not None:
-            overrides['tag'] = options.revision
+        overrides = self._parse_overrides()
         if len(args) < 1:
             print parser.format_help()
             self.list_servers()
