@@ -456,7 +456,7 @@ class AWS(object):
         instance._update(rc[0])
         log.info("Instance terminated")
 
-    def _parse_overrides(options):
+    def _parse_overrides(self, options):
         overrides = dict()
         if options.overrides is not None:
             for override in options.overrides:
@@ -480,7 +480,7 @@ class AWS(object):
         parser.add_option("-o", "--override", action="append", type="string", dest="overrides",
                           metavar="OVERRIDE", help="Option to override for startup script (name=value).")
         options, args = parser.parse_args(sys.argv[2:])
-        overrides = self._parse_overrides()
+        overrides = self._parse_overrides(options)
         if len(args) < 1:
             print parser.format_help()
             self.list_servers()
@@ -489,7 +489,9 @@ class AWS(object):
             log.error("You need to specify exactly one server")
             return
         server = self.ec2.servers[args[0]]
-        instance = server.start(overrides)
+        opts = server.config.copy()
+        opts.update(overrides)
+        instance = server.start(opts)
         if instance is None:
             return
         self.cmd_status()
@@ -506,7 +508,7 @@ class AWS(object):
         parser.add_option("-o", "--override", action="append", type="string", dest="overrides",
                           metavar="OVERRIDE", help="Option to override for startup script (name=value).")
         options, args = parser.parse_args(sys.argv[2:])
-        overrides = self._parse_overrides()
+        overrides = self._parse_overrides(options)
         if len(args) < 1:
             print parser.format_help()
             self.list_servers()
@@ -515,9 +517,12 @@ class AWS(object):
             log.error("You need to specify exactly one server")
             return
         server = self.ec2.servers[args[0]]
-        log.info("Length of startup script: %s/%s", len(server.startup_script(overrides)), 16*1024)
+        opts = server.config.copy()
+        opts.update(overrides)
+        startup_script = server.startup_script(opts)
+        log.info("Length of startup script: %s/%s", len(startup_script), 16*1024)
         if options.verbose:
-            log.info("Startup script:\n%s", server.startup_script(overrides))
+            log.info("Startup script:\n%s", startup_script)
         if options.interactive:
             conn = server.conn
             instance = server.instance
