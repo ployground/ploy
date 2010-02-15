@@ -529,7 +529,8 @@ class AWS(object):
         startup_script = server.startup_script(opts)
         log.info("Length of startup script: %s/%s", len(startup_script), 16*1024)
         if options.verbose:
-            log.info("Startup script:\n%s", startup_script)
+            log.info("Startup script:")
+            print startup_script,
         if options.interactive:
             conn = server.conn
             instance = server.instance
