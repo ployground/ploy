@@ -4,6 +4,10 @@ Changelog
 0.4 - Unreleased
 ----------------
 
+* Friendly message instead of traceback when trying to ssh into an unavailable
+  server.
+  [fschulze]
+
 * Remove comment lines from startup script if it's starting with ``#!/bin/sh``
   or ``#!/bin/bash``.
   [fschulze]

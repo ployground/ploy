@@ -621,6 +621,9 @@ class AWS(object):
             self.list_servers()
             return
         server = self.ec2.servers[args[sid_index]]
+        if server.instance is None:
+            log.error("Can't establish ssh connection.")
+            return
         try:
             hoststr, known_hosts = server.init_ssh_key()
         except paramiko.SSHException, e:
