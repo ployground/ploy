@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.4 - Unreleased
+0.4 - 2010-02-18
 ----------------
 
 * Check console output in ``status`` and tell user about it.
