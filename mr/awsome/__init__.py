@@ -405,6 +405,11 @@ class AWS(object):
         log.info("Instance running.")
         log.info("Instances DNS name %s", instance.dns_name)
         log.info("Instances public DNS name %s", instance.public_dns_name)
+        output = instance.get_console_output().output
+        if output.strip():
+            log.info("Console output available. SSH fingerprint verification possible.")
+        else:
+            log.warn("Console output not (yet) available. SSH fingerprint verification not possible.")
 
     def cmd_stop(self):
         """Stops the instance"""

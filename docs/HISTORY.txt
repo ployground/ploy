@@ -4,6 +4,9 @@ Changelog
 0.4 - Unreleased
 ----------------
 
+* Check console output in ``status`` and tell user about it.
+  [fschulze]
+
 * Friendly message instead of traceback when trying to ssh into an unavailable
   server.
   [fschulze]
