@@ -4,7 +4,8 @@ Changelog
 0.5 - Unreleased
 ----------------
 
-
+* Added macro expansion similar to zc.buildout 1.4.
+  [fschulze]
 
 0.4 - 2010-02-18
 ----------------

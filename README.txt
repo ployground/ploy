@@ -182,3 +182,33 @@ For more info about fabfiles, read the docs at `http://fabfile.org/`_.
 .. _http://docs.python.org/library/string.html#formatstrings:
     http://docs.python.org/library/string.html#formatstrings
 .. _http://fabfile.org/: http://fabfile.org/
+
+
+**Macro expansion**
+
+In the ``aws.conf`` you can use macro expansion for cleaner configuration
+files. This looks like this::
+
+  [instance:demo-server2]
+  <= demo-server
+  securitygroups = demo-server2
+
+  [securitygroup:demo-server2]
+  <= demo-server
+
+All the options from the specified macro are copied with some important exceptions:
+
+  * For instances the ``ip`` and ``volumes`` options aren't copied.
+
+If you want to copy data from some other kind of options, you can add a colon
+in the macro name. This is useful if you want to have a base for instances
+like this::
+
+  [macro:base-instance]
+  keypair = default
+  region = eu-west-1
+  placement = eu-west-1a
+
+  [instance:server]
+  <= macro:base-instance
+  ...
