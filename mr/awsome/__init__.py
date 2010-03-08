@@ -1,6 +1,6 @@
-from ConfigParser import RawConfigParser
 from boto.ec2.securitygroup import GroupOrCIDR
 from boto.exception import EC2ResponseError
+from ConfigParser import RawConfigParser
 from StringIO import StringIO
 from textwrap import dedent
 import boto.ec2
@@ -11,9 +11,9 @@ import fabric.network
 import fabric.state
 import gzip
 import logging
-import paramiko
 import optparse
 import os
+import paramiko
 import subprocess
 import sys
 import time
