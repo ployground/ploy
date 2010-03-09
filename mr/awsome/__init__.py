@@ -183,6 +183,10 @@ class Server(object):
         startup_script_path = self.config.get('startup_script', None)
         if startup_script_path is None:
             return ''
+        use_gzip = False
+        if startup_script_path.startswith('gzip:'):
+            startup_script_path = startup_script_path[5:]
+            use_gzip = True
         if not os.path.isabs(startup_script_path):
             startup_script_path = os.path.join(self.ec2.configpath,
                                                startup_script_path)
@@ -199,6 +203,17 @@ class Server(object):
                     continue
                 result.append(line)
         result = "\n".join(result)
+        if use_gzip:
+            s = StringIO()
+            gz = gzip.GzipFile(mode='wb', fileobj=s)
+            gz.write(result)
+            gz.close()
+            result = "\n".join([
+                "#!/bin/bash",
+                "tail -n+4 $0 | gunzip -c | cat -",
+                "exit $?",
+                s.getvalue()
+            ])
         if len(result) >= 16*1024:
             log.error("Startup script too big.")
             sys.exit(1)

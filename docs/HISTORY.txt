@@ -4,6 +4,10 @@ Changelog
 0.5 - Unreleased
 ----------------
 
+* Added gzipping of startup script by looking for ``gzip:`` prefix in the
+  filename.
+  [fschulze]
+
 * Added macro expansion similar to zc.buildout 1.4.
   [fschulze]
 

@@ -117,6 +117,15 @@ the server (this only works with other servers already started, not the one
 for which the startup script is for, since the DNS isn't set at the time the
 script is created).
 
+You can add a ``gzip:`` prefix before the filename to let the script be self
+extracting. The code used looks like this::
+
+  #!/bin/bash
+  tail -n+4 $0 | gunzip -c | bash
+  exit $?
+
+Directly after that follows the binary data of the gzipped startup script.
+
 **Controlling instances**
 
  -   start
