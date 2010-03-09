@@ -210,7 +210,7 @@ class Server(object):
             gz.close()
             result = "\n".join([
                 "#!/bin/bash",
-                "tail -n+4 $0 | gunzip -c | cat -",
+                "tail -n+4 $0 | gunzip -c | bash",
                 "exit $?",
                 s.getvalue()
             ])
