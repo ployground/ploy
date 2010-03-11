@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.5 - Unreleased
+0.5 - 2010-03-11
 ----------------
 
 * Added gzipping of startup script by looking for ``gzip:`` prefix in the
