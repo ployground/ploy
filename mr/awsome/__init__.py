@@ -1,15 +1,14 @@
 from boto.ec2.securitygroup import GroupOrCIDR
 from boto.exception import EC2ResponseError
+from mr.awsome.common import gzip_string
 from mr.awsome.config import Config
 from mr.awsome.template import Template
-from StringIO import StringIO
 from textwrap import dedent
 import boto.ec2
 import datetime
 import fabric.main
 import fabric.network
 import fabric.state
-import gzip
 import logging
 import optparse
 import os
@@ -164,15 +163,11 @@ class Server(object):
                 result.append(line)
         result = "\n".join(result)
         if use_gzip:
-            s = StringIO()
-            gz = gzip.GzipFile(mode='wb', fileobj=s)
-            gz.write(result)
-            gz.close()
             result = "\n".join([
                 "#!/bin/bash",
                 "tail -n+4 $0 | gunzip -c | bash",
                 "exit $?",
-                s.getvalue()
+                gzip_string(result)
             ])
         if len(result) >= 16*1024:
             log.error("Startup script too big.")

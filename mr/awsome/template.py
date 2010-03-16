@@ -1,6 +1,5 @@
-from StringIO import StringIO
+from mr.awsome.common import gzip_string
 import email
-import gzip
 import os
 
 
@@ -29,11 +28,7 @@ class Template(object):
                         path = os.path.join(os.path.dirname(self.path), path)
                     value = Template(path)(**kwargs)
                 elif cmd == 'gzip':
-                    s = StringIO()
-                    gz = gzip.GzipFile(mode='wb', fileobj=s)
-                    gz.write(value)
-                    gz.close()
-                    value = s.getvalue()
+                    value = gzip_string(value)
                 elif cmd == 'escape_eol':
                     value = value.replace('\n', '\\n')
                 else:
