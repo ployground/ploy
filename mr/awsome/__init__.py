@@ -1,6 +1,6 @@
 from boto.ec2.securitygroup import GroupOrCIDR
 from boto.exception import EC2ResponseError
-from config import Config
+from mr.awsome.config import Config
 from StringIO import StringIO
 from textwrap import dedent
 import boto.ec2
