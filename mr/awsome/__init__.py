@@ -2,7 +2,7 @@ from boto.ec2.securitygroup import GroupOrCIDR
 from boto.exception import EC2ResponseError
 from mr.awsome.common import gzip_string
 from mr.awsome.config import Config
-from mr.awsome.template import Template
+from mr.awsome import template
 from textwrap import dedent
 import boto.ec2
 import datetime
@@ -149,19 +149,15 @@ class Server(object):
         if not os.path.isabs(startup_script_path):
             startup_script_path = os.path.join(self.ec2.configpath,
                                                startup_script_path)
-        startup_script = Template(startup_script_path)
+        startup_script = template.Template(
+            startup_script_path,
+            pre_filter=template.strip_hashcomments,
+        )
         options = overrides.copy()
         options.update(dict(
             servers=self.ec2.servers,
         ))
-        lines = startup_script(**options).split('\n')
-        if lines[0].rstrip() in ('#!/bin/sh', '#!/bin/bash'):
-            result = []
-            for index, line in enumerate(lines):
-                if index > 0 and line.startswith('#'):
-                    continue
-                result.append(line)
-        result = "\n".join(result)
+        result = startup_script(**options)
         if use_gzip:
             result = "\n".join([
                 "#!/bin/bash",
