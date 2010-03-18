@@ -4,6 +4,9 @@ Changelog
 0.6 - Unreleased
 ----------------
 
+* Added ``-v``/``--version`` option.
+  [tomster, fschulze]
+
 * Comment lines in the startup script are now removed before any variables
   in it are expanded, not afterwards.
   [fschulze]

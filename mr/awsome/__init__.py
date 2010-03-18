@@ -13,6 +13,7 @@ import logging
 import argparse
 import os
 import paramiko
+import pkg_resources
 import subprocess
 import sys
 import time
@@ -592,6 +593,11 @@ class AWS(object):
                 argv[positional[1][0]] = positional[0][1]
 
         parser = argparse.ArgumentParser()
+        version = pkg_resources.get_distribution("mr.awsome").version
+        parser.add_argument('-v', '--version',
+                            action='version',
+                            version='mr.awsome %s' % version,
+                            help="Print version and exit")
         cmdparsers = parser.add_subparsers(title="commands")
         for cmdname in cmds:
             cmd = getattr(self, "cmd_%s" % cmdname)
