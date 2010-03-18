@@ -22,4 +22,9 @@ setup(
         'Fabric >= 0.9.0',
         'argparse >= 1.1',
     ],
+    entry_points="""
+      [console_scripts]
+      aws = mr.awsome:aws
+      assh = mr.awsome:aws_ssh
+    """,
 )

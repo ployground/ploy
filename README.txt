@@ -11,17 +11,8 @@ commandline. Aw(e)some, indeed, if we may say so...
 
 **Installation**
 
-mr.awsome currently requires buildout for installation, because there is no
-entry point defined in the egg and the entry point requires an argument to be
-set. You can do it with a part like the following::
-
-  [aws]
-  recipe = zc.recipe.egg
-  eggs = mr.awsome
-  entry-points =
-    aws=mr.awsome:aws
-    assh=mr.awsome:aws_ssh
-  arguments = configpath="${buildout:directory}/etc/deployment"
+mr.awsome is best installed with easy_install, pip or with zc.recipe.egg in
+a buildout. It installs two scripts, ``aws`` and ``assh``.
 
 **Configuration**
 
@@ -34,7 +25,7 @@ variables::
 You can find their values at `http://aws.amazon.com`_ under *'Your Account'-'Security Credentials'.*
 
 All other information about server instances is located in ``aws.conf``, which
-needs to reside in the configpath set in the buildout part.
+by default is looked up in ``etc/aws.conf``.
 
 Before you can create a server instance with the ``create`` command described below, you first have to declare a security group in
 your ``aws.conf`` like this::

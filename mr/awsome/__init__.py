@@ -271,25 +271,38 @@ class Servers(object):
 
 
 class EC2(object):
-    def __init__(self, configpath):
-        if not os.path.exists(configpath):
-            log.error("Config path '%s' doesn't exist." % configpath)
+    def __init__(self, config):
+        config = os.path.abspath(config)
+        if not os.path.exists(config):
+            log.error("Config '%s' doesn't exist." % config)
             sys.exit(1)
-        self.configpath = configpath
-        self.config = Config(os.path.join(self.configpath, 'aws.conf'))
+        if os.path.isdir(config):
+            config = os.path.join(config, 'aws.conf')
+        self.configpath = os.path.dirname(config)
+        self.config = Config(config)
         self.servers = Servers(self)
 
 
 class AWS(object):
-    def __init__(self, configpath=None):
+    def __init__(self, configfile=None):
         log.setLevel(logging.INFO)
         ch = logging.StreamHandler()
         ch.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
         log.addHandler(ch)
-        if configpath is None:
+        if configfile is None:
+            configfile = 'etc/aws.conf'
+        self.configfile = configfile
+
+    @property
+    def ec2(self):
+        ec2 = getattr(self, '_ec2', None)
+        if ec2 is not None:
+            return ec2
+        if self.configfile is None:
             log.error("Config path not given (argument to this script).")
             sys.exit(1)
-        self.ec2 = EC2(configpath)
+        self._ec2 = EC2(self.configfile)
+        return self._ec2
 
     def cmd_status(self, argv, help):
         """Prints status"""
@@ -582,8 +595,13 @@ class AWS(object):
             volume.create_snapshot(description=description)
 
     def __call__(self, argv):
+        parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-        parser = argparse.ArgumentParser()
+        parser.add_argument('-c', '--config',
+                            dest="configfile",
+                            default=self.configfile,
+                            help="Use the specified config file.")
+
         version = pkg_resources.get_distribution("mr.awsome").version
         parser.add_argument('-v', '--version',
                             action='version',
@@ -603,16 +621,18 @@ class AWS(object):
                 break
         sub_argv = argv[len(main_argv):]
         args = parser.parse_args(main_argv[1:])
+        if args.configfile is not None:
+            self.configfile = args.configfile
         args.func(sub_argv, args.func.__doc__)
 
 
 def aws(configpath=None):
     argv = sys.argv[:]
-    aws = AWS(configpath=configpath)
+    aws = AWS(configfile=configpath)
     return aws(argv)
 
 def aws_ssh(configpath=None):
     argv = sys.argv[:]
     argv.insert(1, "ssh")
-    aws = AWS(configpath=configpath)
+    aws = AWS(configfile=configpath)
     return aws(argv)

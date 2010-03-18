@@ -4,6 +4,9 @@ Changelog
 0.6 - Unreleased
 ----------------
 
+* Added ``-c``/``--config`` option to specify the config file to use.
+  [fschulze]
+
 * Added ``-v``/``--version`` option.
   [tomster, fschulze]
 
