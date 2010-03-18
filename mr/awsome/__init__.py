@@ -459,6 +459,7 @@ class AWS(object):
         if options.interactive:
             conn = server.conn
             instance = server.instance
+            conn, instance # shutup pyflakes
             from pdb import set_trace
             set_trace()
 
