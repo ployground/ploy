@@ -20,5 +20,6 @@ setup(
         'setuptools',
         'boto >= 1.9b',
         'Fabric >= 0.9.0',
+        'argparse >= 1.1',
     ],
 )

@@ -10,7 +10,7 @@ import fabric.main
 import fabric.network
 import fabric.state
 import logging
-import optparse
+import argparse
 import os
 import paramiko
 import subprocess
@@ -290,36 +290,18 @@ class AWS(object):
             sys.exit(1)
         self.ec2 = EC2(configpath)
 
-    def list_servers(self):
-        print("Available servers:")
-        for sid in self.ec2.servers:
-            print("    %s" % sid)
-
-    def cmd_help(self):
-        """Prints usage"""
-        print dedent("""\
-        Usage: aws <command> [server and/or options]
-               aws <server> <command> [options]
-
-        Available commands:""")
-        for key in dir(self):
-            if key.startswith('cmd_'):
-                print "    %-16s%s" % (key[4:], getattr(getattr(self, key), '__doc__'))
-
-    def cmd_status(self):
+    def cmd_status(self, argv, help):
         """Prints status"""
-        parser = optparse.OptionParser(
-            usage="%prog status <server>",
+        parser = argparse.ArgumentParser(
+            prog="aws status",
+            description=help,
         )
-        options, args = parser.parse_args(sys.argv[2:])
-        if len(args) < 1:
-            print parser.format_help()
-            self.list_servers()
-            return
-        if len(args) > 1:
-            log.error("You need to specify exactly one server")
-            return
-        server = self.ec2.servers[args[0]]
+        parser.add_argument("server", nargs=1,
+                            metavar="instance",
+                            help="Name of the instance from the config.",
+                            choices=list(self.ec2.servers))
+        args = parser.parse_args(argv)
+        server = self.ec2.servers[args.server[0]]
         instance = server.instance
         if instance is None:
             return
@@ -335,20 +317,18 @@ class AWS(object):
         else:
             log.warn("Console output not (yet) available. SSH fingerprint verification not possible.")
 
-    def cmd_stop(self):
+    def cmd_stop(self, argv, help):
         """Stops the instance"""
-        parser = optparse.OptionParser(
-            usage="%prog stop <server>",
+        parser = argparse.ArgumentParser(
+            prog="aws stop",
+            description=help,
         )
-        options, args = parser.parse_args(sys.argv[2:])
-        if len(args) < 1:
-            print parser.format_help()
-            self.list_servers()
-            return
-        if len(args) > 1:
-            log.error("You need to specify exactly one server")
-            return
-        server = self.ec2.servers[args[0]]
+        parser.add_argument("server", nargs=1,
+                            metavar="instance",
+                            help="Name of the instance from the config.",
+                            choices=list(self.ec2.servers))
+        args = parser.parse_args(argv)
+        server = self.ec2.servers[args.server[0]]
         instance = server.instance
         if instance is None:
             return
@@ -367,20 +347,18 @@ class AWS(object):
             return
         log.info("Instance stopped")
 
-    def cmd_terminate(self):
+    def cmd_terminate(self, argv, help):
         """Terminates the instance"""
-        parser = optparse.OptionParser(
-            usage="%prog terminate <server>",
+        parser = argparse.ArgumentParser(
+            prog="aws terminate",
+            description=help,
         )
-        options, args = parser.parse_args(sys.argv[2:])
-        if len(args) < 1:
-            print parser.format_help()
-            self.list_servers()
-            return
-        if len(args) > 1:
-            log.error("You need to specify exactly one server")
-            return
-        server = self.ec2.servers[args[0]]
+        parser.add_argument("server", nargs=1,
+                            metavar="instance",
+                            help="Name of the instance from the config.",
+                            choices=list(self.ec2.servers))
+        args = parser.parse_args(argv)
+        server = self.ec2.servers[args.server[0]]
         instance = server.instance
         if instance is None:
             return
@@ -408,23 +386,22 @@ class AWS(object):
                 overrides[key] = value
         return overrides
 
-    def cmd_start(self):
+    def cmd_start(self, argv, help):
         """Starts the instance"""
-        parser = optparse.OptionParser(
-            usage="%prog start [options] <server>",
+        parser = argparse.ArgumentParser(
+            prog="aws start",
+            description=help,
         )
-        parser.add_option("-o", "--override", action="append", type="string", dest="overrides",
-                          metavar="OVERRIDE", help="Option to override for startup script (name=value).")
-        options, args = parser.parse_args(sys.argv[2:])
-        overrides = self._parse_overrides(options)
-        if len(args) < 1:
-            print parser.format_help()
-            self.list_servers()
-            return
-        if len(args) > 1:
-            log.error("You need to specify exactly one server")
-            return
-        server = self.ec2.servers[args[0]]
+        parser.add_argument("server", nargs=1,
+                            metavar="instance",
+                            help="Name of the instance from the config.",
+                            choices=list(self.ec2.servers))
+        parser.add_argument("-o", "--override", nargs="*", type=str,
+                            dest="overrides", metavar="OVERRIDE",
+                            help="Option to override in server config for startup script (name=value).")
+        args = parser.parse_args(argv)
+        overrides = self._parse_overrides(args)
+        server = self.ec2.servers[args.server[0]]
         opts = server.config.copy()
         opts.update(overrides)
         instance = server.start(opts)
@@ -432,56 +409,61 @@ class AWS(object):
             return
         self.cmd_status()
 
-    def cmd_debug(self):
+    def cmd_debug(self, argv, help):
         """Prints some debug info for this script"""
-        parser = optparse.OptionParser(
-            usage="%prog debug [options] <server>",
+        parser = argparse.ArgumentParser(
+            prog="aws debug",
+            description=help,
         )
-        parser.add_option("-v", "--verbose", dest="verbose",
+        parser.add_argument("server", nargs=1,
+                            metavar="instance",
+                            help="Name of the instance from the config.",
+                            choices=list(self.ec2.servers))
+        parser.add_argument("-v", "--verbose", dest="verbose",
                           action="store_true", help="Print more info")
-        parser.add_option("-i", "--interactive", dest="interactive",
+        parser.add_argument("-i", "--interactive", dest="interactive",
                           action="store_true", help="Creates a connection and drops you into pdb")
-        parser.add_option("-o", "--override", action="append", type="string", dest="overrides",
-                          metavar="OVERRIDE", help="Option to override for startup script (name=value).")
-        options, args = parser.parse_args(sys.argv[2:])
-        overrides = self._parse_overrides(options)
-        if len(args) < 1:
-            print parser.format_help()
-            self.list_servers()
-            return
-        if len(args) > 1:
-            log.error("You need to specify exactly one server")
-            return
-        server = self.ec2.servers[args[0]]
+        parser.add_argument("-o", "--override", nargs="*", type=str,
+                            dest="overrides", metavar="OVERRIDE",
+                            help="Option to override server config for startup script (name=value).")
+        args = parser.parse_args(argv)
+        overrides = self._parse_overrides(args)
+        server = self.ec2.servers[args.server[0]]
         opts = server.config.copy()
         opts.update(overrides)
         startup_script = server.startup_script(opts)
         log.info("Length of startup script: %s/%s", len(startup_script), 16*1024)
-        if options.verbose:
+        if args.verbose:
             log.info("Startup script:")
             print startup_script,
-        if options.interactive:
+        if args.interactive:
             conn = server.conn
             instance = server.instance
             conn, instance # shutup pyflakes
             from pdb import set_trace
             set_trace()
 
-    def cmd_do(self):
+    def cmd_do(self, argv, help):
         """Do stuff on the cluster (using fabric)"""
-        parser = optparse.OptionParser(
-            usage="%prog do <server> [fabric options]",
+        parser = argparse.ArgumentParser(
+            prog="aws do",
+            description=help,
+            add_help=False,
         )
-
-        if len(sys.argv) < 3:
-            print parser.format_help()
-            self.list_servers()
+        parser.add_argument("server", nargs=1,
+                            metavar="server",
+                            help="Name of the instance or server from the config.",
+                            choices=list(self.ec2.servers))
+        parser.add_argument("...", nargs=argparse.REMAINDER,
+                            help="Fabric options")
+        if len(argv) < 2:
+            parser.print_help()
             return
         old_sys_argv = sys.argv
         old_cwd = os.getcwd()
         hoststr = None
         try:
-            sid = sys.argv[2]
+            sid = argv[0]
             server = self.ec2.servers[sid]
             try:
                 hoststr, known_hosts = server.init_ssh_key()
@@ -499,7 +481,8 @@ class AWS(object):
                 if not os.path.isabs(fabfile):
                     fabfile = os.path.join(self.ec2.configpath, fabfile)
                 newargv = newargv + ['-f', fabfile]
-            sys.argv = newargv + sys.argv[3:]
+            sys.argv = newargv + argv[1:]
+            print sys.argv
 
             # setup environment
             os.chdir(os.path.dirname(fabfile))
@@ -530,13 +513,19 @@ class AWS(object):
             sys.argv = old_sys_argv
             os.chdir(old_cwd)
 
-    def cmd_ssh(self):
+    def cmd_ssh(self, argv, help):
         """Log into the server with ssh using the automatically generated known hosts"""
-        parser = optparse.OptionParser(
-            usage="%prog ssh <server>",
+        parser = argparse.ArgumentParser(
+            prog="aws ssh",
+            description=help,
         )
-        args = sys.argv[2:]
-        iargs = enumerate(args)
+        parser.add_argument("server", nargs=1,
+                            metavar="server",
+                            help="Name of the instance or server from the config.",
+                            choices=list(self.ec2.servers))
+        parser.add_argument("...", nargs=argparse.REMAINDER,
+                            help="Fabric options")
+        iargs = enumerate(argv)
         sid_index = None
         for i, arg in iargs:
             if not arg.startswith('-'):
@@ -548,10 +537,9 @@ class AWS(object):
                 elif arg[1] in 'bcDeFiLlmOopRSw':
                     continue
         if sid_index is None:
-            print parser.format_help()
-            self.list_servers()
+            parser.print_help()
             return
-        server = self.ec2.servers[args[sid_index]]
+        server = self.ec2.servers[argv[sid_index]]
         if server.instance is None:
             log.error("Can't establish ssh connection.")
             return
@@ -565,62 +553,67 @@ class AWS(object):
         fabric.state.connections[hoststr].close()
         user, host, port = fabric.network.normalize(hoststr)
         known_hosts = os.path.join(self.ec2.configpath, 'known_hosts')
-        args[sid_index:sid_index+1] = ['-o', 'UserKnownHostsFile=%s' % known_hosts,
+        argv[sid_index:sid_index+1] = ['-o', 'UserKnownHostsFile=%s' % known_hosts,
                                        '-l', user,
                                        host]
-        args[0:0] = ['ssh']
-        subprocess.call(args)
+        argv[0:0] = ['ssh']
+        subprocess.call(argv)
 
-    def cmd_snapshot(self):
+    def cmd_snapshot(self, argv, help):
         """Creates a snapshot of the volumes specified in the configuration"""
-        parser = optparse.OptionParser(
-            usage="%prog snapshot <id>",
+        parser = argparse.ArgumentParser(
+            prog="aws status",
+            description=help,
         )
-        options, args = parser.parse_args(sys.argv[2:])
-        if len(args) < 1:
-            print parser.format_help()
-            self.list_servers()
-            return
-        if len(args) > 1:
-            log.error("You need to specify exactly one server")
-            return
-        sid = args[0]
-        server = self.ec2.servers[sid]
+        parser.add_argument("server", nargs=1,
+                            metavar="instance",
+                            help="Name of the instance from the config.",
+                            choices=list(self.ec2.servers))
+        args = parser.parse_args(argv)
+        server = self.ec2.servers[args.server[0]]
         volume_ids = [x[0] for x in server.config.get('volumes', [])]
         volumes = dict((x.id, x) for x in server.conn.get_all_volumes())
         for volume_id in volume_ids:
             volume = volumes[volume_id]
             date = datetime.datetime.now().strftime("%Y%m%d%H%M")
             description = "%s-%s" % (date, volume_id)
-            log.info("Creating snapshot for volume %s on %s (%s)" % (volume_id, sid, description))
+            log.info("Creating snapshot for volume %s on %s (%s)" % (volume_id, args.server, description))
             volume.create_snapshot(description=description)
 
-    def __call__(self):
-        if len(sys.argv) < 2:
-            self.cmd_help()
-        else:
-            cmd = getattr(self, "cmd_%s" % sys.argv[1], None)
-            if cmd is None:
-                arg = sys.argv[1]
-                if arg in self.ec2.servers:
-                    del sys.argv[1]
-                    sys.argv.insert(2, arg)
-                    cmd = getattr(self, "cmd_%s" % sys.argv[1], self.unknown)
-                else:
-                    cmd = self.unknown
-            cmd()
+    def __call__(self, argv):
+        cmds = [x[4:] for x in dir(self) if x.startswith('cmd_')]
 
-    def unknown(self):
-        log.error("Unknown command '%s'." % sys.argv[1])
-        log.info("Type '%s help' for usage." % os.path.basename(sys.argv[0]))
-        sys.exit(1)
+        # make it possible to write "aws server cmd" instead of "aws cmd server"
+        positional = [x for x in enumerate(argv)
+                      if x[0] > 0 and not x[1].startswith("-")]
+        if len(positional) > 1:
+            if positional[1][1] in cmds:
+                argv[positional[0][0]] = positional[1][1]
+                argv[positional[1][0]] = positional[0][1]
+
+        parser = argparse.ArgumentParser()
+        cmdparsers = parser.add_subparsers(title="commands")
+        for cmdname in cmds:
+            cmd = getattr(self, "cmd_%s" % cmdname)
+            subparser = cmdparsers.add_parser(cmdname, help=cmd.__doc__)
+            subparser.set_defaults(func=cmd)
+        main_argv = []
+        for arg in argv:
+            main_argv.append(arg)
+            if arg in cmds:
+                break
+        sub_argv = argv[len(main_argv):]
+        args = parser.parse_args(main_argv[1:])
+        args.func(sub_argv, args.func.__doc__)
 
 
 def aws(configpath=None):
+    argv = sys.argv[:]
     aws = AWS(configpath=configpath)
-    return aws()
+    return aws(argv)
 
 def aws_ssh(configpath=None):
-    sys.argv.insert(1, "ssh")
+    argv = sys.argv[:]
+    argv.insert(1, "ssh")
     aws = AWS(configpath=configpath)
-    return aws()
+    return aws(argv)

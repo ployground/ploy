@@ -4,7 +4,9 @@ Changelog
 0.6 - Unreleased
 ----------------
 
-
+* Use argparse library instead of optparse for more powerful command line
+  parsing.
+  [fschulze]
 
 0.5 - 2010-03-11
 ----------------
