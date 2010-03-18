@@ -582,7 +582,6 @@ class AWS(object):
             volume.create_snapshot(description=description)
 
     def __call__(self, argv):
-        cmds = [x[4:] for x in dir(self) if x.startswith('cmd_')]
 
         parser = argparse.ArgumentParser()
         version = pkg_resources.get_distribution("mr.awsome").version
@@ -590,6 +589,8 @@ class AWS(object):
                             action='version',
                             version='mr.awsome %s' % version,
                             help="Print version and exit")
+
+        cmds = [x[4:] for x in dir(self) if x.startswith('cmd_')]
         cmdparsers = parser.add_subparsers(title="commands")
         for cmdname in cmds:
             cmd = getattr(self, "cmd_%s" % cmdname)
