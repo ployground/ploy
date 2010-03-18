@@ -523,6 +523,7 @@ class AWS(object):
             if hoststr is not None:
                 fabric.state.connections[hoststr].close()
             sys.argv = old_sys_argv
+            os.chdir(old_cwd)
 
     def cmd_ssh(self):
         """Log into the server with ssh using the automatically generated known hosts"""
