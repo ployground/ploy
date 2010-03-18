@@ -584,14 +584,6 @@ class AWS(object):
     def __call__(self, argv):
         cmds = [x[4:] for x in dir(self) if x.startswith('cmd_')]
 
-        # make it possible to write "aws server cmd" instead of "aws cmd server"
-        positional = [x for x in enumerate(argv)
-                      if x[0] > 0 and not x[1].startswith("-")]
-        if len(positional) > 1:
-            if positional[1][1] in cmds:
-                argv[positional[0][0]] = positional[1][1]
-                argv[positional[1][0]] = positional[0][1]
-
         parser = argparse.ArgumentParser()
         version = pkg_resources.get_distribution("mr.awsome").version
         parser.add_argument('-v', '--version',
