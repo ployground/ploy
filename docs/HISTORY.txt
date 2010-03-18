@@ -4,6 +4,10 @@ Changelog
 0.6 - Unreleased
 ----------------
 
+* Comment lines in the startup script are now removed before any variables
+  in it are expanded, not afterwards.
+  [fschulze]
+
 * Use argparse library instead of optparse for more powerful command line
   parsing.
   [fschulze]
