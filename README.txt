@@ -24,6 +24,10 @@ variables::
 
 You can find their values at `http://aws.amazon.com`_ under *'Your Account'-'Security Credentials'.*
 
+You can also put them into files and point to them in the ``[aws]`` section
+with the ``access-key-id`` and ``secret-access-key`` options. It's best to
+put them in ``~/.aws/`` and make sure only your user can read them.
+
 All other information about server instances is located in ``aws.conf``, which
 by default is looked up in ``etc/aws.conf``.
 

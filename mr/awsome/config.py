@@ -53,7 +53,10 @@ class Config(dict):
         _config.optionxform = lambda s: s
         _config.read(configs)
         for section in _config.sections():
-            sectiongroupname, sectionname = section.split(':')
+            if ':' in section:
+                sectiongroupname, sectionname = section.split(':')
+            else:
+                sectiongroupname, sectionname = 'global', section
             items = dict(_config.items(section))
             sectiongroup = self.setdefault(sectiongroupname, {})
             sectiongroup.setdefault(sectionname, {}).update(items)

@@ -102,11 +102,31 @@ class Server(object):
         conn = getattr(self, '_conn', None)
         if conn is not None:
             return conn
+        aws_id = None
+        aws_key = None
         if 'AWS_ACCESS_KEY_ID' not in os.environ or 'AWS_SECRET_ACCESS_KEY' not in os.environ:
-            log.error("You need to set the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables. You can find the values at http://aws.amazon.com under 'Your Account'-'Security Credentials'.")
-            sys.exit(1)
-        regions = dict((x.name, x) for x in boto.ec2.regions())
-        self._conn = regions[self.config['region']].connect()
+            try:
+                id_file = self.ec2.config['global']['aws']['access-key-id']
+                key_file = self.ec2.config['global']['aws']['secret-access-key']
+            except KeyError:
+                log.error("You need to either set the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables or add the path to files containing them to the config. You can find the values at http://aws.amazon.com under 'Your Account'-'Security Credentials'.")
+                sys.exit(1)
+            id_file = os.path.abspath(os.path.expanduser(id_file))
+            if not os.path.exists(id_file):
+                log.error("The access-key-id file at '%s' doesn't exist." % id_file)
+                sys.exit(1)
+            key_file = os.path.abspath(os.path.expanduser(key_file))
+            if not os.path.exists(key_file):
+                log.error("The secret-access-key file at '%s' doesn't exist." % key_file)
+                sys.exit(1)
+            aws_id = open(id_file).readline().strip()
+            aws_key = open(key_file).readline().strip()
+        regions = dict((x.name, x) for x in boto.ec2.regions(
+            aws_access_key_id=aws_id, aws_secret_access_key=aws_key
+        ))
+        self._conn = regions[self.config['region']].connect(
+            aws_access_key_id=aws_id, aws_secret_access_key=aws_key
+        )
         return self._conn
 
     @property

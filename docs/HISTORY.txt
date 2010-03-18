@@ -4,6 +4,11 @@ Changelog
 0.6 - Unreleased
 ----------------
 
+* It's now possible to specify files which contain the aws keys in the
+  ``[aws]`` section with the ``access-key-id`` and ``secret-access-key``
+  options.
+  [fschulze]
+
 * Added ``-c``/``--config`` option to specify the config file to use.
   [fschulze]
 
