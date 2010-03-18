@@ -101,6 +101,9 @@ class Server(object):
         conn = getattr(self, '_conn', None)
         if conn is not None:
             return conn
+        if 'AWS_ACCESS_KEY_ID' not in os.environ or 'AWS_SECRET_ACCESS_KEY' not in os.environ:
+            log.error("You need to set the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables. You can find the values at http://aws.amazon.com under 'Your Account'-'Security Credentials'.")
+            sys.exit(1)
         regions = dict((x.name, x) for x in boto.ec2.regions())
         self._conn = regions[self.config['region']].connect()
         return self._conn
@@ -282,9 +285,6 @@ class AWS(object):
         ch = logging.StreamHandler()
         ch.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
         log.addHandler(ch)
-        if 'AWS_ACCESS_KEY_ID' not in os.environ or 'AWS_SECRET_ACCESS_KEY' not in os.environ:
-            log.error("You need to set the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables. You can find the values at http://aws.amazon.com under 'Your Account'-'Security Credentials'.")
-            sys.exit(1)
 
     def list_servers(self):
         print("Available servers:")
