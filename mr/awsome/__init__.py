@@ -280,11 +280,15 @@ class EC2(object):
 
 
 class AWS(object):
-    def __init__(self):
+    def __init__(self, configpath=None):
         log.setLevel(logging.INFO)
         ch = logging.StreamHandler()
         ch.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
         log.addHandler(ch)
+        if configpath is None:
+            log.error("Config path not given (argument to this script).")
+            sys.exit(1)
+        self.ec2 = EC2(configpath)
 
     def list_servers(self):
         print("Available servers:")
@@ -591,11 +595,7 @@ class AWS(object):
             log.info("Creating snapshot for volume %s on %s (%s)" % (volume_id, sid, description))
             volume.create_snapshot(description=description)
 
-    def __call__(self, configpath=None):
-        if configpath is None:
-            log.error("Config path not given (argument to this script).")
-            sys.exit(1)
-        self.ec2 = EC2(configpath)
+    def __call__(self):
         if len(sys.argv) < 2:
             self.cmd_help()
         else:
@@ -610,15 +610,17 @@ class AWS(object):
                     cmd = self.unknown
             cmd()
 
-    def ssh(self, configpath=None):
-        sys.argv.insert(1, "ssh")
-        self(configpath=configpath)
-
     def unknown(self):
         log.error("Unknown command '%s'." % sys.argv[1])
         log.info("Type '%s help' for usage." % os.path.basename(sys.argv[0]))
         sys.exit(1)
 
 
-aws = AWS()
-aws_ssh = aws.ssh
+def aws(configpath=None):
+    aws = AWS(configpath=configpath)
+    return aws()
+
+def aws_ssh(configpath=None):
+    sys.argv.insert(1, "ssh")
+    aws = AWS(configpath=configpath)
+    return aws()
