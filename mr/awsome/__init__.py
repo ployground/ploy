@@ -271,6 +271,20 @@ class Server(object):
         fabric.state.connections[real_key] = client
         return real_key, known_hosts
 
+    def snapshot(self, devs=None):
+        if devs is None:
+            devs=set()
+        else:
+            devs=set(devs)
+        volume_ids = [x[0] for x in self.config.get('volumes', []) if x[1] in devs]
+        volumes = dict((x.id, x) for x in self.conn.get_all_volumes())
+        for volume_id in volume_ids:
+            volume = volumes[volume_id]
+            date = datetime.datetime.now().strftime("%Y%m%d%H%M")
+            description = "%s-%s" % (date, volume_id)
+            log.info("Creating snapshot for volume %s on %s (%s)" % (volume_id, self.id, description))
+            volume.create_snapshot(description=description)
+
 
 class Servers(object):
     def __init__(self, ec2):
@@ -605,14 +619,7 @@ class AWS(object):
                             choices=list(self.ec2.servers))
         args = parser.parse_args(argv)
         server = self.ec2.servers[args.server[0]]
-        volume_ids = [x[0] for x in server.config.get('volumes', [])]
-        volumes = dict((x.id, x) for x in server.conn.get_all_volumes())
-        for volume_id in volume_ids:
-            volume = volumes[volume_id]
-            date = datetime.datetime.now().strftime("%Y%m%d%H%M")
-            description = "%s-%s" % (date, volume_id)
-            log.info("Creating snapshot for volume %s on %s (%s)" % (volume_id, args.server, description))
-            volume.create_snapshot(description=description)
+        server.snapshot()
 
     def __call__(self, argv):
         parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
