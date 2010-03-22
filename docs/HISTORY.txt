@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.7 - Unreleased
+0.7 - 2010-03-22
 ----------------
 
 * Added ``snapshot`` method to Server class for easy access from fabfiles.
