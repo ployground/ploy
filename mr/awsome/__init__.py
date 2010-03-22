@@ -530,7 +530,6 @@ class AWS(object):
                     fabfile = os.path.join(self.ec2.configpath, fabfile)
                 newargv = newargv + ['-f', fabfile]
             sys.argv = newargv + argv[1:]
-            print sys.argv
 
             # setup environment
             os.chdir(os.path.dirname(fabfile))
