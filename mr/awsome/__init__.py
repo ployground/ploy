@@ -338,18 +338,7 @@ class AWS(object):
         self._ec2 = EC2(self.configfile)
         return self._ec2
 
-    def cmd_status(self, argv, help):
-        """Prints status"""
-        parser = argparse.ArgumentParser(
-            prog="aws status",
-            description=help,
-        )
-        parser.add_argument("server", nargs=1,
-                            metavar="instance",
-                            help="Name of the instance from the config.",
-                            choices=list(self.ec2.servers))
-        args = parser.parse_args(argv)
-        server = self.ec2.servers[args.server[0]]
+    def _status(self, server):
         instance = server.instance
         if instance is None:
             return
@@ -364,6 +353,20 @@ class AWS(object):
             log.info("Console output available. SSH fingerprint verification possible.")
         else:
             log.warn("Console output not (yet) available. SSH fingerprint verification not possible.")
+
+    def cmd_status(self, argv, help):
+        """Prints status"""
+        parser = argparse.ArgumentParser(
+            prog="aws status",
+            description=help,
+        )
+        parser.add_argument("server", nargs=1,
+                            metavar="instance",
+                            help="Name of the instance from the config.",
+                            choices=list(self.ec2.servers))
+        args = parser.parse_args(argv)
+        server = self.ec2.servers[args.server[0]]
+        return self._status(server)
 
     def cmd_stop(self, argv, help):
         """Stops the instance"""
@@ -455,7 +458,7 @@ class AWS(object):
         instance = server.start(opts)
         if instance is None:
             return
-        self.cmd_status()
+        return self._status(server)
 
     def cmd_debug(self, argv, help):
         """Prints some debug info for this script"""

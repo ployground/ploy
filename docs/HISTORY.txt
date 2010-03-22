@@ -4,6 +4,8 @@ Changelog
 0.8 - Unreleased
 ----------------
 
+* Fix status output after ``start``.
+  [fschulze]
 
 0.7 - 2010-03-22
 ----------------
