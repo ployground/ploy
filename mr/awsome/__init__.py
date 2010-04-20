@@ -517,8 +517,8 @@ class AWS(object):
 
         hoststr = None
         try:
-            fabric.state.connections.set_ec2(self.ec2)
-            fabric.state.connections.set_log(log)
+            fabric_integration.ec2 = self.ec2
+            fabric_integration.log = log
             hoststr = argv[0]
             server = self.ec2.servers[hoststr]
             # prepare the connection
