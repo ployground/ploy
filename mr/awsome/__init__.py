@@ -94,7 +94,6 @@ class Server(object):
         self.id = sid
         self.ec2 = ec2
         self.config = self.ec2.config['instance'][sid]
-        self._securitygroups = Securitygroups(self)
 
     @property
     def conn(self):
@@ -156,9 +155,12 @@ class Server(object):
         return images[0]
 
     def securitygroups(self):
+        securitygroups = getattr(self, '_securitygroups', None)
+        if securitygroups is None:
+            self._securitygroups = securitygroups = Securitygroups(self)
         sgs = []
         for sgid in self.config['securitygroups']:
-            sgs.append(self._securitygroups.get(sgid, create=True))
+            sgs.append(securitygroups.get(sgid, create=True))
         return sgs
 
     def startup_script(self, overrides):
