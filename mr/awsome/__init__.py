@@ -3,7 +3,6 @@ from boto.exception import EC2ResponseError
 from mr.awsome.common import gzip_string
 from mr.awsome.config import Config
 from mr.awsome import template
-from textwrap import dedent
 import boto.ec2
 import datetime
 import fabric.main
