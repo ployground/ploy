@@ -5,9 +5,6 @@ from mr.awsome.config import Config
 from mr.awsome import template
 import boto.ec2
 import datetime
-import fabric.main
-import fabric.network
-import fabric.state
 import logging
 import argparse
 import os
@@ -245,10 +242,10 @@ class Server(object):
         return instance
 
     def init_ssh_key(self, user=None):
-        fabric.state.env.reject_unknown_hosts = True
-        fabric.state.env.disable_known_hosts = True
-        #user, host, port = fabric.network.normalize(hoststr)
         instance = self.instance
+        if instance is None:
+            log.error("Can't establish ssh connection.")
+            return
         if user is None:
             user = 'root'
         host = str(instance.public_dns_name)
@@ -267,10 +264,7 @@ class Server(object):
                     os.remove(known_hosts)
                 client.get_host_keys().clear()
         client.save_host_keys(known_hosts)
-        # store the connection in the fabric connection cache
-        real_key = fabric.network.join_host_strings(user, host, port)
-        fabric.state.connections[real_key] = client
-        return real_key, known_hosts
+        return user, host, port, client, known_hosts
 
     def snapshot(self, devs=None):
         if devs is None:
@@ -513,17 +507,24 @@ class AWS(object):
             return
         old_sys_argv = sys.argv
         old_cwd = os.getcwd()
+
+        import fabric_integration
+        # this needs to be done before any other fabric module import
+        fabric_integration.patch()
+
+        import fabric.state
+        import fabric.main
+
         hoststr = None
         try:
-            sid = argv[0]
-            server = self.ec2.servers[sid]
-            try:
-                hoststr, known_hosts = server.init_ssh_key()
-            except paramiko.SSHException, e:
-                log.error("Couldn't validate fingerprint for ssh connection.")
-                log.error(e)
-                log.error("Is the server finished starting up?")
-                return
+            fabric.state.connections.set_ec2(self.ec2)
+            fabric.state.connections.set_log(log)
+            hoststr = argv[0]
+            server = self.ec2.servers[hoststr]
+            # prepare the connection
+            fabric.state.env.reject_unknown_hosts = True
+            fabric.state.env.disable_known_hosts = True
+
             fabfile = server.config.get('fabfile')
             if fabfile is None:
                 log.error("No fabfile declared.")
@@ -539,6 +540,7 @@ class AWS(object):
             os.chdir(os.path.dirname(fabfile))
             fabric.state.env.servers = self.ec2.servers
             fabric.state.env.server = server
+            known_hosts = os.path.join(self.ec2.configpath, 'known_hosts')
             fabric.state.env.known_hosts = known_hosts
 
             class StdFilter(object):
@@ -559,7 +561,7 @@ class AWS(object):
 
             fabric.main.main()
         finally:
-            if hoststr is not None:
+            if fabric.state.connections.opened(hoststr):
                 fabric.state.connections[hoststr].close()
             sys.argv = old_sys_argv
             os.chdir(old_cwd)
@@ -591,19 +593,14 @@ class AWS(object):
             parser.print_help()
             return
         server = self.ec2.servers[argv[sid_index]]
-        if server.instance is None:
-            log.error("Can't establish ssh connection.")
-            return
         try:
-            hoststr, known_hosts = server.init_ssh_key()
+            user, host, port, client, known_hosts = server.init_ssh_key()
         except paramiko.SSHException, e:
             log.error("Couldn't validate fingerprint for ssh connection.")
             log.error(e)
             log.error("Is the server finished starting up?")
             return
-        fabric.state.connections[hoststr].close()
-        user, host, port = fabric.network.normalize(hoststr)
-        known_hosts = os.path.join(self.ec2.configpath, 'known_hosts')
+        client.close()
         argv[sid_index:sid_index+1] = ['-o', 'UserKnownHostsFile=%s' % known_hosts,
                                        '-l', user,
                                        host]

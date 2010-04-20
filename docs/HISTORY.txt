@@ -4,6 +4,11 @@ Changelog
 0.8 - Unreleased
 ----------------
 
+* Refactored ssh connection handling to only open network connections when
+  needed. Any fabric option which doesn't need a connection runs right away
+  now (like ``-h`` and ``-l``).
+  [fschulze]
+
 * Fix status output after ``start``.
   [fschulze]
 
