@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.8 - Unreleased
+0.8 - 2010-04-21
 ----------------
 
 * For the ``do`` command the Fabric options ``reject_unknown_hosts`` and
