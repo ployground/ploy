@@ -27,6 +27,12 @@ class Config(dict):
                                 int(connection[2]), connection[3]))
         return tuple(connections)
 
+    def massage_server_user(self, value):
+        if value == "*":
+            import os, pwd
+            value = pwd.getpwuid(os.getuid())[0]
+        return value
+
     def _expand(self, sectiongroupname, sectionname, section, seen):
         if (sectiongroupname, sectionname) in seen:
             raise ValueError("Circular macro expansion.")

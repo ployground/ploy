@@ -4,6 +4,9 @@ Changelog
 0.8 - Unreleased
 ----------------
 
+* Allow adding normal servers to use with ``ssh`` and ``do`` commands.
+  [fschulze]
+
 * Refactored ssh connection handling to only open network connections when
   needed. Any fabric option which doesn't need a connection runs right away
   now (like ``-h`` and ``-l``).

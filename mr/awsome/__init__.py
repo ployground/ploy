@@ -43,6 +43,20 @@ class AWSHostKeyPolicy(paramiko.MissingHostKeyPolicy):
         raise paramiko.SSHException('Unknown server %s' % hostname)
 
 
+class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
+    def __init__(self, fingerprint):
+        self.fingerprint = fingerprint
+
+    def missing_host_key(self, client, hostname, key):
+        fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
+        if fingerprint == self.fingerprint:
+            client._host_keys.add(hostname, key.get_name(), key)
+            if client._host_keys_filename is not None:
+                client.save_host_keys(client._host_keys_filename)
+            return
+        raise paramiko.SSHException("Fingerprint doesn't match for %s (got %s, expected %s)" % (hostname, fingerprint, self.fingerprint))
+
+
 class Securitygroups(object):
     def __init__(self, server):
         self.server = server
@@ -86,7 +100,7 @@ class Securitygroups(object):
         return sg
 
 
-class Server(object):
+class Instance(object):
     def __init__(self, ec2, sid):
         self.id = sid
         self.ec2 = ec2
@@ -177,7 +191,7 @@ class Server(object):
         )
         options = overrides.copy()
         options.update(dict(
-            servers=self.ec2.servers,
+            servers=self.ec2.all,
         ))
         result = startup_script(**options)
         if use_gzip:
@@ -281,35 +295,58 @@ class Server(object):
             volume.create_snapshot(description=description)
 
 
-class Servers(object):
-    def __init__(self, ec2):
+class Server(object):
+    def __init__(self, ec2, sid):
+        self.id = sid
         self.ec2 = ec2
-        self._cache = {}
+        self.config = self.ec2.config['server'][sid]
 
-    def __iter__(self):
-        instances = self.ec2.config.get('instance')
-        if instances is None:
-            log.error("No instances defined in configuration file.")
-            sys.exit(1)
-        return iter(instances)
-
-    def __getitem__(self, sid):
-        if sid not in self._cache:
-            self._cache[sid] = Server(self.ec2, sid)
-        return self._cache[sid]
+    def init_ssh_key(self, user=None):
+        if user is None:
+            user = self.config.get('user', 'root')
+        host = str(self.config['host'])
+        port = 22
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(ServerHostKeyPolicy(self.config['fingerprint']))
+        known_hosts = os.path.join(self.ec2.configpath, 'known_hosts')
+        while 1:
+            if os.path.exists(known_hosts):
+                client.load_host_keys(known_hosts)
+            try:
+                client.connect(host, int(port), user)
+                break
+            except paramiko.BadHostKeyException:
+                if os.path.exists(known_hosts):
+                    os.remove(known_hosts)
+                client.get_host_keys().clear()
+        client.save_host_keys(known_hosts)
+        return user, host, port, client, known_hosts
 
 
 class EC2(object):
-    def __init__(self, config):
-        config = os.path.abspath(config)
-        if not os.path.exists(config):
-            log.error("Config '%s' doesn't exist." % config)
+    def __init__(self, configpath):
+        configpath = os.path.abspath(configpath)
+        if not os.path.exists(configpath):
+            log.error("Config '%s' doesn't exist." % configpath)
             sys.exit(1)
-        if os.path.isdir(config):
-            config = os.path.join(config, 'aws.conf')
-        self.configpath = os.path.dirname(config)
-        self.config = Config(config)
-        self.servers = Servers(self)
+        if os.path.isdir(configpath):
+            configpath = os.path.join(configpath, 'aws.conf')
+        self.configpath = os.path.dirname(configpath)
+        self.config = Config(configpath)
+        self.instances = {}
+        for sid in self.config.get('instance', {}):
+            self.instances[sid] = Instance(self, sid)
+        self.servers = {}
+        for sid in self.config.get('server', {}):
+            self.servers[sid] = Server(self, sid)
+        intersection = set(self.instances).intersection(set(self.servers))
+        if len(intersection) > 0:
+            log.error("Instance and server names must be unique, the following names are duplicated:")
+            log.error("\n".join(intersection))
+            sys.exit(1)
+        self.all = {}
+        self.all.update(self.instances)
+        self.all.update(self.servers)
 
 
 class AWS(object):
@@ -358,9 +395,9 @@ class AWS(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(self.ec2.servers))
+                            choices=list(self.ec2.instances))
         args = parser.parse_args(argv)
-        server = self.ec2.servers[args.server[0]]
+        server = self.ec2.instances[args.server[0]]
         return self._status(server)
 
     def cmd_stop(self, argv, help):
@@ -372,9 +409,9 @@ class AWS(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(self.ec2.servers))
+                            choices=list(self.ec2.instances))
         args = parser.parse_args(argv)
-        server = self.ec2.servers[args.server[0]]
+        server = self.ec2.instances[args.server[0]]
         instance = server.instance
         if instance is None:
             return
@@ -402,9 +439,9 @@ class AWS(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(self.ec2.servers))
+                            choices=list(self.ec2.instances))
         args = parser.parse_args(argv)
-        server = self.ec2.servers[args.server[0]]
+        server = self.ec2.instances[args.server[0]]
         instance = server.instance
         if instance is None:
             return
@@ -441,13 +478,13 @@ class AWS(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(self.ec2.servers))
+                            choices=list(self.ec2.instances))
         parser.add_argument("-o", "--override", nargs="*", type=str,
                             dest="overrides", metavar="OVERRIDE",
                             help="Option to override in server config for startup script (name=value).")
         args = parser.parse_args(argv)
         overrides = self._parse_overrides(args)
-        server = self.ec2.servers[args.server[0]]
+        server = self.ec2.instances[args.server[0]]
         opts = server.config.copy()
         opts.update(overrides)
         instance = server.start(opts)
@@ -464,7 +501,7 @@ class AWS(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(self.ec2.servers))
+                            choices=list(self.ec2.instances))
         parser.add_argument("-v", "--verbose", dest="verbose",
                           action="store_true", help="Print more info")
         parser.add_argument("-i", "--interactive", dest="interactive",
@@ -474,7 +511,7 @@ class AWS(object):
                             help="Option to override server config for startup script (name=value).")
         args = parser.parse_args(argv)
         overrides = self._parse_overrides(args)
-        server = self.ec2.servers[args.server[0]]
+        server = self.ec2.instances[args.server[0]]
         opts = server.config.copy()
         opts.update(overrides)
         startup_script = server.startup_script(opts)
@@ -499,7 +536,7 @@ class AWS(object):
         parser.add_argument("server", nargs=1,
                             metavar="server",
                             help="Name of the instance or server from the config.",
-                            choices=list(self.ec2.servers))
+                            choices=list(self.ec2.all))
         parser.add_argument("...", nargs=argparse.REMAINDER,
                             help="Fabric options")
         if len(argv) < 2:
@@ -520,7 +557,7 @@ class AWS(object):
             fabric_integration.ec2 = self.ec2
             fabric_integration.log = log
             hoststr = argv[0]
-            server = self.ec2.servers[hoststr]
+            server = self.ec2.all[hoststr]
             # prepare the connection
             fabric.state.env.reject_unknown_hosts = True
             fabric.state.env.disable_known_hosts = True
@@ -538,7 +575,7 @@ class AWS(object):
 
             # setup environment
             os.chdir(os.path.dirname(fabfile))
-            fabric.state.env.servers = self.ec2.servers
+            fabric.state.env.servers = self.ec2.all
             fabric.state.env.server = server
             known_hosts = os.path.join(self.ec2.configpath, 'known_hosts')
             fabric.state.env.known_hosts = known_hosts
@@ -575,7 +612,7 @@ class AWS(object):
         parser.add_argument("server", nargs=1,
                             metavar="server",
                             help="Name of the instance or server from the config.",
-                            choices=list(self.ec2.servers))
+                            choices=list(self.ec2.all))
         parser.add_argument("...", nargs=argparse.REMAINDER,
                             help="Fabric options")
         iargs = enumerate(argv)
@@ -592,7 +629,7 @@ class AWS(object):
         if sid_index is None:
             parser.print_help()
             return
-        server = self.ec2.servers[argv[sid_index]]
+        server = self.ec2.all[argv[sid_index]]
         try:
             user, host, port, client, known_hosts = server.init_ssh_key()
         except paramiko.SSHException, e:
@@ -616,9 +653,9 @@ class AWS(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(self.ec2.servers))
+                            choices=list(self.ec2.instances))
         args = parser.parse_args(argv)
-        server = self.ec2.servers[args.server[0]]
+        server = self.ec2.instances[args.server[0]]
         server.snapshot()
 
     def __call__(self, argv):
