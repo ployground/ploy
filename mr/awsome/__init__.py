@@ -178,15 +178,8 @@ class Instance(object):
         startup_script_path = self.config.get('startup_script', None)
         if startup_script_path is None:
             return ''
-        use_gzip = False
-        if startup_script_path.startswith('gzip:'):
-            startup_script_path = startup_script_path[5:]
-            use_gzip = True
-        if not os.path.isabs(startup_script_path):
-            startup_script_path = os.path.join(self.ec2.configpath,
-                                               startup_script_path)
         startup_script = template.Template(
-            startup_script_path,
+            startup_script_path['path'],
             pre_filter=template.strip_hashcomments,
         )
         options = overrides.copy()
@@ -194,7 +187,7 @@ class Instance(object):
             servers=self.ec2.all,
         ))
         result = startup_script(**options)
-        if use_gzip:
+        if startup_script_path.get('gzip', False):
             result = "\n".join([
                 "#!/bin/bash",
                 "tail -n+4 $0 | gunzip -c | bash",
@@ -266,7 +259,7 @@ class Instance(object):
         port = 22
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(AWSHostKeyPolicy(instance))
-        known_hosts = os.path.join(self.ec2.configpath, 'known_hosts')
+        known_hosts = self.ec2.known_hosts
         while 1:
             if os.path.exists(known_hosts):
                 client.load_host_keys(known_hosts)
@@ -308,7 +301,7 @@ class Server(object):
         port = 22
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(ServerHostKeyPolicy(self.config['fingerprint']))
-        known_hosts = os.path.join(self.ec2.configpath, 'known_hosts')
+        known_hosts = self.ec2.known_hosts
         while 1:
             if os.path.exists(known_hosts):
                 client.load_host_keys(known_hosts)
@@ -331,8 +324,8 @@ class EC2(object):
             sys.exit(1)
         if os.path.isdir(configpath):
             configpath = os.path.join(configpath, 'aws.conf')
-        self.configpath = os.path.dirname(configpath)
         self.config = Config(configpath)
+        self.known_hosts = os.path.join(self.config.path, 'known_hosts')
         self.instances = {}
         for sid in self.config.get('instance', {}):
             self.instances[sid] = Instance(self, sid)
@@ -568,8 +561,6 @@ class AWS(object):
                 return
             newargv = ['fab', '-H', hoststr, '-r', '-D']
             if fabfile is not None:
-                if not os.path.isabs(fabfile):
-                    fabfile = os.path.join(self.ec2.configpath, fabfile)
                 newargv = newargv + ['-f', fabfile]
             sys.argv = newargv + argv[1:]
 
@@ -577,7 +568,7 @@ class AWS(object):
             os.chdir(os.path.dirname(fabfile))
             fabric.state.env.servers = self.ec2.all
             fabric.state.env.server = server
-            known_hosts = os.path.join(self.ec2.configpath, 'known_hosts')
+            known_hosts = self.ec2.known_hosts
             fabric.state.env.known_hosts = known_hosts
 
             class StdFilter(object):

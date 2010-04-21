@@ -1,7 +1,23 @@
 from ConfigParser import RawConfigParser
+import os
 
 
 class Config(dict):
+    def massage_instance_fabfile(self, value):
+        if not os.path.isabs(value):
+            value = os.path.join(self.path, value)
+        return value
+
+    def massage_instance_startup_script(self, value):
+        result = dict()
+        if value.startswith('gzip:'):
+            value = value[5:]
+            result['gzip'] = True
+        if not os.path.isabs(value):
+            value = os.path.join(self.path, value)
+        result['path'] = value
+        return result
+
     def massage_instance_securitygroups(self, value):
         securitygroups = []
         for securitygroup in value.split(','):
@@ -27,9 +43,11 @@ class Config(dict):
                                 int(connection[2]), connection[3]))
         return tuple(connections)
 
+    massage_server_fabfile = massage_instance_fabfile
+
     def massage_server_user(self, value):
         if value == "*":
-            import os, pwd
+            import pwd
             value = pwd.getpwuid(os.getuid())[0]
         return value
 
@@ -54,10 +72,11 @@ class Config(dict):
             if key not in section:
                 section[key] = macro[key]
 
-    def __init__(self, configs):
+    def __init__(self, config):
         _config = RawConfigParser()
         _config.optionxform = lambda s: s
-        _config.read(configs)
+        _config.read(config)
+        self.path = os.path.dirname(config)
         for section in _config.sections():
             if ':' in section:
                 sectiongroupname, sectionname = section.split(':')
