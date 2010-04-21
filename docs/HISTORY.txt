@@ -4,6 +4,10 @@ Changelog
 0.8 - Unreleased
 ----------------
 
+* For the ``do`` command the Fabric options ``reject_unknown_hosts`` and
+  ``disable_known_hosts`` now default to true.
+  [fschulze]
+
 * Allow adding normal servers to use with ``ssh`` and ``do`` commands.
   [fschulze]
 

@@ -566,7 +566,7 @@ class AWS(object):
             if fabfile is None:
                 log.error("No fabfile declared.")
                 return
-            newargv = ['fab', '-H', hoststr]
+            newargv = ['fab', '-H', hoststr, '-r', '-D']
             if fabfile is not None:
                 if not os.path.isabs(fabfile):
                     fabfile = os.path.join(self.ec2.configpath, fabfile)
