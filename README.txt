@@ -9,10 +9,21 @@ Examples are adding additional, pre-configured webservers to a cluster
 deployments and creating backups - each with just one call from the
 commandline. Aw(e)some, indeed, if we may say so...
 
+** Requirements  ** 
+   Python2.6
+
 **Installation**
 
 mr.awsome is best installed with easy_install, pip or with zc.recipe.egg in
 a buildout. It installs two scripts, ``aws`` and ``assh``.
+
+A simple directory structure for a project: 
+    ec2-project/
+               etc/
+                  aws.conf 
+                  fabfile.py
+                  dbstartup.sh 
+                  webstartup.sh 
 
 **Configuration**
 
@@ -27,6 +38,10 @@ You can find their values at `http://aws.amazon.com`_ under *'Your Account'-'Sec
 You can also put them into files and point to them in the ``[aws]`` section
 with the ``access-key-id`` and ``secret-access-key`` options. It's best to
 put them in ``~/.aws/`` and make sure only your user can read them.
+
+   [aws]
+   access-key-id = /home/user/.aws/access-file
+   secret-access-key = /home/user/.aws/secret-file
 
 All other information about server instances is located in ``aws.conf``, which
 by default is looked up in ``etc/aws.conf``.
@@ -129,7 +144,35 @@ Directly after that follows the binary data of the gzipped startup script.
 
 **Snapshots**
 
-(Needs description of volumes in "Configuration")
+** EBS Volumes ** 
+To attach EBS volumes :
+
+ [instance:demo-server]
+  keypair = default
+  securitygroups = demo-server
+  region = eu-west-1
+  placement = eu-west-1a
+  # we use images from `http://alestic.com/`_
+  image = ami-a62a01d2
+  startup_script = startup-demo-server
+  fabfile = fabfile.py
+  volumes = 
+    vol-xxxxx /dev/sdh
+    vol-yyyyy /dev/sdg 
+
+** Elastic IP *** 
+You have to allocate the new IP and use it to the instance. The tool will associate the Elastic IP to the instance.
+
+ [instance:demo-server]
+  keypair = default
+  securitygroups = demo-server
+  region = eu-west-1
+  placement = eu-west-1a
+  # we use images from `http://alestic.com/`_
+  # Ubuntu 9.10 Karmic server 32-bit Europe
+  image = ami-a62a01d2
+  ip = xxx.xxx.xxx.xxx
+
 
 **SSH integration**
 
