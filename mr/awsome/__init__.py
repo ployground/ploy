@@ -254,7 +254,10 @@ class Instance(object):
             log.error("Can't establish ssh connection.")
             return
         if user is None:
-            user = 'root'
+	    # check user at config file 
+	    user = self.config['server_user'] 
+	    if user is None:
+                user = 'root'
         host = str(instance.public_dns_name)
         port = 22
         client = paramiko.SSHClient()
