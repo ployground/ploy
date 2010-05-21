@@ -446,7 +446,7 @@ class AWS(object):
             log.info("Instance not terminated")
             return
         rc = server.conn.reboot_instances([instance.id])
-        instance._update(rc[0])
+        #instance._update(rc[0])
         log.info("Instance rebooting")
 
     def cmd_terminate(self, argv, help):
