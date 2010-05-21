@@ -570,7 +570,7 @@ class AWS(object):
             tmpserver = self.ec2.instances[argv[0]]
  	except KeyError,e:
 	    log.error("Server not found %s",  argv[0])
-	    parser.parse_args(argv[0])
+	    parser.parse_args([argv[0]])
 	    return
 
 	if tmpserver is not None:
@@ -675,8 +675,36 @@ class AWS(object):
             parser.parse_args([hoststr])
 	    return 
 
+        ## end check running server 
+	tmpserver = None
+        tmpserver = self.ec2.instances[argv[0]]
+
+	if tmpserver is not None:
+            instance = tmpserver.instance
+            if instance is None:
+               return
+            if instance.state != 'running':
+               log.info("Instance state: %s", instance.state)
+               return
+        ## end check running server 
+
 	try:
-	    user, host, port, client, known_hosts = server.init_ssh_key()
+	    if server is not None: 
+        	## end check running server 
+		tmpserver = None
+        	tmpserver = self.ec2.instances[argv[0]]
+
+		if tmpserver is not None:
+            	    instance = tmpserver.instance
+            	if instance is None:
+                    return
+            	if instance.state != 'running':
+                   log.info("Instance state: %s", instance.state)
+               	   return
+                ## end check running server 
+	        user, host, port, client, known_hosts = server.init_ssh_key()
+	    else: 
+	       return
         except paramiko.SSHException, e:
 	    log.error("Couldn't validate fingerprint for ssh connection.")
 	    log.error(e)
