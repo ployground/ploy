@@ -564,6 +564,23 @@ class AWS(object):
         old_sys_argv = sys.argv
         old_cwd = os.getcwd()
 
+	# check server if active..else return .
+	tmpserver = None
+	try: 
+            tmpserver = self.ec2.instances[argv[0]]
+ 	except KeyError,e:
+	    log.error("Server not found %s",  argv[0])
+	    parser.parse_args(argv[0])
+	    return
+
+	if tmpserver is not None:
+            instance = tmpserver.instance
+            if instance is None:
+               return
+            if instance.state != 'running':
+               log.info("Instance state: %s", instance.state)
+               return
+
         import fabric_integration
         # this needs to be done before any other fabric module import
         fabric_integration.patch()
@@ -572,11 +589,14 @@ class AWS(object):
         import fabric.main
 
         hoststr = None
+
         try:
             fabric_integration.ec2 = self.ec2
             fabric_integration.log = log
             hoststr = argv[0]
             server = self.ec2.all[hoststr]
+
+
             # prepare the connection
             fabric.state.env.reject_unknown_hosts = True
             fabric.state.env.disable_known_hosts = True
@@ -646,14 +666,23 @@ class AWS(object):
         if sid_index is None:
             parser.print_help()
             return
-        server = self.ec2.all[argv[sid_index]]
-        try:
-            user, host, port, client, known_hosts = server.init_ssh_key()
+
+	hoststr = argv[sid_index]
+        server = None
+        try:  
+            server = self.ec2.all[argv[sid_index]]
+	except KeyError,e:  
+            parser.parse_args([hoststr])
+	    return 
+
+	try:
+	    user, host, port, client, known_hosts = server.init_ssh_key()
         except paramiko.SSHException, e:
-            log.error("Couldn't validate fingerprint for ssh connection.")
-            log.error(e)
-            log.error("Is the server finished starting up?")
-            return
+	    log.error("Couldn't validate fingerprint for ssh connection.")
+	    log.error(e)
+	    log.error("Is the server finished starting up?")
+	    return
+
         client.close()
         argv[sid_index:sid_index+1] = ['-o', 'UserKnownHostsFile=%s' % known_hosts,
                                        '-l', user,
