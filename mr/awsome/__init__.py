@@ -426,6 +426,29 @@ class AWS(object):
             return
         log.info("Instance stopped")
 
+    def cmd_reboot(self, argv, help):
+        """Reboot the instance"""
+        parser = argparse.ArgumentParser(
+            prog="aws reboot",
+            description=help,
+        )
+        parser.add_argument("server", nargs=1,
+                            metavar="instance",
+                            help="Name of the instance from the config.",
+                            choices=list(self.ec2.instances))
+        args = parser.parse_args(argv)
+        server = self.ec2.instances[args.server[0]]
+        instance = server.instance
+        if instance is None:
+            return
+        if instance.state != 'running':
+            log.info("Instance state: %s", instance.state)
+            log.info("Instance not terminated")
+            return
+        rc = server.conn.reboot_instances([instance.id])
+        instance._update(rc[0])
+        log.info("Instance rebooting")
+
     def cmd_terminate(self, argv, help):
         """Terminates the instance"""
         parser = argparse.ArgumentParser(
@@ -641,7 +664,7 @@ class AWS(object):
     def cmd_snapshot(self, argv, help):
         """Creates a snapshot of the volumes specified in the configuration"""
         parser = argparse.ArgumentParser(
-            prog="aws status",
+            prog="aws snapshot",
             description=help,
         )
         parser.add_argument("server", nargs=1,
