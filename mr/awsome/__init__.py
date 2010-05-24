@@ -291,6 +291,13 @@ class Instance(object):
             volume.create_snapshot(description=description)
 
 
+class Cluster(object):
+    def __init__(self,ec2, sid):
+        self.id = sid
+	self.ec2 = ec2
+	self.config = self.ec2.config['cluster'][sid]
+
+
 class Server(object):
     def __init__(self, ec2, sid):
         self.id = sid
@@ -344,6 +351,9 @@ class EC2(object):
         self.all.update(self.instances)
         self.all.update(self.servers)
 
+	self.clusters = {}
+	for cid in self.config.get('cluster',{}):
+	    self.clusters[cid] = Cluster(self,cid)
 
 class AWS(object):
     def __init__(self, configfile=None):
@@ -487,6 +497,80 @@ class AWS(object):
                     return
                 overrides[key] = value
         return overrides
+
+    def cmd_cluster_list (self, argv, help):
+        """List servers on a cluster"""
+        parser = argparse.ArgumentParser(
+            prog="aws cluster_list",
+            description=help,
+        )
+        parser.add_argument("cluster", nargs=1,
+                            metavar="cluster",
+                            help="Name of the cluster from the config.",
+                            choices=list(self.ec2.clusters))
+
+	args = parser.parse_args(argv)
+	# get cluster
+	cluster = self.ec2.clusters[args.cluster[0]]
+	servers = cluster.config.get('servers',[])
+	log.info("---Listing servers at cluster %s.",cluster.id)
+	i = 1
+	for s in  servers:
+            log.info("---Cluster %s server %i: %s.---",cluster.id,i,s)
+            server = self.ec2.instances[s]
+            self._status(server)
+	    i = i + 1
+    
+    def cmd_cluster_start (self, argv, help):
+        """Starts the cluster of servers"""
+        parser = argparse.ArgumentParser(
+            prog="aws cluster_start",
+            description=help,
+        )
+        parser.add_argument("cluster", nargs=1,
+                            metavar="cluster",
+                            help="Name of the cluster from the config.",
+                            choices=list(self.ec2.clusters))
+
+	args = parser.parse_args(argv)
+	# get cluster
+	cluster = self.ec2.clusters[args.cluster[0]]
+	servers = cluster.config.get('servers',[])
+	log.info("---Start server at cluster %s",cluster.id)
+	for s in  servers:
+	    log.info("--%s:%s", cluster.id, s)
+            server = self.ec2.instances[s]
+            opts = server.config.copy()
+            instance = server.start(opts)
+            self._status(server)
+
+    def cmd_cluster_terminate (self, argv, help):
+        """Terminate the cluster of servers"""
+        parser = argparse.ArgumentParser(
+            prog="aws cluster_terminate",
+            description=help,
+        )
+        parser.add_argument("cluster", nargs=1,
+                            metavar="cluster",
+                            help="Name of the cluster from the config.",
+                            choices=list(self.ec2.clusters))
+
+	args = parser.parse_args(argv)
+	cluster = self.ec2.clusters[args.cluster[0]]
+	servers = cluster.config.get('servers',[])
+	log.info("---Terminating servers at cluster %s.",cluster.id)
+	for s in  servers:
+            server = self.ec2.instances[s]
+            instance = server.instance
+            if instance is None:
+                continue 
+            if instance.state != 'running':
+                log.info("Instance state: %s", instance.state)
+                log.info("Instance not terminated")
+                continue 
+            rc = server.conn.terminate_instances([instance.id])
+            instance._update(rc[0])
+            log.info("Instance terminated")
 
     def cmd_start(self, argv, help):
         """Starts the instance"""
