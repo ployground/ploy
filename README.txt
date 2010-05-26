@@ -174,6 +174,23 @@ You have to allocate the new IP and use it to the instance. The tool will associ
   ip = xxx.xxx.xxx.xxx
 
 
+** Cluster *** 
+ By defining a cluster in etc/aws.conf: 
+ 
+ [cluster:lamp-cluster] 
+      servers = 
+         demo-webserver 
+         demo-dbserver
+
+ This will be capable of starting the two servers in one command: 
+
+ $ aws cluster_start lamp-cluster 
+
+ And terminating them also in one go:
+
+ $ aws cluster_terminate lamp-cluster
+ 
+
 **SSH integration**
 
 mr.awsome provides an additional tool ``assh`` to easily perform SSH based
