@@ -10,12 +10,16 @@ class Config(dict):
 
     def massage_instance_startup_script(self, value):
         result = dict()
-        if value.startswith('gzip:'):
-            value = value[5:]
-            result['gzip'] = True
-        if not os.path.isabs(value):
-            value = os.path.join(self.path, value)
-        result['path'] = value
+	## value is already a dict, from macro
+	if isinstance(value,dict) is True: 
+	    return value 
+        else:  
+            if value.startswith('gzip:'):
+                value = value[5:]
+                result['gzip'] = True
+            if not os.path.isabs(value):
+               value = os.path.join(self.path, value)
+               result['path'] = value
         return result
 
     def massage_instance_securitygroups(self, value):
@@ -65,6 +69,7 @@ class Config(dict):
             raise ValueError("Circular macro expansion.")
         macrogroupname = sectiongroupname
         macroname = section['<']
+
         seen.add((sectiongroupname, sectionname))
         if ':' in macroname:
             macrogroupname, macroname = macroname.split(':')
