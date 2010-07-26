@@ -649,6 +649,35 @@ class AWS(object):
         server = self.ec2.instances[args.server[0]]
         server.snapshot()
 
+    def cmd_help(self, argv, help):
+        """Print help"""
+        parser = argparse.ArgumentParser(
+            prog="aws help",
+            description=help,
+        )
+        parser.add_argument('-z', '--zsh',
+                            action='store_true',
+                            help="Print info for zsh autocompletion")
+        parser.add_argument("command", nargs='?',
+                            metavar="command",
+                            help="Name of the command you want help for.",
+                            choices=self.subparsers.keys())
+        args = parser.parse_args(argv)
+        if args.zsh:
+            if args.command is None:
+                for cmd in self.subparsers.keys():
+                    print cmd
+            else:
+                if args.command != 'help':
+                    for server in self.ec2.instances:
+                        print server
+        else:
+            if args.command is None:
+                parser.print_help()
+            else:
+                cmd = getattr(self, "cmd_%s" % args.command)
+                cmd(['-h'], cmd.__doc__)
+
     def __call__(self, argv):
         parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
@@ -665,10 +694,12 @@ class AWS(object):
 
         cmds = [x[4:] for x in dir(self) if x.startswith('cmd_')]
         cmdparsers = parser.add_subparsers(title="commands")
+        self.subparsers = {}
         for cmdname in cmds:
             cmd = getattr(self, "cmd_%s" % cmdname)
             subparser = cmdparsers.add_parser(cmdname, help=cmd.__doc__)
             subparser.set_defaults(func=cmd)
+            self.subparsers[cmdname] = subparser
         main_argv = []
         for arg in argv:
             main_argv.append(arg)
