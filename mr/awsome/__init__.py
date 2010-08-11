@@ -295,18 +295,23 @@ class Server(object):
         self.config = self.ec2.config['server'][sid]
 
     def init_ssh_key(self, user=None):
-        if user is None:
-            user = self.config.get('user', 'root')
         host = str(self.config['host'])
         port = 22
         client = paramiko.SSHClient()
+        sshconfig = paramiko.SSHConfig()
+        sshconfig.parse(open(os.path.expanduser('~/.ssh/config')))
         client.set_missing_host_key_policy(ServerHostKeyPolicy(self.config['fingerprint']))
         known_hosts = self.ec2.known_hosts
         while 1:
             if os.path.exists(known_hosts):
                 client.load_host_keys(known_hosts)
             try:
-                client.connect(host, int(port), user)
+                hostname = sshconfig.lookup(host).get('hostname', host)
+                port = sshconfig.lookup(host).get('port', port)
+                if user is None:
+                    user = sshconfig.lookup(host).get('user', 'root')
+                    user = self.config.get('user', user)
+                client.connect(hostname, int(port), user)
                 break
             except paramiko.BadHostKeyException:
                 if os.path.exists(known_hosts):

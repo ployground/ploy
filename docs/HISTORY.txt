@@ -4,6 +4,10 @@ Changelog
 0.9 - Unreleased
 ----------------
 
+* Added support for ``~/.ssh/config``. This is a bit limited, because the
+  paramiko config parser isn't very good.
+  [fschulze]
+
 * Added ``help`` command which provides some info for zsh autocompletion.
   [fschulze]
 
