@@ -18,6 +18,12 @@ class Config(dict):
         result['path'] = value
         return result
 
+    def massage_instance_loadbalancers(self, value):
+        loadbalancers = []
+        for loadbalancer in value.split(','):
+            loadbalancers.append(loadbalancer.strip())
+        return tuple(loadbalancers)
+
     def massage_instance_securitygroups(self, value):
         securitygroups = []
         for securitygroup in value.split(','):

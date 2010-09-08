@@ -1,4 +1,5 @@
 from boto.ec2.securitygroup import GroupOrCIDR
+from boto.ec2.elb import ELBConnection
 from boto.exception import EC2ResponseError
 from mr.awsome.common import gzip_string
 from mr.awsome.config import Config
@@ -106,11 +107,8 @@ class Instance(object):
         self.ec2 = ec2
         self.config = self.ec2.config['instance'][sid]
 
-    @property
-    def conn(self):
-        conn = getattr(self, '_conn', None)
-        if conn is not None:
-            return conn
+
+    def _load_credentials(self):
         aws_id = None
         aws_key = None
         if 'AWS_ACCESS_KEY_ID' not in os.environ or 'AWS_SECRET_ACCESS_KEY' not in os.environ:
@@ -130,6 +128,29 @@ class Instance(object):
                 sys.exit(1)
             aws_id = open(id_file).readline().strip()
             aws_key = open(key_file).readline().strip()
+
+        return (aws_id, aws_key)
+        
+    @property
+    def conn_elb(self):
+        conn_elb = getattr(self, '_conn_elb', None)
+        if conn_elb is not None:
+            return conn_elb
+        (aws_id, aws_key) = self._load_credentials()
+
+        self._conn_elb = ELBConnection(
+            aws_access_key_id=aws_id, aws_secret_access_key=aws_key
+        )
+        return self._conn_elb
+
+
+        
+    @property
+    def conn(self):
+        conn = getattr(self, '_conn', None)
+        if conn is not None:
+            return conn
+        (aws_id, aws_key) = self._load_credentials()
         regions = dict((x.name, x) for x in boto.ec2.regions(
             aws_access_key_id=aws_id, aws_secret_access_key=aws_key
         ))
@@ -236,6 +257,14 @@ class Instance(object):
                     else:
                         log.error("Couldn't assign IP %s to instance '%s'", addresses[0].public_ip, self.id)
                         return
+        loadbalancers = dict((x.name, x) for x in self.conn_elb.get_all_load_balancers())
+        for loadbalancer_id in self.config.get('loadbalancers', []):
+            if loadbalancer_id not in loadbalancers:
+                log.error("Unknow loadbalancer %s" % loadbalancer_id)
+                return
+            loadbalancer = loadbalancers[loadbalancer_id]
+            loadbalancer.register_instances(self.instance.id)
+
         volumes = dict((x.id, x) for x in self.conn.get_all_volumes())
         for volume_id, device in self.config.get('volumes', []):
             if volume_id not in volumes:
