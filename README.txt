@@ -56,6 +56,17 @@ Then you can add the info about the server instance itself like this::
   startup_script = startup-demo-server
   fabfile = `fabfile.py`_
 
+
+Some other available options are:
+  volume = vol-deadbeef /dev/sdf
+  ip = aaa.bbb.ccc.ddd
+  loadbalancers = loadbalancer1, loadbalancer2
+
+
+Please note that for now, when terminating an instance, it is not removed
+from the loadbalancer. The attached volume will be detached automatically.
+
+
 **Startup scripts**
 
 The startup_script option above allows you to write a script which is run
@@ -216,3 +227,11 @@ like this::
   [instance:server]
   <= macro:base-instance
   ...
+
+
+author:
+ florian schulze <florian.schulze@gmx.net>
+
+contributors :
+ rodney quillo <imcocoy@gmail.com>
+ sebastien requiem <sebastien@kolios.dk>
