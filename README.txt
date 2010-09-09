@@ -63,10 +63,6 @@ Some other available options are:
   loadbalancers = loadbalancer1, loadbalancer2
 
 
-Please note that for now, when terminating an instance, it is not removed
-from the loadbalancer. The attached volume will be detached automatically.
-
-
 **Startup scripts**
 
 The startup_script option above allows you to write a script which is run
