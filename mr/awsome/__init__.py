@@ -220,6 +220,23 @@ class Instance(object):
             sys.exit(1)
         return result
 
+
+
+    def terminate(self, overrides={}):
+        instance = self.instance
+        # Check if we are in any Load Balancer
+        loadbalancers = loadbalancers = dict((x.name, x) for x in self.conn_elb.get_all_load_balancers())
+        for loadbalancer_id in self.config.get('loadbalancers', []):
+            if loadbalancer_id not in loadbalancers:
+                log.error("Unknow loadbalancer %s ... just ignoring" % loadbalancer_id)
+                continue
+            log.info("Deregistering instance from loadbalancer %s" % loadbalancer_id)
+            loadbalancer = loadbalancers[loadbalancer_id]
+            loadbalancer.deregister_instances(instance.id)
+        instance.terminate()
+        return
+        
+        
     def start(self, overrides={}):
         instance = self.instance
         if instance is not None:
@@ -262,8 +279,9 @@ class Instance(object):
             if loadbalancer_id not in loadbalancers:
                 log.error("Unknow loadbalancer %s" % loadbalancer_id)
                 return
+            log.info("Adding instance to loadbalancer %s" % loadbalancer_id)
             loadbalancer = loadbalancers[loadbalancer_id]
-            loadbalancer.register_instances(self.instance.id)
+            loadbalancer.register_instances(instance.id)
 
         volumes = dict((x.id, x) for x in self.conn.get_all_volumes())
         for volume_id, device in self.config.get('volumes', []):
@@ -470,14 +488,15 @@ class AWS(object):
         args = parser.parse_args(argv)
         server = self.ec2.instances[args.server[0]]
         instance = server.instance
-        if instance is None:
-            return
-        if instance.state != 'running':
-            log.info("Instance state: %s", instance.state)
-            log.info("Instance not terminated")
-            return
-        rc = server.conn.terminate_instances([instance.id])
-        instance._update(rc[0])
+        #if instance is None:
+        #    return
+        #if instance.state != 'running':
+        #    log.info("Instance state: %s", instance.state)
+        #    log.info("Instance not terminated")
+        #    return
+#        rc = server.conn.terminate_instances([instance.id])
+#        instance._update(rc[0])
+        server.terminate()
         log.info("Instance terminated")
 
     def _parse_overrides(self, options):
