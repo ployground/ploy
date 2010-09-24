@@ -14,6 +14,22 @@ commandline. Aw(e)some, indeed, if we may say so...
 mr.awsome is best installed with easy_install, pip or with zc.recipe.egg in
 a buildout. It installs two scripts, ``aws`` and ``assh``.
 
+With zc.recipe.egg you can set a custom configfile location like this::
+
+  [aws]
+  recipe = zc.recipe.egg
+  eggs = mr.awsome
+  arguments = configpath="${buildout:directory}/etc/servers.cfg"
+
+The pycrypto package is throwing some deprecation warnings, you might want to
+disable them by adding an initialization option to the aws part like this::
+
+  initialization =
+      import warnings
+      warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Hash\.MD5", 6)
+      warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Hash\.SHA", 6)
+      warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Util\.randpool", 40)
+
 **Configuration**
 
 To authorize itself against AWS, mr.awsome uses the following two environment
