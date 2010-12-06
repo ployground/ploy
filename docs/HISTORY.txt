@@ -4,6 +4,10 @@ Changelog
 0.9 - Unreleased
 ----------------
 
+* Added ``delete-volumes-on-terminate`` option to delete volumes created from
+  snapshots on instance termination.
+  [fschulze]
+
 * Added support for creating volumes from snapshots on instance start.
   [natea, fschulze]
 
