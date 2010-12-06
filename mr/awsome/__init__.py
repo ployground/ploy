@@ -460,9 +460,31 @@ class AWS(object):
             log.info("Instance state: %s", instance.state)
             log.info("Instance not terminated")
             return
+        volumes_to_delete = []
+        if 'snapshots' in server.config and server.config.get('delete-volumes-on-terminate', False):
+            snapshots = dict(server.config['snapshots'])
+            volumes = dict((x.volume_id, d) for d, x in instance.block_device_mapping.items())
+            for volume in server.conn.get_all_volumes(volume_ids=volumes.keys()):
+                snapshot_id = volume.snapshot_id
+                if snapshot_id in snapshots:
+                    if snapshots[snapshot_id] == volumes[volume.id]:
+                        volumes_to_delete.append(volume)
         rc = server.conn.terminate_instances([instance.id])
         instance._update(rc[0])
-        log.info("Instance terminated")
+        log.info("Instance terminating")
+        if len(volumes_to_delete):
+            log.info("Instance terminating, waiting until it's terminated")
+            while instance.state != 'terminated':
+                time.sleep(5)
+                sys.stdout.write(".")
+                sys.stdout.flush()
+                instance.update()
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+            log.info("Instance terminated")
+            for volume in volumes_to_delete:
+                log.info("Deleting volume %s", volume.id)
+                volume.delete()
 
     def _parse_overrides(self, options):
         overrides = dict()

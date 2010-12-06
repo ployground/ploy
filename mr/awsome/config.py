@@ -42,6 +42,13 @@ class Config(dict):
             snapshots.append((snapshot[0], snapshot[1]))
         return tuple(snapshots)
 
+    def massage_instance_delete_volumes_on_terminate(self, value):
+        if value.lower() in ('true', 'yes', 'on'):
+            return True
+        elif value.lower() in ('false', 'no', 'off'):
+            return False
+        raise ValueError("Unknown value %s for delete-volumes-on-terminate." % value)
+
     def massage_securitygroup_connections(self, value):
         connections = []
         for line in value.split('\n'):
@@ -102,7 +109,7 @@ class Config(dict):
                 if '<' in section:
                     self._expand(sectiongroupname, sectionname, section, seen)
                 for key in section:
-                    fname = 'massage_%s_%s' % (sectiongroupname, key)
+                    fname = 'massage_%s_%s' % (sectiongroupname, key.replace('-', '_'))
                     massage = getattr(self, fname, None)
                     if callable(massage):
                         section[key] = massage(section[key])
