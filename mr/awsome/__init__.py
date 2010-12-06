@@ -240,7 +240,7 @@ class Instance(object):
         volumes = dict((x.id, x) for x in self.conn.get_all_volumes())
         for volume_id, device in self.config.get('volumes', []):
             if volume_id not in volumes:
-                log.error("Unkown volume %s" % volume_id)
+                log.error("Unknown volume %s" % volume_id)
                 return
             volume = volumes[volume_id]
             if volume.attachment_state() == 'attached':
