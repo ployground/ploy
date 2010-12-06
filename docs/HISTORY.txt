@@ -4,6 +4,9 @@ Changelog
 0.9 - Unreleased
 ----------------
 
+* Added support for creating volumes from snapshots on instance start.
+  [natea, fschulze]
+
 * Added support for ``~/.ssh/config``. This is a bit limited, because the
   paramiko config parser isn't very good.
   [fschulze]

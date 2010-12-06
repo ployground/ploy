@@ -33,6 +33,15 @@ class Config(dict):
             volumes.append((volume[0], volume[1]))
         return tuple(volumes)
 
+    def massage_instance_snapshots(self, value):
+        snapshots = []
+        for line in value.split('\n'):
+            snapshot = line.split()
+            if not len(snapshot):
+                continue
+            snapshots.append((snapshot[0], snapshot[1]))
+        return tuple(snapshots)
+
     def massage_securitygroup_connections(self, value):
         connections = []
         for line in value.split('\n'):

@@ -247,6 +247,18 @@ class Instance(object):
                 continue
             log.info("Attaching storage (%s on %s)" % (volume_id, device))
             self.conn.attach_volume(volume_id, instance.id, device)
+
+        snapshots = dict((x.id, x) for x in self.conn.get_all_snapshots(owner="self"))
+        for snapshot_id, device in self.config.get('snapshots', []):
+            if snapshot_id not in snapshots:
+                log.error("Unknown snapshot %s" % snapshot_id)
+                return
+            log.info("Creating volume from snapshot: %s" % snapshot_id)
+            snapshot = snapshots[snapshot_id]
+            volume = self.conn.create_volume(snapshot.volume_size, self.config['placement'], snapshot_id)
+            log.info("Attaching storage (%s on %s)" % (volume.id, device))
+            self.conn.attach_volume(volume.id, instance.id, device)
+
         return instance
 
     def init_ssh_key(self, user=None):
