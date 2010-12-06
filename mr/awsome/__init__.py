@@ -174,7 +174,7 @@ class Instance(object):
             sgs.append(securitygroups.get(sgid, create=True))
         return sgs
 
-    def startup_script(self, overrides):
+    def startup_script(self, overrides, debug=False):
         startup_script_path = self.config.get('startup_script', None)
         if startup_script_path is None:
             return ''
@@ -196,7 +196,8 @@ class Instance(object):
             ])
         if len(result) >= 16*1024:
             log.error("Startup script too big.")
-            sys.exit(1)
+            if not debug:
+                sys.exit(1)
         return result
 
     def start(self, overrides={}):
@@ -512,7 +513,7 @@ class AWS(object):
         server = self.ec2.instances[args.server[0]]
         opts = server.config.copy()
         opts.update(overrides)
-        startup_script = server.startup_script(opts)
+        startup_script = server.startup_script(opts, debug=True)
         log.info("Length of startup script: %s/%s", len(startup_script), 16*1024)
         if args.verbose:
             log.info("Startup script:")
