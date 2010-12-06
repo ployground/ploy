@@ -519,11 +519,12 @@ class AWS(object):
             log.info("Startup script:")
             print startup_script,
         if args.interactive:
+            import readline
             conn = server.conn
             instance = server.instance
             conn, instance # shutup pyflakes
-            from pdb import set_trace
-            set_trace()
+            readline.parse_and_bind('tab: complete')
+            __import__("code").interact(local=locals())
 
     def cmd_do(self, argv, help):
         """Do stuff on the cluster (using fabric)"""
