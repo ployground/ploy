@@ -4,6 +4,9 @@ Changelog
 0.9 - Unreleased
 ----------------
 
+* Overwrites now also affect server creation, not just the startup script.
+  [fschulze]
+
 * Added ``list`` command which supports just listing ``snapshots`` for now.
   [fschulze]
 

@@ -157,7 +157,7 @@ class Instance(object):
             sgs.append(securitygroups.get(sgid, create=True))
         return sgs
 
-    def startup_script(self, overrides, debug=False):
+    def startup_script(self, debug=False):
         startup_script_path = self.config.get('startup_script', None)
         if startup_script_path is None:
             return ''
@@ -165,7 +165,7 @@ class Instance(object):
             startup_script_path['path'],
             pre_filter=template.strip_hashcomments,
         )
-        options = overrides.copy()
+        options = self.config.copy()
         options.update(dict(
             servers=self.ec2.all,
         ))
@@ -183,7 +183,7 @@ class Instance(object):
                 sys.exit(1)
         return result
 
-    def start(self, overrides={}):
+    def start(self):
         instance = self.instance
         if instance is not None:
             log.info("Instance state: %s", instance.state)
@@ -194,7 +194,7 @@ class Instance(object):
                 1, 1, self.config['keypair'],
                 instance_type=self.config.get('instance_type', 'm1.small'),
                 security_groups=self.securitygroups(),
-                user_data=self.startup_script(overrides),
+                user_data=self.startup_script(),
                 placement=self.config['placement']
             )
             instance = reservation.instances[0]
@@ -526,7 +526,12 @@ class AWS(object):
                 if key == '':
                     log.error("Empty key for everride '%s'." % override)
                     return
-                overrides[key] = value
+                fname = 'massage_instance_%s' % key.replace('-', '_')
+                massage = getattr(self.ec2.config, fname, None)
+                if callable(massage):
+                    overrides[key] = massage(value)
+                else:
+                    overrides[key] = value
         return overrides
 
     def cmd_start(self, argv, help):
@@ -545,9 +550,8 @@ class AWS(object):
         args = parser.parse_args(argv)
         overrides = self._parse_overrides(args)
         server = self.ec2.instances[args.server[0]]
-        opts = server.config.copy()
-        opts.update(overrides)
-        instance = server.start(opts)
+        server.config.update(overrides)
+        instance = server.start()
         if instance is None:
             return
         return self._status(server)
@@ -572,9 +576,8 @@ class AWS(object):
         args = parser.parse_args(argv)
         overrides = self._parse_overrides(args)
         server = self.ec2.instances[args.server[0]]
-        opts = server.config.copy()
-        opts.update(overrides)
-        startup_script = server.startup_script(opts, debug=True)
+        server.config.update(overrides)
+        startup_script = server.startup_script(debug=True)
         log.info("Length of startup script: %s/%s", len(startup_script), 16*1024)
         if args.verbose:
             log.info("Startup script:")
