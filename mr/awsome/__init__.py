@@ -372,6 +372,10 @@ class EC2(object):
             aws_access_key_id=aws_id, aws_secret_access_key=aws_key
         ))
 
+    @property
+    def snapshots(self):
+        return dict((x.id, x) for x in self.conn.get_all_snapshots(owner="self"))
+
     @lazy
     def conn(self):
         (aws_id, aws_key) = self.credentials
@@ -486,13 +490,12 @@ class AWS(object):
             return
         volumes_to_delete = []
         if 'snapshots' in server.config and server.config.get('delete-volumes-on-terminate', False):
-            snapshots = dict(server.config['snapshots'])
+            snapshots = self.ec2.snapshots
             volumes = dict((x.volume_id, d) for d, x in instance.block_device_mapping.items())
             for volume in server.conn.get_all_volumes(volume_ids=volumes.keys()):
                 snapshot_id = volume.snapshot_id
                 if snapshot_id in snapshots:
-                    if snapshots[snapshot_id] == volumes[volume.id]:
-                        volumes_to_delete.append(volume)
+                    volumes_to_delete.append(volume)
         rc = server.conn.terminate_instances([instance.id])
         instance._update(rc[0])
         log.info("Instance terminating")
@@ -671,7 +674,7 @@ class AWS(object):
                             choices=['snapshots'])
         args = parser.parse_args(argv)
         if args.list[0] == 'snapshots':
-            snapshots = self.ec2.conn.get_all_snapshots(owner="self")
+            snapshots = self.ec2.snapshots.values()
             snapshots = sorted(snapshots, key=lambda x: x.start_time)
             print "id            time                      size   volume       progress description"
             for snapshot in snapshots:
