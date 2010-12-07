@@ -2,6 +2,7 @@ from boto.ec2.securitygroup import GroupOrCIDR
 from boto.exception import EC2ResponseError
 from mr.awsome.common import gzip_string
 from mr.awsome.config import Config
+from mr.awsome.lazy import lazy
 from mr.awsome import template
 import boto.ec2
 import datetime
@@ -106,11 +107,8 @@ class Instance(object):
         self.ec2 = ec2
         self.config = self.ec2.config['instance'][sid]
 
-    @property
+    @lazy
     def conn(self):
-        conn = getattr(self, '_conn', None)
-        if conn is not None:
-            return conn
         aws_id = None
         aws_key = None
         if 'AWS_ACCESS_KEY_ID' not in os.environ or 'AWS_SECRET_ACCESS_KEY' not in os.environ:
@@ -133,16 +131,12 @@ class Instance(object):
         regions = dict((x.name, x) for x in boto.ec2.regions(
             aws_access_key_id=aws_id, aws_secret_access_key=aws_key
         ))
-        self._conn = regions[self.config['region']].connect(
+        return regions[self.config['region']].connect(
             aws_access_key_id=aws_id, aws_secret_access_key=aws_key
         )
-        return self._conn
 
-    @property
+    @lazy
     def instance(self):
-        instance = getattr(self, '_instance', None)
-        if instance is not None:
-            return instance
         instances = []
         for reservation in self.conn.get_all_instances():
             groups = set(x.id for x in reservation.groups)
@@ -158,8 +152,7 @@ class Instance(object):
         elif len(instances) > 1:
             log.warn("More than one instance found, using first.")
         log.info("Instance '%s' available" % self.id)
-        self._instance = instances[0]
-        return self._instance
+        return instances[0]
 
     def image(self):
         images = self.conn.get_all_images([self.config['image']])
@@ -370,16 +363,12 @@ class AWS(object):
             configfile = 'etc/aws.conf'
         self.configfile = configfile
 
-    @property
+    @lazy
     def ec2(self):
-        ec2 = getattr(self, '_ec2', None)
-        if ec2 is not None:
-            return ec2
         if self.configfile is None:
             log.error("Config path not given (argument to this script).")
             sys.exit(1)
-        self._ec2 = EC2(self.configfile)
-        return self._ec2
+        return EC2(self.configfile)
 
     def _status(self, server):
         instance = server.instance
