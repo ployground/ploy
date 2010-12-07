@@ -372,6 +372,21 @@ class EC2(object):
             aws_access_key_id=aws_id, aws_secret_access_key=aws_key
         ))
 
+    @lazy
+    def conn(self):
+        (aws_id, aws_key) = self.credentials
+        region_id = self.config.get(
+                'global', {}).get(
+                    'aws', {}).get(
+                        'region', None)
+        if region_id is None:
+            log.error("No region set in global config")
+            sys.exit(1)
+        region = self.regions[region_id]
+        return region.connect(
+            aws_access_key_id=aws_id, aws_secret_access_key=aws_key
+        )
+
 
 class AWS(object):
     def __init__(self, configfile=None):
