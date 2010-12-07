@@ -659,6 +659,25 @@ class AWS(object):
             sys.argv = old_sys_argv
             os.chdir(old_cwd)
 
+    def cmd_list(self, argv, help):
+        """Return a list of various AWS things"""
+        parser = argparse.ArgumentParser(
+            prog="aws ssh",
+            description=help,
+        )
+        parser.add_argument("list", nargs=1,
+                            metavar="list",
+                            help="Name of list to show.",
+                            choices=['snapshots'])
+        args = parser.parse_args(argv)
+        if args.list[0] == 'snapshots':
+            snapshots = self.ec2.conn.get_all_snapshots(owner="self")
+            snapshots = sorted(snapshots, key=lambda x: x.start_time)
+            print "id            time                      size   volume       progress description"
+            for snapshot in snapshots:
+                info = snapshot.__dict__
+                print "{id} {start_time} {volume_size:>4} GB {volume_id} {progress:>8} {description}".format(**info)
+
     def cmd_ssh(self, argv, help):
         """Log into the server with ssh using the automatically generated known hosts"""
         parser = argparse.ArgumentParser(

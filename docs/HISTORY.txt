@@ -4,6 +4,9 @@ Changelog
 0.9 - Unreleased
 ----------------
 
+* Added ``list`` command which supports just listing ``snapshots`` for now.
+  [fschulze]
+
 * Added ``delete-volumes-on-terminate`` option to delete volumes created from
   snapshots on instance termination.
   [fschulze]
