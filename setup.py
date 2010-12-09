@@ -1,7 +1,7 @@
 from setuptools import setup
 import os
 
-version = "0.9"
+version = "0.10"
 
 setup(
     version=version,
