@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.9 - Unreleased
+0.9 - 2010-12-09
 ----------------
 
 * Overwrites now also affect server creation, not just the startup script.
