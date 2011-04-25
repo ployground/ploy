@@ -3,69 +3,45 @@ import os
 
 
 class Config(dict):
-    def massage_instance_fabfile(self, value):
-        if not os.path.isabs(value):
-            value = os.path.join(self.path, value)
-        return value
-
-    def massage_instance_startup_script(self, value):
-        result = dict()
-        if value.startswith('gzip:'):
-            value = value[5:]
-            result['gzip'] = True
-        if not os.path.isabs(value):
-            value = os.path.join(self.path, value)
-        result['path'] = value
-        return result
-
-    def massage_instance_securitygroups(self, value):
-        securitygroups = []
-        for securitygroup in value.split(','):
-            securitygroups.append(securitygroup.strip())
-        return set(securitygroups)
-
-    def massage_instance_volumes(self, value):
-        volumes = []
-        for line in value.split('\n'):
-            volume = line.split()
-            if not len(volume):
-                continue
-            volumes.append((volume[0], volume[1]))
-        return tuple(volumes)
-
-    def massage_instance_snapshots(self, value):
-        snapshots = []
-        for line in value.split('\n'):
-            snapshot = line.split()
-            if not len(snapshot):
-                continue
-            snapshots.append((snapshot[0], snapshot[1]))
-        return tuple(snapshots)
-
-    def massage_instance_delete_volumes_on_terminate(self, value):
-        if value.lower() in ('true', 'yes', 'on'):
-            return True
-        elif value.lower() in ('false', 'no', 'off'):
-            return False
-        raise ValueError("Unknown value %s for delete-volumes-on-terminate." % value)
-
-    def massage_securitygroup_connections(self, value):
-        connections = []
-        for line in value.split('\n'):
-            connection = line.split()
-            if not len(connection):
-                continue
-            connections.append((connection[0], int(connection[1]),
-                                int(connection[2]), connection[3]))
-        return tuple(connections)
-
-    massage_server_fabfile = massage_instance_fabfile
-
-    def massage_server_user(self, value):
-        if value == "*":
-            import pwd
-            value = pwd.getpwuid(os.getuid())[0]
-        return value
+    def _load_plugins(self):
+        if self._bbb_config and 'plugin' not in self:
+            # define default plugins for backward compatibility
+            self['plugin'] = {
+                'ec2': {
+                    'module': 'mr.awsome.ec2'},
+                'plain': {
+                    'module': 'mr.awsome.plain'}}
+            if 'instance' in self:
+                self['ec2-instance'] = self['instance']
+                del self['instance']
+            if 'securitygroup' in self:
+                self['ec2-securitygroup'] = self['securitygroup']
+                del self['securitygroup']
+            if 'server' in self:
+                self['plain-instance'] = self['server']
+                del self['server']
+            if 'global' in self and 'aws' in self['global']:
+                self['ec2-master'] = {}
+                self['ec2-master']['default'] = self['global']['aws']
+                del self['global']['aws']
+                if len(self['global']) == 0:
+                    del self['global']
+            if 'plain-master' not in self:
+                self['plain-master'] = {'default': {}}
+        for config in self.get('plugin', {}).values():
+            if '.' in config['module']:
+                prefix, name = config['module'].rsplit('.', 1)
+                _temp = __import__(prefix, globals(), locals(), [name], -1)
+                module = getattr(_temp, name)
+            else:
+                module = __import__(config['module'], globals(), locals(), [], -1)
+            config['module'] = module
+            get_massagers = getattr(module, 'get_massagers', None)
+            if get_massagers is not None:
+                self.massagers.update(get_massagers())
+            get_macro_cleaners = getattr(module, 'get_macro_cleaners', None)
+            if get_macro_cleaners is not None:
+                self.macro_cleaners.update(get_macro_cleaners(config))
 
     def _expand(self, sectiongroupname, sectionname, section, seen):
         if (sectiongroupname, sectionname) in seen:
@@ -81,14 +57,15 @@ class Config(dict):
         # this needs to be after the recursive _expand call, so circles are
         # properly detected
         del section['<']
+        if sectiongroupname in self.macro_cleaners:
+            macro = dict(macro)
+            self.macro_cleaners[sectiongroupname](macro)
         for key in macro:
-            if sectiongroupname in ('instance',):
-                if key in ('ip', 'volumes'):
-                    continue
             if key not in section:
                 section[key] = macro[key]
 
-    def __init__(self, config, path=None):
+    def __init__(self, config, path=None, bbb_config=False):
+        self._bbb_config = bbb_config
         _config = RawConfigParser()
         _config.optionxform = lambda s: s
         if getattr(config, 'read', None) is not None:
@@ -105,6 +82,9 @@ class Config(dict):
             items = dict(_config.items(section))
             sectiongroup = self.setdefault(sectiongroupname, {})
             sectiongroup.setdefault(sectionname, {}).update(items)
+        self.massagers = {}
+        self.macro_cleaners = {}
+        self._load_plugins()
         seen = set()
         for sectiongroupname in self:
             sectiongroup = self[sectiongroupname]
@@ -113,7 +93,6 @@ class Config(dict):
                 if '<' in section:
                     self._expand(sectiongroupname, sectionname, section, seen)
                 for key in section:
-                    fname = 'massage_%s_%s' % (sectiongroupname, key.replace('-', '_'))
-                    massage = getattr(self, fname, None)
+                    massage = self.massagers.get((sectiongroupname, key))
                     if callable(massage):
-                        section[key] = massage(section[key])
+                        section[key] = massage(self, section[key])

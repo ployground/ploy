@@ -1,11 +1,5 @@
-from boto.ec2.securitygroup import GroupOrCIDR
-from boto.exception import EC2ResponseError
-from mr.awsome.common import gzip_string
 from mr.awsome.config import Config
 from mr.awsome.lazy import lazy
-from mr.awsome import template
-import boto.ec2
-import datetime
 import logging
 import argparse
 import os
@@ -13,417 +7,68 @@ import paramiko
 import pkg_resources
 import subprocess
 import sys
-import time
 
 
 log = logging.getLogger('mr.awsome')
 
 
-class AWSHostKeyPolicy(paramiko.MissingHostKeyPolicy):
-    def __init__(self, instance):
-        self.instance = instance
-
-    def missing_host_key(self, client, hostname, key):
-        fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
-        if self.instance.public_dns_name == hostname:
-            fp_start = False
-            output = self.instance.get_console_output().output
-            if output.strip() == '':
-                raise paramiko.SSHException('No console output (yet) for %s' % hostname)
-            for line in output.split('\n'):
-                if fp_start:
-                    if fingerprint in line:
-                        client._host_keys.add(hostname, key.get_name(), key)
-                        if client._host_keys_filename is not None:
-                            client.save_host_keys(client._host_keys_filename)
-                        return
-                if '-----BEGIN SSH HOST KEY FINGERPRINTS-----' in line:
-                    fp_start = True
-                elif '-----END SSH HOST KEY FINGERPRINTS-----' in line:
-                    fp_start = False
-        raise paramiko.SSHException('Unknown server %s' % hostname)
-
-
-class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
-    def __init__(self, fingerprint):
-        self.fingerprint = fingerprint
-
-    def missing_host_key(self, client, hostname, key):
-        fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
-        if fingerprint == self.fingerprint:
-            client._host_keys.add(hostname, key.get_name(), key)
-            if client._host_keys_filename is not None:
-                client.save_host_keys(client._host_keys_filename)
-            return
-        raise paramiko.SSHException("Fingerprint doesn't match for %s (got %s, expected %s)" % (hostname, fingerprint, self.fingerprint))
-
-
-class Securitygroups(object):
-    def __init__(self, server):
-        self.server = server
-        self.update()
-
-    def update(self):
-        self.securitygroups = dict((x.name, x) for x in self.server.conn.get_all_security_groups())
-
-    def get(self, sgid, create=False):
-        if not 'securitygroup' in self.server.ec2.config:
-            log.error("No security groups defined in configuration.")
-            sys.exit(1)
-        securitygroup = self.server.ec2.config['securitygroup'][sgid]
-        if sgid not in self.securitygroups:
-            if not create:
-                raise KeyError
-            sg = self.server.conn.create_security_group(sgid, securitygroup['description'])
-            self.update()
-        else:
-            sg = self.securitygroups[sgid]
-        if create:
-            rules = set()
-            for rule in sg.rules:
-                for grant in rule.grants:
-                    if grant.cidr_ip:
-                        rules.add((rule.ip_protocol, int(rule.from_port),
-                                   int(rule.to_port), grant.cidr_ip))
-                    else:
-                        rules.add('%s-%s' % (grant.name, grant.owner_id))
-            for connection in securitygroup['connections']:
-                if connection in rules:
-                    continue
-                if '-' in connection[3]:
-                    if connection[3] in rules:
-                        continue
-                    grant = GroupOrCIDR()
-                    grant.name, grant.ownerid = connection[3].rsplit('-', 1)
-                    sg.authorize(src_group=grant)
-                else:
-                    sg.authorize(*connection)
-        return sg
-
-
-class Instance(object):
-    def __init__(self, ec2, sid):
-        self.id = sid
-        self.ec2 = ec2
-        self.config = self.ec2.config['instance'][sid]
-
-    @lazy
-    def conn(self):
-        (aws_id, aws_key) = self.ec2.credentials
-        region_id = self.config.get(
-            'region',
-            self.ec2.config.get(
-                'global',
-                {}).get(
-                    'aws', {}).get(
-                        'region', None))
-        if region_id is None:
-            log.error("No region set in server and global config")
-            sys.exit(1)
-        region = self.ec2.regions[region_id]
-        return region.connect(
-            aws_access_key_id=aws_id, aws_secret_access_key=aws_key
-        )
-
-    @lazy
-    def instance(self):
-        instances = []
-        for reservation in self.conn.get_all_instances():
-            groups = set(x.id for x in reservation.groups)
-            if groups != self.config['securitygroups']:
-                continue
-            for instance in reservation.instances:
-                if instance.state in ['shutting-down', 'terminated']:
-                    continue
-                instances.append(instance)
-        if len(instances) < 1:
-            log.info("Instance '%s' unavailable" % self.id)
-            return
-        elif len(instances) > 1:
-            log.warn("More than one instance found, using first.")
-        log.info("Instance '%s' available" % self.id)
-        return instances[0]
-
-    def image(self):
-        images = self.conn.get_all_images([self.config['image']])
-        return images[0]
-
-    def securitygroups(self):
-        securitygroups = getattr(self, '_securitygroups', None)
-        if securitygroups is None:
-            self._securitygroups = securitygroups = Securitygroups(self)
-        sgs = []
-        for sgid in self.config['securitygroups']:
-            sgs.append(securitygroups.get(sgid, create=True))
-        return sgs
-
-    def startup_script(self, debug=False):
-        startup_script_path = self.config.get('startup_script', None)
-        if startup_script_path is None:
-            return ''
-        startup_script = template.Template(
-            startup_script_path['path'],
-            pre_filter=template.strip_hashcomments,
-        )
-        options = self.config.copy()
-        options.update(dict(
-            servers=self.ec2.all,
-        ))
-        result = startup_script(**options)
-        if startup_script_path.get('gzip', False):
-            result = "\n".join([
-                "#!/bin/bash",
-                "tail -n+4 $0 | gunzip -c | bash",
-                "exit $?",
-                gzip_string(result)
-            ])
-        if len(result) >= 16*1024:
-            log.error("Startup script too big.")
-            if not debug:
-                sys.exit(1)
-        return result
-
-    def start(self):
-        instance = self.instance
-        if instance is not None:
-            log.info("Instance state: %s", instance.state)
-            log.info("Instance already started, waiting until it's available")
-        else:
-            log.info("Creating instance '%s'" % self.id)
-            reservation = self.image().run(
-                1, 1, self.config['keypair'],
-                instance_type=self.config.get('instance_type', 'm1.small'),
-                security_groups=self.securitygroups(),
-                user_data=self.startup_script(),
-                placement=self.config['placement']
-            )
-            instance = reservation.instances[0]
-            log.info("Instance created, waiting until it's available")
-        while instance.state != 'running':
-            if instance.state != 'pending':
-                log.error("Something went wrong, instance status: %s", instance.status)
-                return
-            time.sleep(5)
-            sys.stdout.write(".")
-            sys.stdout.flush()
-            instance.update()
-        sys.stdout.write("\n")
-        sys.stdout.flush()
-        ip = self.config.get('ip', None)
-        if ip is not None:
-            addresses = [x for x in self.conn.get_all_addresses()
-                         if x.public_ip == ip]
-            if len(addresses) > 0:
-                if addresses[0].instance_id != instance.id:
-                    if instance.use_ip(addresses[0]):
-                        log.info("Assigned IP %s to instance '%s'", addresses[0].public_ip, self.id)
-                    else:
-                        log.error("Couldn't assign IP %s to instance '%s'", addresses[0].public_ip, self.id)
-                        return
-        volumes = dict((x.id, x) for x in self.conn.get_all_volumes())
-        for volume_id, device in self.config.get('volumes', []):
-            if volume_id not in volumes:
-                log.error("Unknown volume %s" % volume_id)
-                return
-            volume = volumes[volume_id]
-            if volume.attachment_state() == 'attached':
-                continue
-            log.info("Attaching storage (%s on %s)" % (volume_id, device))
-            self.conn.attach_volume(volume_id, instance.id, device)
-
-        snapshots = dict((x.id, x) for x in self.conn.get_all_snapshots(owner="self"))
-        for snapshot_id, device in self.config.get('snapshots', []):
-            if snapshot_id not in snapshots:
-                log.error("Unknown snapshot %s" % snapshot_id)
-                return
-            log.info("Creating volume from snapshot: %s" % snapshot_id)
-            snapshot = snapshots[snapshot_id]
-            volume = self.conn.create_volume(snapshot.volume_size, self.config['placement'], snapshot_id)
-            log.info("Attaching storage (%s on %s)" % (volume.id, device))
-            self.conn.attach_volume(volume.id, instance.id, device)
-
-        return instance
-
-    def init_ssh_key(self, user=None):
-        instance = self.instance
-        if instance is None:
-            log.error("Can't establish ssh connection.")
-            return
-        if user is None:
-            user = 'root'
-        host = str(instance.public_dns_name)
-        port = 22
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(AWSHostKeyPolicy(instance))
-        known_hosts = self.ec2.known_hosts
-        while 1:
-            if os.path.exists(known_hosts):
-                client.load_host_keys(known_hosts)
-            try:
-                client.connect(host, int(port), user)
-                break
-            except paramiko.BadHostKeyException:
-                if os.path.exists(known_hosts):
-                    os.remove(known_hosts)
-                client.get_host_keys().clear()
-        client.save_host_keys(known_hosts)
-        return user, host, port, client, known_hosts
-
-    def snapshot(self, devs=None):
-        if devs is None:
-            devs=set()
-        else:
-            devs=set(devs)
-        volume_ids = [x[0] for x in self.config.get('volumes', []) if x[1] in devs]
-        volumes = dict((x.id, x) for x in self.conn.get_all_volumes())
-        for volume_id in volume_ids:
-            volume = volumes[volume_id]
-            date = datetime.datetime.now().strftime("%Y%m%d%H%M")
-            description = "%s-%s" % (date, volume_id)
-            log.info("Creating snapshot for volume %s on %s (%s)" % (volume_id, self.id, description))
-            volume.create_snapshot(description=description)
-
-
-class Server(object):
-    def __init__(self, ec2, sid):
-        self.id = sid
-        self.ec2 = ec2
-        self.config = self.ec2.config['server'][sid]
-
-    def init_ssh_key(self, user=None):
-        host = str(self.config['host'])
-        port = 22
-        client = paramiko.SSHClient()
-        sshconfig = paramiko.SSHConfig()
-        sshconfig.parse(open(os.path.expanduser('~/.ssh/config')))
-        client.set_missing_host_key_policy(ServerHostKeyPolicy(self.config['fingerprint']))
-        known_hosts = self.ec2.known_hosts
-        while 1:
-            if os.path.exists(known_hosts):
-                client.load_host_keys(known_hosts)
-            try:
-                hostname = sshconfig.lookup(host).get('hostname', host)
-                port = sshconfig.lookup(host).get('port', port)
-                if user is None:
-                    user = sshconfig.lookup(host).get('user', 'root')
-                    user = self.config.get('user', user)
-                client.connect(hostname, int(port), user)
-                break
-            except paramiko.BadHostKeyException:
-                if os.path.exists(known_hosts):
-                    os.remove(known_hosts)
-                client.get_host_keys().clear()
-        client.save_host_keys(known_hosts)
-        return user, host, port, client, known_hosts
-
-
-class EC2(object):
-    def __init__(self, configpath):
-        configpath = os.path.abspath(configpath)
-        if not os.path.exists(configpath):
-            log.error("Config '%s' doesn't exist." % configpath)
-            sys.exit(1)
-        if os.path.isdir(configpath):
-            configpath = os.path.join(configpath, 'aws.conf')
-        self.config = Config(configpath)
-        self.known_hosts = os.path.join(self.config.path, 'known_hosts')
-        self.instances = {}
-        for sid in self.config.get('instance', {}):
-            self.instances[sid] = Instance(self, sid)
-        self.servers = {}
-        for sid in self.config.get('server', {}):
-            self.servers[sid] = Server(self, sid)
-        intersection = set(self.instances).intersection(set(self.servers))
-        if len(intersection) > 0:
-            log.error("Instance and server names must be unique, the following names are duplicated:")
-            log.error("\n".join(intersection))
-            sys.exit(1)
-        self.all = {}
-        self.all.update(self.instances)
-        self.all.update(self.servers)
-
-    @lazy
-    def credentials(self):
-        aws_id = None
-        aws_key = None
-        if 'AWS_ACCESS_KEY_ID' not in os.environ or 'AWS_SECRET_ACCESS_KEY' not in os.environ:
-            try:
-                id_file = self.config['global']['aws']['access-key-id']
-                key_file = self.config['global']['aws']['secret-access-key']
-            except KeyError:
-                log.error("You need to either set the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables or add the path to files containing them to the config. You can find the values at http://aws.amazon.com under 'Your Account'-'Security Credentials'.")
-                sys.exit(1)
-            id_file = os.path.abspath(os.path.expanduser(id_file))
-            if not os.path.exists(id_file):
-                log.error("The access-key-id file at '%s' doesn't exist." % id_file)
-                sys.exit(1)
-            key_file = os.path.abspath(os.path.expanduser(key_file))
-            if not os.path.exists(key_file):
-                log.error("The secret-access-key file at '%s' doesn't exist." % key_file)
-                sys.exit(1)
-            aws_id = open(id_file).readline().strip()
-            aws_key = open(key_file).readline().strip()
-        return (aws_id, aws_key)
-
-    @lazy
-    def regions(self):
-        (aws_id, aws_key) = self.credentials
-        return dict((x.name, x) for x in boto.ec2.regions(
-            aws_access_key_id=aws_id, aws_secret_access_key=aws_key
-        ))
-
-    @property
-    def snapshots(self):
-        return dict((x.id, x) for x in self.conn.get_all_snapshots(owner="self"))
-
-    @lazy
-    def conn(self):
-        (aws_id, aws_key) = self.credentials
-        region_id = self.config.get(
-                'global', {}).get(
-                    'aws', {}).get(
-                        'region', None)
-        if region_id is None:
-            log.error("No region set in global config")
-            sys.exit(1)
-        region = self.regions[region_id]
-        return region.connect(
-            aws_access_key_id=aws_id, aws_secret_access_key=aws_key
-        )
-
-
 class AWS(object):
-    def __init__(self, configfile=None):
+    def __init__(self, configpath=None):
         log.setLevel(logging.INFO)
         ch = logging.StreamHandler()
         ch.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
         log.addHandler(ch)
-        if configfile is None:
-            configfile = 'etc/aws.conf'
-        self.configfile = configfile
+        if configpath is None:
+            configpath = 'etc/aws.conf'
+        if os.path.isdir(configpath):
+            configpath = os.path.join(configpath, 'aws.conf')
+        self.configfile = configpath
 
     @lazy
-    def ec2(self):
-        if self.configfile is None:
-            log.error("Config path not given (argument to this script).")
+    def config(self):
+        configpath = os.path.abspath(self.configfile)
+        if not os.path.exists(configpath):
+            log.error("Config '%s' doesn't exist." % configpath)
             sys.exit(1)
-        return EC2(self.configfile)
+        config = Config(configpath, bbb_config=True)
+        return config
 
-    def _status(self, server):
-        instance = server.instance
-        if instance is None:
-            return
-        if instance.state != 'running':
-            log.info("Instance state: %s", instance.state)
-            return
-        log.info("Instance running.")
-        log.info("Instances DNS name %s", instance.dns_name)
-        log.info("Instances public DNS name %s", instance.public_dns_name)
-        output = instance.get_console_output().output
-        if output.strip():
-            log.info("Console output available. SSH fingerprint verification possible.")
-        else:
-            log.warn("Console output not (yet) available. SSH fingerprint verification not possible.")
+    @lazy
+    def masters(self):
+        masters = []
+        for plugin in self.config['plugin'].values():
+            masters.extend(plugin['module'].get_masters(self.config))
+        return masters
+
+    @lazy
+    def known_hosts(self):
+        return os.path.join(self.config.path, 'known_hosts')
+
+    def get_masters(self, command):
+        masters = []
+        for master in self.masters:
+            if getattr(master, command, None) is not None:
+                masters.append(master)
+        return masters
+
+    @lazy
+    def instances(self):
+        instances = {}
+        for master in self.masters:
+            for instance_id in master.instances:
+                if instance_id in instances:
+                    log.error("Instance and server names must be unique, '%s' is already defined." % instance_id)
+                    sys.exit(1)
+                instances[instance_id] = master.instances[instance_id]
+        return instances
+
+    def get_instances(self, command):
+        instances = {}
+        for instance_id in self.instances:
+            instance = self.instances[instance_id]
+            if getattr(instance, command, None) is not None:
+                instances[instance_id] = instance
+        return instances
 
     def cmd_status(self, argv, help):
         """Prints status"""
@@ -431,13 +76,14 @@ class AWS(object):
             prog="aws status",
             description=help,
         )
+        instances = self.get_instances(command='status')
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(self.ec2.instances))
+                            choices=list(instances))
         args = parser.parse_args(argv)
-        server = self.ec2.instances[args.server[0]]
-        return self._status(server)
+        server = instances[args.server[0]]
+        server.status()
 
     def cmd_stop(self, argv, help):
         """Stops the instance"""
@@ -445,29 +91,14 @@ class AWS(object):
             prog="aws stop",
             description=help,
         )
+        instances = self.get_instances(command='stop')
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(self.ec2.instances))
+                            choices=list(instances))
         args = parser.parse_args(argv)
-        server = self.ec2.instances[args.server[0]]
-        instance = server.instance
-        if instance is None:
-            return
-        if instance.state != 'running':
-            log.info("Instance state: %s", instance.state)
-            log.info("Instance not stopped")
-            return
-        try:
-            rc = server.conn.stop_instances([instance.id])
-            instance._update(rc[0])
-        except EC2ResponseError, e:
-            log.error(e.error_message)
-            if 'cannot be stopped' in e.error_message:
-                log.error("Did you mean to terminate the instance?")
-            log.info("Instance not stopped")
-            return
-        log.info("Instance stopped")
+        server = instances[args.server[0]]
+        server.stop()
 
     def cmd_terminate(self, argv, help):
         """Terminates the instance"""
@@ -475,43 +106,14 @@ class AWS(object):
             prog="aws terminate",
             description=help,
         )
+        instances = self.get_instances(command='terminate')
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(self.ec2.instances))
+                            choices=list(instances))
         args = parser.parse_args(argv)
-        server = self.ec2.instances[args.server[0]]
-        instance = server.instance
-        if instance is None:
-            return
-        if instance.state != 'running':
-            log.info("Instance state: %s", instance.state)
-            log.info("Instance not terminated")
-            return
-        volumes_to_delete = []
-        if 'snapshots' in server.config and server.config.get('delete-volumes-on-terminate', False):
-            snapshots = self.ec2.snapshots
-            volumes = dict((x.volume_id, d) for d, x in instance.block_device_mapping.items())
-            for volume in server.conn.get_all_volumes(volume_ids=volumes.keys()):
-                snapshot_id = volume.snapshot_id
-                if snapshot_id in snapshots:
-                    volumes_to_delete.append(volume)
-        rc = server.conn.terminate_instances([instance.id])
-        instance._update(rc[0])
-        log.info("Instance terminating")
-        if len(volumes_to_delete):
-            log.info("Instance terminating, waiting until it's terminated")
-            while instance.state != 'terminated':
-                time.sleep(5)
-                sys.stdout.write(".")
-                sys.stdout.flush()
-                instance.update()
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-            log.info("Instance terminated")
-            for volume in volumes_to_delete:
-                log.info("Deleting volume %s", volume.id)
-                volume.delete()
+        server = instances[args.server[0]]
+        server.terminate()
 
     def _parse_overrides(self, options):
         overrides = dict()
@@ -524,14 +126,9 @@ class AWS(object):
                 key = key.strip()
                 value = value.strip()
                 if key == '':
-                    log.error("Empty key for everride '%s'." % override)
+                    log.error("Empty key for override '%s'." % override)
                     return
-                fname = 'massage_instance_%s' % key.replace('-', '_')
-                massage = getattr(self.ec2.config, fname, None)
-                if callable(massage):
-                    overrides[key] = massage(value)
-                else:
-                    overrides[key] = value
+                overrides[key] = value
         return overrides
 
     def cmd_start(self, argv, help):
@@ -540,21 +137,22 @@ class AWS(object):
             prog="aws start",
             description=help,
         )
+        instances = self.get_instances(command='start')
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(self.ec2.instances))
+                            choices=list(instances))
         parser.add_argument("-o", "--override", nargs="*", type=str,
                             dest="overrides", metavar="OVERRIDE",
                             help="Option to override in server config for startup script (name=value).")
         args = parser.parse_args(argv)
         overrides = self._parse_overrides(args)
-        server = self.ec2.instances[args.server[0]]
-        server.config.update(overrides)
-        instance = server.start()
+        overrides['servers'] = self.instances
+        server = instances[args.server[0]]
+        instance = server.start(overrides)
         if instance is None:
             return
-        return self._status(server)
+        server.status()
 
     def cmd_debug(self, argv, help):
         """Prints some debug info for this script"""
@@ -562,10 +160,11 @@ class AWS(object):
             prog="aws debug",
             description=help,
         )
+        instances = self.get_instances(command='startup_script')
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(self.ec2.instances))
+                            choices=list(instances))
         parser.add_argument("-v", "--verbose", dest="verbose",
                           action="store_true", help="Print more info")
         parser.add_argument("-i", "--interactive", dest="interactive",
@@ -575,9 +174,9 @@ class AWS(object):
                             help="Option to override server config for startup script (name=value).")
         args = parser.parse_args(argv)
         overrides = self._parse_overrides(args)
-        server = self.ec2.instances[args.server[0]]
-        server.config.update(overrides)
-        startup_script = server.startup_script(debug=True)
+        overrides['servers'] = self.instances
+        server = instances[args.server[0]]
+        startup_script = server.startup_script(overrides=overrides, debug=True)
         log.info("Length of startup script: %s/%s", len(startup_script), 16*1024)
         if args.verbose:
             log.info("Startup script:")
@@ -597,10 +196,11 @@ class AWS(object):
             description=help,
             add_help=False,
         )
+        instances = self.get_instances(command='init_ssh_key')
         parser.add_argument("server", nargs=1,
                             metavar="server",
                             help="Name of the instance or server from the config.",
-                            choices=list(self.ec2.all))
+                            choices=list(instances))
         parser.add_argument("...", nargs=argparse.REMAINDER,
                             help="Fabric options")
         if len(argv) < 2:
@@ -618,10 +218,10 @@ class AWS(object):
 
         hoststr = None
         try:
-            fabric_integration.ec2 = self.ec2
+            fabric_integration.instances = self.instances
             fabric_integration.log = log
             hoststr = argv[0]
-            server = self.ec2.all[hoststr]
+            server = instances[hoststr]
             # prepare the connection
             fabric.state.env.reject_unknown_hosts = True
             fabric.state.env.disable_known_hosts = True
@@ -637,9 +237,9 @@ class AWS(object):
 
             # setup environment
             os.chdir(os.path.dirname(fabfile))
-            fabric.state.env.servers = self.ec2.all
+            fabric.state.env.servers = self.instances
             fabric.state.env.server = server
-            known_hosts = self.ec2.known_hosts
+            known_hosts = self.known_hosts
             fabric.state.env.known_hosts = known_hosts
 
             class StdFilter(object):
@@ -677,7 +277,9 @@ class AWS(object):
                             choices=['snapshots'])
         args = parser.parse_args(argv)
         if args.list[0] == 'snapshots':
-            snapshots = self.ec2.snapshots.values()
+            snapshots = []
+            for master in self.get_masters('snapshots'):
+                snapshots.extend(master.snapshots.values())
             snapshots = sorted(snapshots, key=lambda x: x.start_time)
             print "id            time                      size   volume       progress description"
             for snapshot in snapshots:
@@ -690,10 +292,11 @@ class AWS(object):
             prog="aws ssh",
             description=help,
         )
+        instances = self.get_instances(command='init_ssh_key')
         parser.add_argument("server", nargs=1,
                             metavar="server",
                             help="Name of the instance or server from the config.",
-                            choices=list(self.ec2.all))
+                            choices=list(instances))
         parser.add_argument("...", nargs=argparse.REMAINDER,
                             help="Fabric options")
         iargs = enumerate(argv)
@@ -710,7 +313,7 @@ class AWS(object):
         if sid_index is None:
             parser.print_help()
             return
-        server = self.ec2.all[argv[sid_index]]
+        server = instances[argv[sid_index]]
         try:
             user, host, port, client, known_hosts = server.init_ssh_key()
         except paramiko.SSHException, e:
@@ -731,12 +334,13 @@ class AWS(object):
             prog="aws status",
             description=help,
         )
+        instances = self.get_instances(command='snapshot')
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(self.ec2.instances))
+                            choices=list(instances))
         args = parser.parse_args(argv)
-        server = self.ec2.instances[args.server[0]]
+        server = instances[args.server[0]]
         server.snapshot()
 
     def cmd_help(self, argv, help):
@@ -758,8 +362,17 @@ class AWS(object):
                 for cmd in self.subparsers.keys():
                     print cmd
             else:
-                if args.command != 'help':
-                    for server in self.ec2.instances:
+                if args.command in ('do', 'ssh'):
+                    for server in self.get_instances(command='init_ssh_key'):
+                        print server
+                elif args.command == 'debug':
+                    for server in self.get_instances(command='startup_script'):
+                        print server
+                elif args.command == 'list':
+                    for subcmd in ('snapshots',):
+                        print subcmd
+                elif args.command != 'help':
+                    for server in self.get_instances(command=args.command):
                         print server
         else:
             if args.command is None:
@@ -804,11 +417,11 @@ class AWS(object):
 
 def aws(configpath=None):
     argv = sys.argv[:]
-    aws = AWS(configfile=configpath)
+    aws = AWS(configpath=configpath)
     return aws(argv)
 
 def aws_ssh(configpath=None):
     argv = sys.argv[:]
     argv.insert(1, "ssh")
-    aws = AWS(configfile=configpath)
+    aws = AWS(configpath=configpath)
     return aws(argv)

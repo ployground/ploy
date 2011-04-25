@@ -2,7 +2,7 @@ import fabric.network
 import paramiko
 
 
-ec2 = None
+instances = None
 log = None
 
 
@@ -19,7 +19,7 @@ class HostConnectionCache(object):
     def __getitem__(self, key):
         if key in self._cache:
             return self._cache[key]
-        server = ec2.all[key]
+        server = instances[key]
         try:
             user, host, port, client, known_hosts = server.init_ssh_key()
         except paramiko.SSHException, e:
@@ -40,10 +40,8 @@ def normalize(host_string, omit_port=False):
     user = r['user'] or 'root'
     host = r['host']
     port = r['port'] or '22'
-    if host in ec2.instances:
-        host = ec2.instances[host].instance.public_dns_name
-    if host in ec2.servers:
-        host = ec2.servers[host].config['host']
+    if host in instances:
+        host = instances[host].get_host()
     if omit_port:
         return user, host
     return user, host, port

@@ -3,6 +3,9 @@ from mr.awsome.config import Config
 from unittest import TestCase
 
 
+dummyplugin = None
+
+
 class ConfigTests(TestCase):
     def testEmpty(self):
         contents = StringIO("")
@@ -59,3 +62,32 @@ class ConfigTests(TestCase):
             "<=macro",
             "macrovalue=1"]))
         self.assertRaises(ValueError, Config, contents)
+
+    def testMassager(self):
+        class DummyPlugin(object):
+            def get_massagers(self, config):
+                def massager(config, value):
+                    return int(value)
+                return {('section', 'value'): massager}
+
+        global dummyplugin
+        dummyplugin = DummyPlugin()
+        contents = StringIO("\n".join([
+            "[plugin:dummy]",
+            "module=mr.awsome.tests.test_config.dummyplugin",
+            "[section:foo]",
+            "value=1"]))
+        config = Config(contents)
+        dummyplugin = None
+        self.assertEquals(config['section'], {'foo': {'value': 1}})
+
+    def testDefaultPlugins(self):
+        from mr.awsome import ec2, plain
+        contents = StringIO("")
+        config = Config(contents, bbb_config=True)
+        self.assertEquals(config, {
+            'plugin': {
+                'ec2': {
+                    'module': ec2},
+                'plain': {
+                    'module': plain}}})

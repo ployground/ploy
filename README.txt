@@ -32,25 +32,42 @@ disable them by adding an initialization option to the aws part like this::
 
 **Configuration**
 
+Support for backends is implemented by plugins. Two plugins are included with
+mr.awsome. To use the plugins, you have to configure one or more masters,
+like this::
+
+  [ec2-master:default]
+  module = mr.awsome.ec2
+
+  [plain-master:default]
+  module = mr.awsome.plain
+
+The ``ec2-master`` is for the Amazon cloud. The ``plain-master`` is for
+servers reachable by ssh which you want to included in the config for Fabric
+integration and easy ssh access with a centralized config.
+
 To authorize itself against AWS, mr.awsome uses the following two environment
 variables::
 
   AWS_ACCESS_KEY_ID
   AWS_SECRET_ACCESS_KEY
 
-You can find their values at `http://aws.amazon.com`_ under *'Your Account'-'Security Credentials'.*
+You can find their values at `http://aws.amazon.com`_ under
+*'Your Account'-'Security Credentials'.*
 
-You can also put them into files and point to them in the ``[aws]`` section
-with the ``access-key-id`` and ``secret-access-key`` options. It's best to
-put them in ``~/.aws/`` and make sure only your user can read them.
+You can also put them into files and point to them in the
+``[ec2-master:default]`` section with the ``access-key-id`` and
+``secret-access-key`` options. It's best to put them in ``~/.aws/`` and make
+sure only your user can read them.
 
 All other information about server instances is located in ``aws.conf``, which
 by default is looked up in ``etc/aws.conf``.
 
-Before you can create a server instance with the ``create`` command described below, you first have to declare a security group in
-your ``aws.conf`` like this::
+Before you can create a server instance with the ``create`` command described
+below, you first have to declare a security group in your ``aws.conf`` like
+this::
 
-  [securitygroup:demo-server]
+  [ec2-securitygroup:demo-server]
   description = Our Demo-Server
   connections =
     tcp 22 22 0.0.0.0/0
@@ -61,7 +78,7 @@ the AWS docs, and to find the server instance associated with it.
 
 Then you can add the info about the server instance itself like this::
 
-  [instance:demo-server]
+  [ec2-instance:demo-server]
   keypair = default
   securitygroups = demo-server
   region = eu-west-1
@@ -86,7 +103,8 @@ Most of the time these are bash scripts like this (for Ubuntu in this case)::
   export DEBIAN_FRONTEND=noninteractive
   apt-get update && apt-get upgrade -y
 
-The ``set -e -x`` is for debugging. You can see the commands which ran and their output in ``/var/log/syslog`` once you are logged into the server.
+The ``set -e -x`` is for debugging. You can see the commands which ran and
+their output in ``/var/log/syslog`` once you are logged into the server.
 
 The startup scripts have a maximum size of 16kb. You can check the size with
 the ``debug`` command of the ``aws`` script.
@@ -98,7 +116,8 @@ when you write bash functions etc, just double them like this::
 
   function LOG() {{ echo "$*"; }}
 
-If you want to include any files for something like ssh ``authorized_keys``, you do something the following::
+If you want to include any files for something like ssh ``authorized_keys``,
+you do something the following::
 
   authorized_keys: file,escape_eol ssh-authorized_keys
 
@@ -154,7 +173,10 @@ operations against named EC2 instances. Particularly, it encapsulates the
 entire *SSH fingerprint* mechanism, as EC2 instances are often short-lived and
 normally trigger warnings, especially, if you are using elastic IPs.
 
-  Note:: it does so not by simply turning off these checks, but by transparently updating its own fingerprint list (it relies on the console output of the instance to provide the fingerprint via the AWS API, some imags may not be configured to do so) when adding new instances.
+  Note:: it does so not by simply turning off these checks, but by
+  transparently updating its own fingerprint list (it relies on the console
+  output of the instance to provide the fingerprint via the AWS API, some
+  images may not be configured to do so) when adding new instances.
 
 The easiest scenario is simply to create an SSH session with an instance. You
 can either use the ssh subcommand of the aws tool like so::
@@ -209,11 +231,11 @@ For more info about fabfiles, read the docs at `http://fabfile.org/`_.
 In the ``aws.conf`` you can use macro expansion for cleaner configuration
 files. This looks like this::
 
-  [instance:demo-server2]
+  [ec2-instance:demo-server2]
   <= demo-server
   securitygroups = demo-server2
 
-  [securitygroup:demo-server2]
+  [ec2-securitygroup:demo-server2]
   <= demo-server
 
 All the options from the specified macro are copied with some important exceptions:
@@ -229,6 +251,6 @@ like this::
   region = eu-west-1
   placement = eu-west-1a
 
-  [instance:server]
+  [ec2-instance:server]
   <= macro:base-instance
   ...
