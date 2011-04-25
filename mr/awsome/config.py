@@ -88,11 +88,15 @@ class Config(dict):
             if key not in section:
                 section[key] = macro[key]
 
-    def __init__(self, config):
+    def __init__(self, config, path=None):
         _config = RawConfigParser()
         _config.optionxform = lambda s: s
-        _config.read(config)
-        self.path = os.path.dirname(config)
+        if getattr(config, 'read', None) is not None:
+            _config.readfp(config)
+            self.path = path
+        else:
+            _config.read(config)
+            self.path = os.path.dirname(config)
         for section in _config.sections():
             if ':' in section:
                 sectiongroupname, sectionname = section.split(':')
