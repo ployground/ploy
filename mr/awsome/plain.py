@@ -2,13 +2,21 @@ import os
 
 
 class Instance(object):
-    def __init__(self, ec2, sid):
+    def __init__(self, master, sid, config):
         self.id = sid
-        self.ec2 = ec2
-        self.config = self.ec2.config['plain-instance'][sid]
+        self.master = master
+        self.config = config
 
     def get_host(self):
         return self.config['host']
+
+    def get_fingerprint(self):
+        from paramiko import SSHException
+
+        fingerprint = self.config.get('fingerprint')
+        if fingerprint is None:
+            raise SSHException("No fingerprint set in config")
+        return fingerprint
 
     def init_ssh_key(self, user=None):
         import paramiko
@@ -26,13 +34,14 @@ class Instance(object):
                     return
                 raise paramiko.SSHException("Fingerprint doesn't match for %s (got %s, expected %s)" % (hostname, fingerprint, self.fingerprint))
 
-        host = str(self.config['host'])
-        port = 22
+        host = self.get_host()
+        port = self.config.get('port', 22)
         client = paramiko.SSHClient()
         sshconfig = paramiko.SSHConfig()
         sshconfig.parse(open(os.path.expanduser('~/.ssh/config')))
-        client.set_missing_host_key_policy(ServerHostKeyPolicy(self.config['fingerprint']))
-        known_hosts = self.ec2.known_hosts
+        fingerprint = self.get_fingerprint()
+        client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint))
+        known_hosts = self.master.known_hosts
         while 1:
             if os.path.exists(known_hosts):
                 client.load_host_keys(known_hosts)
@@ -58,8 +67,8 @@ class Master(object):
         self.config = config
         self.known_hosts = os.path.join(self.config.path, 'known_hosts')
         self.instances = {}
-        for sid in self.config.get('plain-instance', {}):
-            self.instances[sid] = Instance(self, sid)
+        for sid, config in self.config.get('plain-instance', {}).iteritems():
+            self.instances[sid] = Instance(self, sid, config)
 
 
 def get_massagers():
