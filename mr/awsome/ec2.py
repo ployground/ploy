@@ -1,43 +1,14 @@
-from boto.ec2.securitygroup import GroupOrCIDR
-from boto.exception import EC2ResponseError
 from mr.awsome import template
 from mr.awsome.common import gzip_string
 from mr.awsome.lazy import lazy
-import boto.ec2
 import datetime
 import logging
 import os
-import paramiko
 import sys
 import time
 
 
 log = logging.getLogger('mr.awsome.ec2')
-
-
-class AWSHostKeyPolicy(paramiko.MissingHostKeyPolicy):
-    def __init__(self, instance):
-        self.instance = instance
-
-    def missing_host_key(self, client, hostname, key):
-        fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
-        if self.instance.public_dns_name == hostname:
-            fp_start = False
-            output = self.instance.get_console_output().output
-            if output.strip() == '':
-                raise paramiko.SSHException('No console output (yet) for %s' % hostname)
-            for line in output.split('\n'):
-                if fp_start:
-                    if fingerprint in line:
-                        client._host_keys.add(hostname, key.get_name(), key)
-                        if client._host_keys_filename is not None:
-                            client.save_host_keys(client._host_keys_filename)
-                        return
-                if '-----BEGIN SSH HOST KEY FINGERPRINTS-----' in line:
-                    fp_start = True
-                elif '-----END SSH HOST KEY FINGERPRINTS-----' in line:
-                    fp_start = False
-        raise paramiko.SSHException('Unknown server %s' % hostname)
 
 
 class Instance(object):
@@ -151,6 +122,8 @@ class Instance(object):
             log.warn("Console output not (yet) available. SSH fingerprint verification not possible.")
 
     def stop(self):
+        from boto.exception import EC2ResponseError
+
         instance = self.instance
         if instance is None:
             return
@@ -267,6 +240,32 @@ class Instance(object):
         return instance
 
     def init_ssh_key(self, user=None):
+        import paramiko
+
+        class AWSHostKeyPolicy(paramiko.MissingHostKeyPolicy):
+            def __init__(self, instance):
+                self.instance = instance
+
+            def missing_host_key(self, client, hostname, key):
+                fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
+                if self.instance.public_dns_name == hostname:
+                    fp_start = False
+                    output = self.instance.get_console_output().output
+                    if output.strip() == '':
+                        raise paramiko.SSHException('No console output (yet) for %s' % hostname)
+                    for line in output.split('\n'):
+                        if fp_start:
+                            if fingerprint in line:
+                                client._host_keys.add(hostname, key.get_name(), key)
+                                if client._host_keys_filename is not None:
+                                    client.save_host_keys(client._host_keys_filename)
+                                return
+                        if '-----BEGIN SSH HOST KEY FINGERPRINTS-----' in line:
+                            fp_start = True
+                        elif '-----END SSH HOST KEY FINGERPRINTS-----' in line:
+                            fp_start = False
+                raise paramiko.SSHException('Unknown server %s' % hostname)
+
         instance = self.instance
         if instance is None:
             log.error("Can't establish ssh connection.")
@@ -327,6 +326,8 @@ class Securitygroups(object):
         else:
             sg = self.securitygroups[sgid]
         if create:
+            from boto.ec2.securitygroup import GroupOrCIDR
+
             rules = set()
             for rule in sg.rules:
                 for grant in rule.grants:
@@ -383,6 +384,8 @@ class Master(object):
 
     @lazy
     def regions(self):
+        import boto.ec2
+
         (aws_id, aws_key) = self.credentials
         return dict((x.name, x) for x in boto.ec2.regions(
             aws_access_key_id=aws_id, aws_secret_access_key=aws_key

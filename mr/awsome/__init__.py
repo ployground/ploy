@@ -3,9 +3,7 @@ from mr.awsome.lazy import lazy
 import logging
 import argparse
 import os
-import paramiko
 import pkg_resources
-import subprocess
 import sys
 
 
@@ -314,9 +312,10 @@ class AWS(object):
             parser.print_help()
             return
         server = instances[argv[sid_index]]
+        from paramiko import SSHException
         try:
             user, host, port, client, known_hosts = server.init_ssh_key()
-        except paramiko.SSHException, e:
+        except SSHException, e:
             log.error("Couldn't validate fingerprint for ssh connection.")
             log.error(e)
             log.error("Is the server finished starting up?")
@@ -326,6 +325,7 @@ class AWS(object):
                                        '-l', user,
                                        host]
         argv[0:0] = ['ssh']
+        import subprocess
         subprocess.call(argv)
 
     def cmd_snapshot(self, argv, help):

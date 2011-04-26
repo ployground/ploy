@@ -1,19 +1,4 @@
 import os
-import paramiko
-
-
-class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
-    def __init__(self, fingerprint):
-        self.fingerprint = fingerprint
-
-    def missing_host_key(self, client, hostname, key):
-        fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
-        if fingerprint == self.fingerprint:
-            client._host_keys.add(hostname, key.get_name(), key)
-            if client._host_keys_filename is not None:
-                client.save_host_keys(client._host_keys_filename)
-            return
-        raise paramiko.SSHException("Fingerprint doesn't match for %s (got %s, expected %s)" % (hostname, fingerprint, self.fingerprint))
 
 
 class Instance(object):
@@ -26,6 +11,21 @@ class Instance(object):
         return self.config['host']
 
     def init_ssh_key(self, user=None):
+        import paramiko
+
+        class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
+            def __init__(self, fingerprint):
+                self.fingerprint = fingerprint
+
+            def missing_host_key(self, client, hostname, key):
+                fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
+                if fingerprint == self.fingerprint:
+                    client._host_keys.add(hostname, key.get_name(), key)
+                    if client._host_keys_filename is not None:
+                        client.save_host_keys(client._host_keys_filename)
+                    return
+                raise paramiko.SSHException("Fingerprint doesn't match for %s (got %s, expected %s)" % (hostname, fingerprint, self.fingerprint))
+
         host = str(self.config['host'])
         port = 22
         client = paramiko.SSHClient()
