@@ -67,8 +67,10 @@ class Master(object):
         self.main_config = main_config
         self.known_hosts = os.path.join(self.main_config.path, 'known_hosts')
         self.instances = {}
-        for sid, config in self.main_config.get('plain-instance', {}).iteritems():
+        sectiongroupname = 'plain-instance'
+        for sid, config in self.main_config.get(sectiongroupname, {}).iteritems():
             self.instances[sid] = Instance(self, sid, config)
+            self.instances[sid].sectiongroupname = sectiongroupname
 
 
 def get_massagers():

@@ -1,7 +1,6 @@
-from mr.awsome import template
+from mr.awsome.common import StartupScriptMixin
 from mr.awsome.config import BaseMassager, BooleanMassager, PathMassager
 from mr.awsome.config import StartupScriptMassager
-from mr.awsome.common import gzip_string
 from mr.awsome.lazy import lazy
 import datetime
 import logging
@@ -13,7 +12,9 @@ import time
 log = logging.getLogger('mr.awsome.ec2')
 
 
-class Instance(object):
+class Instance(StartupScriptMixin):
+    max_startup_script_size = 16*1024
+
     def __init__(self, master, sid, config):
         self.id = sid
         self.master = master
@@ -63,30 +64,6 @@ class Instance(object):
 
     def get_host(self):
         return self.instance.public_dns_name
-
-    def startup_script(self, overrides=None, debug=False):
-        config = self.master.main_config.get_section_with_overrides(
-            'ec2-instance', self.id, overrides)
-        startup_script_path = config.get('startup_script', None)
-        if startup_script_path is None:
-            return ''
-        startup_script = template.Template(
-            startup_script_path['path'],
-            pre_filter=template.strip_hashcomments,
-        )
-        result = startup_script(**config)
-        if startup_script_path.get('gzip', False):
-            result = "\n".join([
-                "#!/bin/bash",
-                "tail -n+4 $0 | gunzip -c | bash",
-                "exit $?",
-                gzip_string(result)
-            ])
-        if len(result) >= 16*1024:
-            log.error("Startup script too big.")
-            if not debug:
-                sys.exit(1)
-        return result
 
     def status(self):
         instance = self.instance
@@ -340,8 +317,10 @@ class Master(object):
         self.main_config = main_config
         self.known_hosts = os.path.join(self.main_config.path, 'known_hosts')
         self.instances = {}
-        for sid, config in self.main_config.get('ec2-instance', {}).iteritems():
+        sectiongroupname = 'ec2-instance'
+        for sid, config in self.main_config.get(sectiongroupname, {}).iteritems():
             self.instances[sid] = Instance(self, sid, config)
+            self.instances[sid].sectiongroupname = sectiongroupname
 
     @lazy
     def credentials(self):
