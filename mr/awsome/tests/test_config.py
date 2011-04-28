@@ -90,4 +90,6 @@ class ConfigTests(TestCase):
                 'ec2': {
                     'module': ec2},
                 'plain': {
-                    'module': plain}}})
+                    'module': plain}},
+            'plain-master': {
+                'default': {}}})
