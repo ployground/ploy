@@ -89,6 +89,6 @@ def get_massagers():
 
 
 def get_masters(config):
-    masters = config.get('plain-master', {})
+    masters = config.get('plain-master', {'default': {}})
     for master in masters:
         yield Master(config, master)
