@@ -138,6 +138,22 @@ class MassagerTests(TestCase):
             "value=foo"]))
         self.assertRaises(ValueError, Config, contents)
 
+    def testIntegerMassager(self):
+        from mr.awsome.config import IntegerMassager
+
+        dummyplugin.massagers.append(IntegerMassager('section', 'value'))
+        contents = StringIO("\n".join([
+            self.plugin_config,
+            "[section:foo]",
+            "value=1"]))
+        config = Config(contents)
+        self.assertEquals(config['section'], {'foo': {'value': 1}})
+        contents = StringIO("\n".join([
+            self.plugin_config,
+            "[section:foo]",
+            "value=foo"]))
+        self.assertRaises(ValueError, Config, contents)
+
     def testPathMassager(self):
         from mr.awsome.config import PathMassager
 

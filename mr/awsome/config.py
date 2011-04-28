@@ -21,6 +21,12 @@ class BooleanMassager(BaseMassager):
         raise ValueError("Unknown value %s for %s in %s:%s." % (value, self.key, self.sectiongroupname, sectionname))
 
 
+class IntegerMassager(BaseMassager):
+    def __call__(self, config, sectionname):
+        value = config[self.sectiongroupname][sectionname][self.key]
+        return int(value)
+
+
 class PathMassager(BaseMassager):
     def __call__(self, main_config, sectionname):
         value = main_config[self.sectiongroupname][sectionname][self.key]
