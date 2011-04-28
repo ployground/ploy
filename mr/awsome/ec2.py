@@ -1,5 +1,6 @@
 from mr.awsome import template
 from mr.awsome.config import BaseMassager, BooleanMassager, PathMassager
+from mr.awsome.config import StartupScriptMassager
 from mr.awsome.common import gzip_string
 from mr.awsome.lazy import lazy
 import datetime
@@ -402,19 +403,6 @@ class Master(object):
             log.error("No region set in ec2-master:%s config" % self.id)
             sys.exit(1)
         return self.get_conn(region_id)
-
-
-class StartupScriptMassager(BaseMassager):
-    def __call__(self, main_config, sectionname):
-        value = main_config[self.sectiongroupname][sectionname][self.key]
-        result = dict()
-        if value.startswith('gzip:'):
-            value = value[5:]
-            result['gzip'] = True
-        if not os.path.isabs(value):
-            value = os.path.join(main_config.path, value)
-        result['path'] = value
-        return result
 
 
 class SecuritygroupsMassager(BaseMassager):

@@ -35,6 +35,19 @@ class PathMassager(BaseMassager):
         return value
 
 
+class StartupScriptMassager(BaseMassager):
+    def __call__(self, main_config, sectionname):
+        value = main_config[self.sectiongroupname][sectionname][self.key]
+        result = dict()
+        if value.startswith('gzip:'):
+            value = value[5:]
+            result['gzip'] = True
+        if not os.path.isabs(value):
+            value = os.path.join(main_config.path, value)
+        result['path'] = value
+        return result
+
+
 class UserMassager(BaseMassager):
     def __call__(self, main_config, sectionname):
         value = main_config[self.sectiongroupname][sectionname][self.key]

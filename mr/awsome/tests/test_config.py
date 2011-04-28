@@ -169,6 +169,27 @@ class MassagerTests(TestCase):
             'value1': '/config/foo',
             'value2': '/foo'}})
 
+    def testStartupScriptMassager(self):
+        from mr.awsome.config import StartupScriptMassager
+
+        dummyplugin.massagers.append(StartupScriptMassager('section', 'value1'))
+        dummyplugin.massagers.append(StartupScriptMassager('section', 'value2'))
+        dummyplugin.massagers.append(StartupScriptMassager('section', 'value3'))
+        dummyplugin.massagers.append(StartupScriptMassager('section', 'value4'))
+        contents = StringIO("\n".join([
+            self.plugin_config,
+            "[section:foo]",
+            "value1=gzip:foo",
+            "value2=foo",
+            "value3=gzip:/foo",
+            "value4=/foo"]))
+        config = Config(contents, path='/config')
+        self.assertEquals(config['section'], {'foo': {
+            'value1': {'gzip': True, 'path': '/config/foo'},
+            'value2': {'path': '/config/foo'},
+            'value3': {'gzip': True, 'path': '/foo'},
+            'value4': {'path': '/foo'}}})
+
     def testUserMassager(self):
         from mr.awsome.config import UserMassager
         import os, pwd
