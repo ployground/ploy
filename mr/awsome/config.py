@@ -153,3 +153,15 @@ class Config(dict):
                     massage = self.massagers.get((sectiongroupname, key))
                     if callable(massage):
                         section[key] = massage(self, sectionname)
+
+    def get_section_with_overrides(self, sectiongroupname, sectionname, overrides):
+        config = self[sectiongroupname][sectionname].copy()
+        if overrides is None:
+            return config
+        dummy = {sectiongroupname: {sectionname: config}}
+        for key in overrides:
+            config[key] = overrides[key]
+            massage = self.massagers.get((sectiongroupname, key))
+            if callable(massage):
+                config[key] = massage(dummy, sectionname)
+        return config

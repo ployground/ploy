@@ -63,6 +63,37 @@ class ConfigTests(TestCase):
             "macrovalue=1"]))
         self.assertRaises(ValueError, Config, contents)
 
+    def testOverrides(self):
+        contents = StringIO("\n".join([
+            "[section]",
+            "value=1"]))
+        config = Config(contents)
+        self.assertEqual(
+            config,
+            {'global': {'section': {'value': '1'}}})
+        self.assertEqual(
+            config.get_section_with_overrides(
+                'global',
+                'section',
+                overrides=None),
+            {'value': '1'})
+        self.assertEqual(
+            config.get_section_with_overrides(
+                'global',
+                'section',
+                overrides={'value': '2'}),
+            {'value': '2'})
+        self.assertEqual(
+            config.get_section_with_overrides(
+                'global',
+                'section',
+                overrides={'value2': '2'}),
+            {'value': '1', 'value2': '2'})
+        # make sure nothing is changed afterwards
+        self.assertEqual(
+            config,
+            {'global': {'section': {'value': '1'}}})
+
     def testDefaultPlugins(self):
         from mr.awsome import ec2, plain
         contents = StringIO("")
@@ -221,3 +252,39 @@ class MassagerTests(TestCase):
             "value=1"]))
         config = Config(contents)
         self.assertEquals(config['section'], {'foo': {'value': 1}})
+
+    def testMassagedOverrides(self):
+        from mr.awsome.config import IntegerMassager
+
+        dummyplugin.massagers.append(IntegerMassager('global', 'value'))
+        dummyplugin.massagers.append(IntegerMassager('global', 'value2'))
+        contents = StringIO("\n".join([
+            self.plugin_config,
+            "[section]",
+            "value=1"]))
+        config = Config(contents)
+        self.assertEqual(
+            config['global'],
+            {'section': {'value': 1}})
+        self.assertEqual(
+            config.get_section_with_overrides(
+                'global',
+                'section',
+                overrides=None),
+            {'value': 1})
+        self.assertEqual(
+            config.get_section_with_overrides(
+                'global',
+                'section',
+                overrides={'value': '2'}),
+            {'value': 2})
+        self.assertEqual(
+            config.get_section_with_overrides(
+                'global',
+                'section',
+                overrides={'value2': '2'}),
+            {'value': 1, 'value2': 2})
+        # make sure nothing is changed afterwards
+        self.assertEqual(
+            config['global'],
+            {'section': {'value': 1}})

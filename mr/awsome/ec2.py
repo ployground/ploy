@@ -61,22 +61,12 @@ class Instance(object):
             sgs.append(securitygroups.get(sgid, create=True))
         return sgs
 
-    def get_config(self, overrides=None):
-        massagers = get_massagers()
-        if overrides is None:
-            overrides = {}
-        config = self.config.copy()
-        for key in overrides:
-            massage = massagers.get(('ec2-instance', key))
-            if callable(massage):
-                config[key] = massage(self.master.main_config, overrides[key])
-        return config
-
     def get_host(self):
         return self.instance.public_dns_name
 
     def startup_script(self, overrides=None, debug=False):
-        config = self.get_config(overrides)
+        config = self.master.main_config.get_section_with_overrides(
+            'ec2-instance', self.id, overrides)
         startup_script_path = config.get('startup_script', None)
         if startup_script_path is None:
             return ''
