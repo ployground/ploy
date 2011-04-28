@@ -12,28 +12,20 @@ log = logging.getLogger('mr.awsome.ec2')
 
 
 class Instance(object):
-    def __init__(self, ec2, sid):
+    def __init__(self, master, sid, config):
         self.id = sid
-        self.ec2 = ec2
-        self.config = self.ec2.config['ec2-instance'][sid]
+        self.master = master
+        self.config = config
 
     @lazy
     def conn(self):
-        (aws_id, aws_key) = self.ec2.credentials
         region_id = self.config.get(
             'region',
-            self.ec2.config.get(
-                'global',
-                {}).get(
-                    'aws', {}).get(
-                        'region', None))
+            self.master.main_config.get('region', None))
         if region_id is None:
-            log.error("No region set in server and global config")
+            log.error("No region set in ec2-instance:%s or ec2-master:%s config" % (self.id, self.master.id))
             sys.exit(1)
-        region = self.ec2.regions[region_id]
-        return region.connect(
-            aws_access_key_id=aws_id, aws_secret_access_key=aws_key
-        )
+        return self.master.get_conn(region_id)
 
     @lazy
     def instance(self):
@@ -75,7 +67,7 @@ class Instance(object):
         for key in overrides:
             massage = massagers.get(('ec2-instance', key))
             if callable(massage):
-                config[key] = massage(self.ec2.config, overrides[key])
+                config[key] = massage(self.master.main_config, overrides[key])
         return config
 
     def get_host(self):
@@ -276,7 +268,7 @@ class Instance(object):
         port = 22
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(AWSHostKeyPolicy(instance))
-        known_hosts = self.ec2.known_hosts
+        known_hosts = self.master.known_hosts
         while 1:
             if os.path.exists(known_hosts):
                 client.load_host_keys(known_hosts)
@@ -314,10 +306,10 @@ class Securitygroups(object):
         self.securitygroups = dict((x.name, x) for x in self.server.conn.get_all_security_groups())
 
     def get(self, sgid, create=False):
-        if not 'ec2-securitygroup' in self.server.ec2.config:
+        if not 'ec2-securitygroup' in self.server.master.main_config:
             log.error("No security groups defined in configuration.")
             sys.exit(1)
-        securitygroup = self.server.ec2.config['ec2-securitygroup'][sgid]
+        securitygroup = self.server.master.main_config['ec2-securitygroup'][sgid]
         if sgid not in self.securitygroups:
             if not create:
                 raise KeyError
@@ -351,13 +343,13 @@ class Securitygroups(object):
 
 
 class Master(object):
-    def __init__(self, config, id):
+    def __init__(self, main_config, id):
         self.id = id
-        self.config = config
-        self.known_hosts = os.path.join(self.config.path, 'known_hosts')
+        self.main_config = main_config
+        self.known_hosts = os.path.join(self.main_config.path, 'known_hosts')
         self.instances = {}
-        for sid in self.config.get('ec2-instance', {}):
-            self.instances[sid] = Instance(self, sid)
+        for sid, config in self.main_config.get('ec2-instance', {}).iteritems():
+            self.instances[sid] = Instance(self, sid, config)
 
     @lazy
     def credentials(self):
@@ -365,8 +357,8 @@ class Master(object):
         aws_key = None
         if 'AWS_ACCESS_KEY_ID' not in os.environ or 'AWS_SECRET_ACCESS_KEY' not in os.environ:
             try:
-                id_file = self.config['ec2-master']['default']['access-key-id']
-                key_file = self.config['ec2-master']['default']['secret-access-key']
+                id_file = self.config['access-key-id']
+                key_file = self.config['secret-access-key']
             except KeyError:
                 log.error("You need to either set the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables or add the path to files containing them to the config. You can find the values at http://aws.amazon.com under 'Your Account'-'Security Credentials'.")
                 sys.exit(1)
@@ -395,45 +387,45 @@ class Master(object):
     def snapshots(self):
         return dict((x.id, x) for x in self.conn.get_all_snapshots(owner="self"))
 
-    @lazy
-    def conn(self):
+    def get_conn(self, region_id):
         (aws_id, aws_key) = self.credentials
-        region_id = self.config.get(
-                'ec2-master', {}).get(
-                    'default', {}).get(
-                        'region', None)
-        if region_id is None:
-            log.error("No region set in ec2-master:default config")
-            sys.exit(1)
         region = self.regions[region_id]
         return region.connect(
             aws_access_key_id=aws_id, aws_secret_access_key=aws_key
         )
 
+    @lazy
+    def conn(self):
+        region_id = self.config.get('region', None)
+        if region_id is None:
+            log.error("No region set in ec2-master:%s config" % self.id)
+            sys.exit(1)
+        return self.get_conn(region_id)
+
 
 def get_massagers():
-    def massage_instance_fabfile(config, value):
+    def massage_instance_fabfile(main_config, value):
         if not os.path.isabs(value):
-            value = os.path.join(config.path, value)
+            value = os.path.join(main_config.path, value)
         return value
 
-    def massage_instance_startup_script(config, value):
+    def massage_instance_startup_script(main_config, value):
         result = dict()
         if value.startswith('gzip:'):
             value = value[5:]
             result['gzip'] = True
         if not os.path.isabs(value):
-            value = os.path.join(config.path, value)
+            value = os.path.join(main_config.path, value)
         result['path'] = value
         return result
 
-    def massage_instance_securitygroups(config, value):
+    def massage_instance_securitygroups(main_config, value):
         securitygroups = []
         for securitygroup in value.split(','):
             securitygroups.append(securitygroup.strip())
         return set(securitygroups)
 
-    def massage_instance_volumes(config, value):
+    def massage_instance_volumes(main_config, value):
         volumes = []
         for line in value.split('\n'):
             volume = line.split()
@@ -442,7 +434,7 @@ def get_massagers():
             volumes.append((volume[0], volume[1]))
         return tuple(volumes)
 
-    def massage_instance_snapshots(config, value):
+    def massage_instance_snapshots(main_config, value):
         snapshots = []
         for line in value.split('\n'):
             snapshot = line.split()
@@ -451,14 +443,14 @@ def get_massagers():
             snapshots.append((snapshot[0], snapshot[1]))
         return tuple(snapshots)
 
-    def massage_instance_delete_volumes_on_terminate(config, value):
+    def massage_instance_delete_volumes_on_terminate(main_config, value):
         if value.lower() in ('true', 'yes', 'on'):
             return True
         elif value.lower() in ('false', 'no', 'off'):
             return False
         raise ValueError("Unknown value %s for delete-volumes-on-terminate." % value)
 
-    def massage_securitygroup_connections(config, value):
+    def massage_securitygroup_connections(main_config, value):
         connections = []
         for line in value.split('\n'):
             connection = line.split()
@@ -478,7 +470,7 @@ def get_massagers():
         ("ec2-securitygroup", 'connections'): massage_securitygroup_connections}
 
 
-def get_macro_cleaners(config):
+def get_macro_cleaners(main_config):
     def clean_instance(macro):
         for key in macro.keys():
             if key in ('ip', 'volumes'):
@@ -487,7 +479,7 @@ def get_macro_cleaners(config):
     return {"ec2-instance": clean_instance}
 
 
-def get_masters(config):
-    masters = config.get('ec2-master', {})
+def get_masters(main_config):
+    masters = main_config.get('ec2-master', {})
     for master in masters:
-        yield Master(config, master)
+        yield Master(main_config, master)

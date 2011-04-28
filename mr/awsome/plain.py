@@ -62,22 +62,22 @@ class Instance(object):
 
 
 class Master(object):
-    def __init__(self, config, id):
+    def __init__(self, main_config, id):
         self.id = id
-        self.config = config
-        self.known_hosts = os.path.join(self.config.path, 'known_hosts')
+        self.main_config = main_config
+        self.known_hosts = os.path.join(self.main_config.path, 'known_hosts')
         self.instances = {}
-        for sid, config in self.config.get('plain-instance', {}).iteritems():
+        for sid, config in self.main_config.get('plain-instance', {}).iteritems():
             self.instances[sid] = Instance(self, sid, config)
 
 
 def get_massagers():
-    def massage_fabfile(config, value):
+    def massage_fabfile(main_config, value):
         if not os.path.isabs(value):
-            value = os.path.join(config.path, value)
+            value = os.path.join(main_config.path, value)
         return value
 
-    def massage_user(config, value):
+    def massage_user(main_config, value):
         if value == "*":
             import pwd
             value = pwd.getpwuid(os.getuid())[0]
@@ -88,7 +88,7 @@ def get_massagers():
         ("plain-instance", 'fabfile'): massage_fabfile}
 
 
-def get_masters(config):
-    masters = config.get('plain-master', {'default': {}})
+def get_masters(main_config):
+    masters = main_config.get('plain-master', {'default': {}})
     for master in masters:
-        yield Master(config, master)
+        yield Master(main_config, master)
