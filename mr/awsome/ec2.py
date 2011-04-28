@@ -1,4 +1,5 @@
 from mr.awsome import template
+from mr.awsome.config import BaseMassager, BooleanMassager, PathMassager
 from mr.awsome.common import gzip_string
 from mr.awsome.lazy import lazy
 import datetime
@@ -403,13 +404,9 @@ class Master(object):
         return self.get_conn(region_id)
 
 
-def get_massagers():
-    def massage_instance_fabfile(main_config, value):
-        if not os.path.isabs(value):
-            value = os.path.join(main_config.path, value)
-        return value
-
-    def massage_instance_startup_script(main_config, value):
+class StartupScriptMassager(BaseMassager):
+    def __call__(self, main_config, sectionname):
+        value = main_config[self.sectiongroupname][sectionname][self.key]
         result = dict()
         if value.startswith('gzip:'):
             value = value[5:]
@@ -419,13 +416,19 @@ def get_massagers():
         result['path'] = value
         return result
 
-    def massage_instance_securitygroups(main_config, value):
+
+class SecuritygroupsMassager(BaseMassager):
+    def __call__(self, main_config, sectionname):
+        value = main_config[self.sectiongroupname][sectionname][self.key]
         securitygroups = []
         for securitygroup in value.split(','):
             securitygroups.append(securitygroup.strip())
         return set(securitygroups)
 
-    def massage_instance_volumes(main_config, value):
+
+class VolumesMassager(BaseMassager):
+    def __call__(self, main_config, sectionname):
+        value = main_config[self.sectiongroupname][sectionname][self.key]
         volumes = []
         for line in value.split('\n'):
             volume = line.split()
@@ -434,7 +437,10 @@ def get_massagers():
             volumes.append((volume[0], volume[1]))
         return tuple(volumes)
 
-    def massage_instance_snapshots(main_config, value):
+
+class SnapshotsMassager(BaseMassager):
+    def __call__(self, main_config, sectionname):
+        value = main_config[self.sectiongroupname][sectionname][self.key]
         snapshots = []
         for line in value.split('\n'):
             snapshot = line.split()
@@ -443,14 +449,10 @@ def get_massagers():
             snapshots.append((snapshot[0], snapshot[1]))
         return tuple(snapshots)
 
-    def massage_instance_delete_volumes_on_terminate(main_config, value):
-        if value.lower() in ('true', 'yes', 'on'):
-            return True
-        elif value.lower() in ('false', 'no', 'off'):
-            return False
-        raise ValueError("Unknown value %s for delete-volumes-on-terminate." % value)
 
-    def massage_securitygroup_connections(main_config, value):
+class ConnectionsMassager(BaseMassager):
+    def __call__(self, main_config, sectionname):
+        value = main_config[self.sectiongroupname][sectionname][self.key]
         connections = []
         for line in value.split('\n'):
             connection = line.split()
@@ -460,14 +462,24 @@ def get_massagers():
                                 int(connection[2]), connection[3]))
         return tuple(connections)
 
-    return {
-        ("ec2-instance", 'fabfile'): massage_instance_fabfile,
-        ("ec2-instance", 'startup_script'): massage_instance_startup_script,
-        ("ec2-instance", 'securitygroups'): massage_instance_securitygroups,
-        ("ec2-instance", 'volumes'): massage_instance_volumes,
-        ("ec2-instance", 'snapshots'): massage_instance_snapshots,
-        ("ec2-instance", 'delete-volumes-on-terminate'): massage_instance_delete_volumes_on_terminate,
-        ("ec2-securitygroup", 'connections'): massage_securitygroup_connections}
+
+def get_massagers():
+    massagers = []
+
+    sectiongroupname = 'ec2-instance'
+    massagers.extend([
+        PathMassager(sectiongroupname, 'fabfile'),
+        StartupScriptMassager(sectiongroupname, 'startup_script'),
+        SecuritygroupsMassager(sectiongroupname, 'securitygroups'),
+        VolumesMassager(sectiongroupname, 'volumes'),
+        SnapshotsMassager(sectiongroupname, 'snapshots'),
+        BooleanMassager(sectiongroupname, 'delete-volumes-on-terminate')])
+
+    sectiongroupname = 'ec2-securitygroup'
+    massagers.extend([
+        ConnectionsMassager(sectiongroupname, 'connections')])
+
+    return massagers
 
 
 def get_macro_cleaners(main_config):

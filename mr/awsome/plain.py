@@ -72,20 +72,12 @@ class Master(object):
 
 
 def get_massagers():
-    def massage_fabfile(main_config, value):
-        if not os.path.isabs(value):
-            value = os.path.join(main_config.path, value)
-        return value
+    from mr.awsome.config import PathMassager, UserMassager
 
-    def massage_user(main_config, value):
-        if value == "*":
-            import pwd
-            value = pwd.getpwuid(os.getuid())[0]
-        return value
-
-    return {
-        ("plain-instance", 'user'): massage_user,
-        ("plain-instance", 'fabfile'): massage_fabfile}
+    sectiongroupname = 'plain-instance'
+    return [
+        UserMassager(sectiongroupname, 'user'),
+        PathMassager(sectiongroupname, 'fabfile')]
 
 
 def get_masters(main_config):

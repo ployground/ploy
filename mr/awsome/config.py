@@ -2,6 +2,42 @@ from ConfigParser import RawConfigParser
 import os
 
 
+class BaseMassager(object):
+    def __init__(self, sectiongroupname, key):
+        self.sectiongroupname = sectiongroupname
+        self.key = key
+
+    def __call__(self, main_config, sectionname):
+        return main_config[self.sectiongroupname][sectionname][self.key]
+
+
+class BooleanMassager(BaseMassager):
+    def __call__(self, main_config, sectionname):
+        value = main_config[self.sectiongroupname][sectionname][self.key]
+        if value.lower() in ('true', 'yes', 'on'):
+            return True
+        elif value.lower() in ('false', 'no', 'off'):
+            return False
+        raise ValueError("Unknown value %s for %s in %s:%s." % (value, self.key, self.sectiongroupname, sectionname))
+
+
+class PathMassager(BaseMassager):
+    def __call__(self, main_config, sectionname):
+        value = main_config[self.sectiongroupname][sectionname][self.key]
+        if not os.path.isabs(value):
+            value = os.path.join(main_config.path, value)
+        return value
+
+
+class UserMassager(BaseMassager):
+    def __call__(self, main_config, sectionname):
+        value = main_config[self.sectiongroupname][sectionname][self.key]
+        if value == "*":
+            import pwd
+            value = pwd.getpwuid(os.getuid())[0]
+        return value
+
+
 class Config(dict):
     def _load_plugins(self):
         if self._bbb_config and 'plugin' not in self:
@@ -36,9 +72,11 @@ class Config(dict):
             else:
                 module = __import__(config['module'], globals(), locals(), [], -1)
             config['module'] = module
-            get_massagers = getattr(module, 'get_massagers', None)
-            if get_massagers is not None:
-                self.massagers.update(get_massagers())
+            for massager in getattr(module, 'get_massagers', lambda:[])():
+                key = (massager.sectiongroupname, massager.key)
+                if key in self.massagers:
+                    raise ValueError("Massager for option '%s' in section group '%s' already registered." % (massager.key, massager.sectiongroupname))
+                self.massagers[key] = massager
             get_macro_cleaners = getattr(module, 'get_macro_cleaners', None)
             if get_macro_cleaners is not None:
                 self.macro_cleaners.update(get_macro_cleaners(config))
@@ -95,4 +133,4 @@ class Config(dict):
                 for key in section:
                     massage = self.massagers.get((sectiongroupname, key))
                     if callable(massage):
-                        section[key] = massage(self, section[key])
+                        section[key] = massage(self, sectionname)

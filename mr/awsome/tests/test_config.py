@@ -63,24 +63,6 @@ class ConfigTests(TestCase):
             "macrovalue=1"]))
         self.assertRaises(ValueError, Config, contents)
 
-    def testMassager(self):
-        class DummyPlugin(object):
-            def get_massagers(self, config):
-                def massager(config, value):
-                    return int(value)
-                return {('section', 'value'): massager}
-
-        global dummyplugin
-        dummyplugin = DummyPlugin()
-        contents = StringIO("\n".join([
-            "[plugin:dummy]",
-            "module=mr.awsome.tests.test_config.dummyplugin",
-            "[section:foo]",
-            "value=1"]))
-        config = Config(contents)
-        dummyplugin = None
-        self.assertEquals(config['section'], {'foo': {'value': 1}})
-
     def testDefaultPlugins(self):
         from mr.awsome import ec2, plain
         contents = StringIO("")
@@ -93,3 +75,112 @@ class ConfigTests(TestCase):
                     'module': plain}},
             'plain-master': {
                 'default': {}}})
+
+
+class DummyPlugin(object):
+    def __init__(self):
+        self.massagers = []
+
+    def get_massagers(self):
+        return self.massagers
+
+
+class MassagerTests(TestCase):
+    def setUp(self):
+        TestCase.setUp(self)
+        global dummyplugin
+        dummyplugin = DummyPlugin()
+        self.plugin_config = "[plugin:dummy]\nmodule=mr.awsome.tests.test_config.dummyplugin"
+
+    def tearDown(self):
+        TestCase.tearDown(self)
+        global dummyplugin
+        dummyplugin = None
+
+    def testBaseMassager(self):
+        from mr.awsome.config import BaseMassager
+
+        dummyplugin.massagers.append(BaseMassager('section', 'value'))
+        contents = StringIO("\n".join([
+            self.plugin_config,
+            "[section:foo]",
+            "value=1"]))
+        config = Config(contents)
+        self.assertEquals(config['section'], {'foo': {'value': '1'}})
+
+    def testBooleanMassager(self):
+        from mr.awsome.config import BooleanMassager
+
+        dummyplugin.massagers.append(BooleanMassager('section', 'value'))
+        test_values = (
+            ('true', True),
+            ('True', True),
+            ('yes', True),
+            ('Yes', True),
+            ('on', True),
+            ('On', True),
+            ('false', False),
+            ('False', False),
+            ('no', False),
+            ('No', False),
+            ('off', False),
+            ('Off', False))
+        for value, expected in test_values:
+            contents = StringIO("\n".join([
+                self.plugin_config,
+                "[section:foo]",
+                "value=%s" % value]))
+            config = Config(contents)
+            self.assertEquals(config['section'], {'foo': {'value': expected}})
+        contents = StringIO("\n".join([
+            self.plugin_config,
+            "[section:foo]",
+            "value=foo"]))
+        self.assertRaises(ValueError, Config, contents)
+
+    def testPathMassager(self):
+        from mr.awsome.config import PathMassager
+
+        dummyplugin.massagers.append(PathMassager('section', 'value1'))
+        dummyplugin.massagers.append(PathMassager('section', 'value2'))
+        contents = StringIO("\n".join([
+            self.plugin_config,
+            "[section:foo]",
+            "value1=foo",
+            "value2=/foo"]))
+        config = Config(contents, path='/config')
+        self.assertEquals(config['section'], {'foo': {
+            'value1': '/config/foo',
+            'value2': '/foo'}})
+
+    def testUserMassager(self):
+        from mr.awsome.config import UserMassager
+        import os, pwd
+
+        dummyplugin.massagers.append(UserMassager('section', 'value1'))
+        dummyplugin.massagers.append(UserMassager('section', 'value2'))
+        contents = StringIO("\n".join([
+            self.plugin_config,
+            "[section:foo]",
+            "value1=*",
+            "value2=foo"]))
+        config = Config(contents)
+        self.assertEquals(config['section'], {'foo': {
+            'value1': pwd.getpwuid(os.getuid())[0],
+            'value2': 'foo'}})
+
+    def testCustomMassager(self):
+        from mr.awsome.config import BaseMassager
+
+        class DummyMassager(BaseMassager):
+            def __call__(self, config, sectionname):
+                value = config[self.sectiongroupname][sectionname][self.key]
+                return int(value)
+
+        dummyplugin.massagers.append(DummyMassager('section', 'value'))
+        contents = StringIO("\n".join([
+            self.plugin_config,
+            "[section:foo]",
+            "value=1"]))
+        config = Config(contents)
+        self.assertEquals(config['section'], {'foo': {'value': 1}})
