@@ -24,7 +24,7 @@ class Instance(StartupScriptMixin):
     def conn(self):
         region_id = self.config.get(
             'region',
-            self.master.main_config.get('region', None))
+            self.master.config.get('region', None))
         if region_id is None:
             log.error("No region set in ec2-instance:%s or ec2-master:%s config" % (self.id, self.master.id))
             sys.exit(1)
@@ -312,9 +312,10 @@ class Securitygroups(object):
 
 
 class Master(object):
-    def __init__(self, main_config, id):
+    def __init__(self, main_config, id, config):
         self.id = id
         self.main_config = main_config
+        self.config = config
         self.known_hosts = os.path.join(self.main_config.path, 'known_hosts')
         self.instances = {}
         sectiongroupname = 'ec2-instance'
@@ -450,5 +451,5 @@ def get_macro_cleaners(main_config):
 
 def get_masters(main_config):
     masters = main_config.get('ec2-master', {})
-    for master in masters:
-        yield Master(main_config, master)
+    for master, config in masters.iteritems():
+        yield Master(main_config, master, config)
