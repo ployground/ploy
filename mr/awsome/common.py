@@ -19,11 +19,14 @@ def gzip_string(value):
 
 
 class StartupScriptMixin(object):
+    def get_config(self, overrides=None):
+        return self.master.main_config.get_section_with_overrides(
+            self.sectiongroupname, self.id, overrides)
+
     def startup_script(self, overrides=None, debug=False):
         from mr.awsome import template # avoid circular import
 
-        config = self.master.main_config.get_section_with_overrides(
-            self.sectiongroupname, self.id, overrides)
+        config = self.get_config(overrides)
         startup_script_path = config.get('startup_script', None)
         if startup_script_path is None:
             return ''
