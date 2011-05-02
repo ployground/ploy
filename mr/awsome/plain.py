@@ -1,3 +1,4 @@
+from mr.awsome.common import BaseMaster
 import os
 
 
@@ -61,16 +62,9 @@ class Instance(object):
         return user, host, port, client, known_hosts
 
 
-class Master(object):
-    def __init__(self, main_config, id):
-        self.id = id
-        self.main_config = main_config
-        self.known_hosts = os.path.join(self.main_config.path, 'known_hosts')
-        self.instances = {}
-        sectiongroupname = 'plain-instance'
-        for sid, config in self.main_config.get(sectiongroupname, {}).iteritems():
-            self.instances[sid] = Instance(self, sid, config)
-            self.instances[sid].sectiongroupname = sectiongroupname
+class Master(BaseMaster):
+    sectiongroupname = 'plain-instance'
+    instance_class = Instance
 
 
 def get_massagers():
@@ -84,5 +78,5 @@ def get_massagers():
 
 def get_masters(main_config):
     masters = main_config.get('plain-master', {'default': {}})
-    for master in masters:
-        yield Master(main_config, master)
+    for master, master_config in masters.iteritems():
+        yield Master(main_config, master, master_config)

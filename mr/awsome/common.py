@@ -4,6 +4,7 @@ except ImportError: # pragma: no cover
     from StringIO import StringIO
 import gzip
 import logging
+import os
 import sys
 
 
@@ -48,3 +49,15 @@ class StartupScriptMixin(object):
             if not debug:
                 sys.exit(1)
         return result
+
+
+class BaseMaster(object):
+    def __init__(self, main_config, id, master_config):
+        self.id = id
+        self.main_config = main_config
+        self.master_config = master_config
+        self.known_hosts = os.path.join(self.main_config.path, 'known_hosts')
+        self.instances = {}
+        for sid, config in self.main_config.get(self.sectiongroupname, {}).iteritems():
+            self.instances[sid] = self.instance_class(self, sid, config)
+            self.instances[sid].sectiongroupname = self.sectiongroupname
