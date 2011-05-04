@@ -76,7 +76,7 @@ class Config(dict):
                 self['plain-instance'] = self['server']
                 del self['server']
             if 'global' in self and 'aws' in self['global']:
-                self['ec2-master'] = {}
+                self.setdefault('ec2-master', {})
                 self['ec2-master']['default'] = self['global']['aws']
                 del self['global']['aws']
                 if len(self['global']) == 0:

@@ -107,6 +107,31 @@ class ConfigTests(TestCase):
             'plain-master': {
                 'default': {}}})
 
+    def testBBBConfig(self):
+        from mr.awsome import ec2, plain
+        contents = StringIO("\n".join([
+            "[instance:foo]",
+            "[securitygroup:foo]",
+            "[server:bar]",
+            "[aws]",
+            "access-key-id = foo",
+            "secret-access-key = bar"]))
+        config = Config(contents, bbb_config=True)
+        self.assertDictEqual(config, {
+            'plugin': {
+                'ec2': {
+                    'module': ec2},
+                'plain': {
+                    'module': plain}},
+            'ec2-master': {'default': {
+                'access-key-id': 'foo',
+                'secret-access-key': 'bar'}},
+            'ec2-instance': {'foo': {}},
+            'ec2-securitygroup': {'foo': {}},
+            'plain-instance': {'bar': {}},
+            'plain-master': {
+                'default': {}}})
+
 
 class DummyPlugin(object):
     def __init__(self):
