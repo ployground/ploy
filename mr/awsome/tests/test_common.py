@@ -116,8 +116,10 @@ class StartupScriptTests(TestCase):
             path=self.directory)
         instance.master = MockMaster(config)
         instance.max_startup_script_size = 10
-        with self.assertRaises(SystemExit):
-            instance.startup_script()
+        with patch('mr.awsome.common.log') as LogMock:
+            with self.assertRaises(SystemExit):
+                instance.startup_script()
+            LogMock.error.assert_called_with('Startup script too big.')
 
     def testMaxSizeExceededDebug(self):
         with open(os.path.join(self.directory, 'foo'), 'w') as f:
