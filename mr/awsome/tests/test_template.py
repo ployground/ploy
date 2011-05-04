@@ -22,32 +22,32 @@ class TemplateTests(TestCase):
         self._fillTemplate("")
         template = Template(self.template_path)
         result = template()
-        self.assertEqual(result, "")
+        self.assertMultiLineEqual(result, "")
 
     def testPreFilter(self):
         self._fillTemplate("\n".join(str(x) for x in range(3)))
         template = Template(self.template_path, pre_filter=lambda x: x.replace("1\n", ""))
         result = template()
-        self.assertEqual(result, "0\n2")
+        self.assertMultiLineEqual(result, "0\n2")
 
     def testPostFilter(self):
         self._fillTemplate("\n".join(str(x) for x in range(3)))
         template = Template(self.template_path, post_filter=lambda x: x.replace("1\n", ""))
         result = template()
-        self.assertEqual(result, "0\n2")
+        self.assertMultiLineEqual(result, "0\n2")
 
     def testKeywordOption(self):
         self._fillTemplate("{option}")
         template = Template(self.template_path)
         result = template(option="foo")
-        self.assertEqual(result, "foo")
+        self.assertMultiLineEqual(result, "foo")
 
     def testBase64Option(self):
         self._fillTemplate("option: base64 1\n\n{option}")
         template = Template(self.template_path)
         result = template()
-        self.assertEqual(result, "MQ==\n")
-        self.assertEqual(result.decode('base64'), "1")
+        self.assertMultiLineEqual(result, "MQ==\n")
+        self.assertMultiLineEqual(result.decode('base64'), "1")
 
     def testEscapeEolOption(self):
         self._fillTemplate("option: file,escape_eol test.txt\n\n{option}")
@@ -55,7 +55,7 @@ class TemplateTests(TestCase):
         with open(os.path.join(self.directory, 'test.txt'), "w") as f:
             f.write("1\n2\n")
         result = template()
-        self.assertEqual(result, "1\\n2\\n")
+        self.assertMultiLineEqual(result, "1\\n2\\n")
 
     def testFileOption(self):
         self._fillTemplate("option: file test.txt\n\n{option}")
@@ -63,13 +63,13 @@ class TemplateTests(TestCase):
         with open(os.path.join(self.directory, 'test.txt'), "w") as f:
             f.write("1")
         result = template()
-        self.assertEqual(result, "1")
+        self.assertMultiLineEqual(result, "1")
 
     def testFormatOption(self):
         self._fillTemplate("option: format {foo}\n\n{option}")
         template = Template(self.template_path)
         result = template(foo=1)
-        self.assertEqual(result, "1")
+        self.assertMultiLineEqual(result, "1")
 
     def testGzipOption(self):
         self._fillTemplate("option: gzip,base64 1\n\n{option}")
@@ -88,9 +88,10 @@ class TemplateTests(TestCase):
         with open(os.path.join(self.directory, 'test.txt'), "w") as f:
             f.write("option: format 1\n\n{option}")
         result = template()
-        self.assertEqual(result, "1")
+        self.assertMultiLineEqual(result, "1")
 
     def testUnkownOption(self):
         self._fillTemplate("option: foo 1\n\n{option}")
         template = Template(self.template_path)
-        self.assertRaises(ValueError, template)
+        with self.assertRaises(ValueError):
+            template()
