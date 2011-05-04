@@ -1,5 +1,6 @@
 try:
-    from cStringIO import StringIO
+    import cStringIO
+    StringIO = cStringIO.StringIO # shutup pyflakes
 except ImportError: # pragma: no cover
     from StringIO import StringIO
 import gzip

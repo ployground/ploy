@@ -1,7 +1,6 @@
 from mr.awsome.common import gzip_string
 import email
 import os
-import sys
 
 
 def strip_hashcomments(value):
