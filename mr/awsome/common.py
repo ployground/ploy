@@ -20,6 +20,19 @@ def gzip_string(value):
     return s.getvalue()
 
 
+def strip_hashcomments(value):
+    lines = value.split('\n')
+    result = []
+    if lines[0].rstrip() in ('#!/bin/sh', '#!/bin/bash'):
+        for index, line in enumerate(lines):
+            if index > 0 and line.strip().startswith('#'):
+                continue
+            result.append(line)
+    else:
+        return "\n".join(lines)
+    return "\n".join(result)
+
+
 class StartupScriptMixin(object):
     def get_config(self, overrides=None):
         return self.master.main_config.get_section_with_overrides(
@@ -34,7 +47,7 @@ class StartupScriptMixin(object):
             return ''
         startup_script = template.Template(
             startup_script_path['path'],
-            pre_filter=template.strip_hashcomments,
+            pre_filter=strip_hashcomments,
         )
         result = startup_script(**config)
         if startup_script_path.get('gzip', False):

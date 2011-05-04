@@ -3,19 +3,6 @@ import email
 import os
 
 
-def strip_hashcomments(value):
-    lines = value.split('\n')
-    result = []
-    if lines[0].rstrip() in ('#!/bin/sh', '#!/bin/bash'):
-        for index, line in enumerate(lines):
-            if index > 0 and line.strip().startswith('#'):
-                continue
-            result.append(line)
-    else:
-        return "\n".join(lines)
-    return "\n".join(result)
-
-
 class Template(object):
     def __init__(self, path, pre_filter=None, post_filter=None):
         self.path = path
