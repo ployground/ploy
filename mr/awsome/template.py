@@ -11,6 +11,8 @@ def strip_hashcomments(value):
             if index > 0 and line.strip().startswith('#'):
                 continue
             result.append(line)
+    else:
+        return "\n".join(lines)
     return "\n".join(result)
 
 
