@@ -1,6 +1,6 @@
 from StringIO import StringIO
 from mr.awsome.config import Config
-from unittest import TestCase
+from unittest2 import TestCase
 
 
 dummyplugin = None

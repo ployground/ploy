@@ -1,5 +1,5 @@
 from mr.awsome.template import Template
-from unittest import TestCase
+from unittest2 import TestCase
 import os
 import shutil
 import tempfile
