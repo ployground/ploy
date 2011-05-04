@@ -31,6 +31,7 @@ class AWS(object):
             log.error("Config '%s' doesn't exist." % configpath)
             sys.exit(1)
         config = Config(configpath, bbb_config=True)
+        config.parse()
         return config
 
     @lazy

@@ -58,6 +58,12 @@ class UserMassager(BaseMassager):
 
 
 class Config(dict):
+    def _add_massager(self, massager):
+        key = (massager.sectiongroupname, massager.key)
+        if key in self.massagers:
+            raise ValueError("Massager for option '%s' in section group '%s' already registered." % (massager.key, massager.sectiongroupname))
+        self.massagers[key] = massager
+
     def _load_plugins(self):
         if self._bbb_config and 'plugin' not in self:
             # define default plugins for backward compatibility
@@ -92,10 +98,7 @@ class Config(dict):
                 module = __import__(config['module'], globals(), locals(), [], -1)
             config['module'] = module
             for massager in getattr(module, 'get_massagers', lambda:[])():
-                key = (massager.sectiongroupname, massager.key)
-                if key in self.massagers:
-                    raise ValueError("Massager for option '%s' in section group '%s' already registered." % (massager.key, massager.sectiongroupname))
-                self.massagers[key] = massager
+                self._add_massager(massager)
             get_macro_cleaners = getattr(module, 'get_macro_cleaners', None)
             if get_macro_cleaners is not None:
                 self.macro_cleaners.update(get_macro_cleaners(config))
@@ -122,15 +125,20 @@ class Config(dict):
                 section[key] = macro[key]
 
     def __init__(self, config, path=None, bbb_config=False):
+        self.config = config
+        self.path = path
         self._bbb_config = bbb_config
+        self.massagers = {}
+        self.macro_cleaners = {}
+
+    def parse(self):
         _config = RawConfigParser()
         _config.optionxform = lambda s: s
-        if getattr(config, 'read', None) is not None:
-            _config.readfp(config)
-            self.path = path
+        if getattr(self.config, 'read', None) is not None:
+            _config.readfp(self.config)
         else:
-            _config.read(config)
-            self.path = os.path.dirname(config)
+            _config.read(self.config)
+            self.path = os.path.dirname(self.config)
         for section in _config.sections():
             if ':' in section:
                 sectiongroupname, sectionname = section.split(':')
@@ -139,8 +147,6 @@ class Config(dict):
             items = dict(_config.items(section))
             sectiongroup = self.setdefault(sectiongroupname, {})
             sectiongroup.setdefault(sectionname, {}).update(items)
-        self.massagers = {}
-        self.macro_cleaners = {}
         self._load_plugins()
         seen = set()
         for sectiongroupname in self:
@@ -153,6 +159,7 @@ class Config(dict):
                     massage = self.massagers.get((sectiongroupname, key))
                     if callable(massage):
                         section[key] = massage(self, sectionname)
+        return self
 
     def get_section_with_overrides(self, sectiongroupname, sectionname, overrides):
         config = self[sectiongroupname][sectionname].copy()
