@@ -312,7 +312,7 @@ class AWS(object):
                 elif arg[1] in 'bcDeFiLlmOopRSw':
                     continue
         if sid_index is None:
-            parser.print_help()
+            parser.print_help(sys.stderr)
             return
         server = instances[argv[sid_index]]
         from paramiko import SSHException
