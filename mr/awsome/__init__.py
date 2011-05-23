@@ -3,10 +3,15 @@ pkg_resources.declare_namespace(__name__)
 
 from mr.awsome.config import Config
 from mr.awsome.lazy import lazy
+from mr.awsome import template
 import logging
 import argparse
 import os
 import sys
+
+
+# shutup pyflakes
+__all__ = [template.__name__]
 
 
 log = logging.getLogger('mr.awsome')
