@@ -113,9 +113,7 @@ class Instance(StartupScriptMixin):
             return
         volumes_to_delete = []
         if 'snapshots' in self.config and self.config.get('delete-volumes-on-terminate', False):
-            snapshots = {}
-            for master in self.get_masters('snapshots'):
-                snapshots.update(master.snapshots)
+            snapshots = self.master.snapshots
             volumes = dict((x.volume_id, d) for d, x in instance.block_device_mapping.items())
             for volume in self.conn.get_all_volumes(volume_ids=volumes.keys()):
                 snapshot_id = volume.snapshot_id
