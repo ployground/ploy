@@ -353,11 +353,11 @@ class EC2(object):
             except KeyError:
                 log.error("You need to either set the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables or add the path to files containing them to the config. You can find the values at http://aws.amazon.com under 'Your Account'-'Security Credentials'.")
                 sys.exit(1)
-            id_file = os.path.abspath(os.path.expanduser(id_file))
+            id_file = os.path.abspath(os.path.expanduser(os.path.expandvars(id_file)))
             if not os.path.exists(id_file):
                 log.error("The access-key-id file at '%s' doesn't exist." % id_file)
                 sys.exit(1)
-            key_file = os.path.abspath(os.path.expanduser(key_file))
+            key_file = os.path.abspath(os.path.expanduser(os.path.expendvars(key_file)))
             if not os.path.exists(key_file):
                 log.error("The secret-access-key file at '%s' doesn't exist." % key_file)
                 sys.exit(1)
