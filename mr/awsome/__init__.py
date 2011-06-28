@@ -357,7 +357,7 @@ class EC2(object):
             if not os.path.exists(id_file):
                 log.error("The access-key-id file at '%s' doesn't exist." % id_file)
                 sys.exit(1)
-            key_file = os.path.abspath(os.path.expanduser(os.path.expendvars(key_file)))
+            key_file = os.path.abspath(os.path.expanduser(os.path.expandvars(key_file)))
             if not os.path.exists(key_file):
                 log.error("The secret-access-key file at '%s' doesn't exist." % key_file)
                 sys.exit(1)
