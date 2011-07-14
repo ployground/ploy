@@ -14,6 +14,9 @@ class Instance(StartupScriptMixin):
         self.master = master
         self.config = config
 
+    def get_host(self):
+        return self.config['host']
+
     def start(self, overrides=None):
         log.info('start: %s %s', self.id, overrides)
 
@@ -26,6 +29,8 @@ class Instance(StartupScriptMixin):
     def terminate(self):
         log.info('terminate: %s', self.id)
 
+    def init_ssh_key(self, user=None):
+        log.info('init_ssh_key: %s %s', self.id, user)
 
 class Master(BaseMaster):
     sectiongroupname = 'dummy-instance'

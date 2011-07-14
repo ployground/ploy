@@ -208,15 +208,13 @@ class AWS(object):
                             metavar="server",
                             help="Name of the instance or server from the config.",
                             choices=list(instances))
-        parser.add_argument("...", nargs=argparse.REMAINDER,
+        parser.add_argument("...", nargs='+',
                             help="Fabric options")
-        if len(argv) < 2:
-            parser.print_help()
-            return
+        parser.parse_args(argv)
         old_sys_argv = sys.argv
         old_cwd = os.getcwd()
 
-        import fabric_integration
+        from mr.awsome import fabric_integration
         # this needs to be done before any other fabric module import
         fabric_integration.patch()
 
@@ -236,7 +234,7 @@ class AWS(object):
             fabfile = server.config.get('fabfile')
             if fabfile is None:
                 log.error("No fabfile declared.")
-                return
+                sys.exit(1)
             newargv = ['fab', '-H', hoststr, '-r', '-D']
             if fabfile is not None:
                 newargv = newargv + ['-f', fabfile]
@@ -262,12 +260,18 @@ class AWS(object):
                             lines[index] = line[len(prefix):]
                     self.org.write('\n'.join(lines))
 
-            sys.stdout = StdFilter(sys.stdout)
-            sys.stderr = StdFilter(sys.stderr)
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            try:
+                sys.stdout = StdFilter(sys.stdout)
+                sys.stderr = StdFilter(sys.stderr)
 
-            fabric.main.main()
+                fabric.main.main()
+            finally:
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
         finally:
-            if fabric.state.connections.opened(hoststr):
+            if fabric.state.connections.opened(hoststr): # pragma: no cover
                 fabric.state.connections[hoststr].close()
             sys.argv = old_sys_argv
             os.chdir(old_cwd)
