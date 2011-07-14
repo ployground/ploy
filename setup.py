@@ -21,6 +21,7 @@ setup(
         'boto >= 1.9b',
         'Fabric >= 0.9.0',
         'argparse >= 1.1',
+        'lazy',
     ],
     entry_points="""
       [console_scripts]

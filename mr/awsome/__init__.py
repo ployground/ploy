@@ -1,8 +1,8 @@
 import pkg_resources
 pkg_resources.declare_namespace(__name__)
 
+from lazy import lazy
 from mr.awsome.config import Config
-from mr.awsome.lazy import lazy
 from mr.awsome import template
 import logging
 import argparse

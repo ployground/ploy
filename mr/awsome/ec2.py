@@ -1,7 +1,7 @@
+from lazy import lazy
 from mr.awsome.common import BaseMaster, StartupScriptMixin
 from mr.awsome.config import BaseMassager, BooleanMassager, PathMassager
 from mr.awsome.config import StartupScriptMassager
-from mr.awsome.lazy import lazy
 import datetime
 import logging
 import os
