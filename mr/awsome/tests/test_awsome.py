@@ -37,25 +37,6 @@ class AwsomeTests(TestCase):
                 aws.config
             LogMock.error.assert_called_with("Config '%s' doesn't exist." % aws.configfile)
 
-    def testAWSEntryPoint(self):
-        import mr.awsome
-        with patch('sys.stderr') as StdErrMock:
-            with self.assertRaises(SystemExit):
-                mr.awsome.aws(self.directory)
-        output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage:', output)
-        self.assertIn('too few arguments', output)
-
-    def testAWSSSHEntryPoint(self):
-        import mr.awsome
-        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
-            f.write("")
-        with patch('sys.stderr') as StdErrMock:
-            mr.awsome.aws_ssh(self.directory)
-        output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage:', output)
-        self.assertIn('Log into the server with ssh using the automatically generated known hosts', output)
-
     def testCallWithNoArguments(self):
         aws = AWS()
         with patch('sys.stderr') as StdErrMock:
