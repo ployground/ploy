@@ -45,10 +45,16 @@ class StartupScriptMixin(object):
         startup_script_path = config.get('startup_script', None)
         if startup_script_path is None:
             return ''
-        startup_script = template.Template(
-            startup_script_path['path'],
-            pre_filter=strip_hashcomments,
-        )
+        try:
+            startup_script = template.Template(
+                startup_script_path['path'],
+                pre_filter=strip_hashcomments,
+            )
+        except IOError as e:
+            if e.args[0] == 2:
+                log.error("Startup script '%s' not found.", startup_script_path['path'])
+                sys.exit(1)
+            raise
         result = startup_script(**config)
         if startup_script_path.get('gzip', False):
             result = "\n".join([
@@ -59,7 +65,7 @@ class StartupScriptMixin(object):
             ])
         max_size = getattr(self, 'max_startup_script_size', None)
         if max_size is not None and len(result) >= max_size:
-            log.error("Startup script too big.")
+            log.error("Startup script too big (%s > %s).", len(result), max_size)
             if not debug:
                 sys.exit(1)
         return result

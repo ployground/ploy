@@ -50,10 +50,12 @@ class StartupScriptTests(TestCase):
                 "startup_script = foo"]),
             path=self.directory)
         instance.master = MockMaster(config)
-        with self.assertRaises(IOError) as exc:
-            instance.startup_script()
-        self.assertEqual('No such file or directory', exc.exception[1])
-        self.assertEqual(os.path.join(self.directory, 'foo'), exc.exception[2])
+        with patch('mr.awsome.common.log') as CommonLogMock:
+            with self.assertRaises(SystemExit) as exc:
+                instance.startup_script()
+        CommonLogMock.error.assert_called_with(
+            "Startup script '%s' not found.",
+            os.path.join(self.directory, 'foo'))
 
     def testEmptyStartupScript(self):
         with open(os.path.join(self.directory, 'foo'), 'w') as f:
@@ -119,7 +121,7 @@ class StartupScriptTests(TestCase):
         with patch('mr.awsome.common.log') as LogMock:
             with self.assertRaises(SystemExit):
                 instance.startup_script()
-            LogMock.error.assert_called_with('Startup script too big.')
+            LogMock.error.assert_called_with('Startup script too big (%s > %s).', 15, 10)
 
     def testMaxSizeExceededDebug(self):
         with open(os.path.join(self.directory, 'foo'), 'w') as f:
@@ -134,4 +136,4 @@ class StartupScriptTests(TestCase):
         instance.max_startup_script_size = 10
         with patch('mr.awsome.common.log') as LogMock:
             instance.startup_script(debug=True)
-            LogMock.error.assert_called_with('Startup script too big.')
+            LogMock.error.assert_called_with('Startup script too big (%s > %s).', 15, 10)

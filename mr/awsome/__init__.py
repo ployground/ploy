@@ -127,13 +127,13 @@ class AWS(object):
             for override in options.overrides:
                 if '=' not in override:
                     log.error("Invalid format for override '%s', should be NAME=VALUE." % override)
-                    return
-                key, value = override.split('=')
+                    sys.exit(1)
+                key, value = override.split('=', 1)
                 key = key.strip()
                 value = value.strip()
                 if key == '':
                     log.error("Empty key for override '%s'." % override)
-                    return
+                    sys.exit(1)
                 overrides[key] = value
         return overrides
 
@@ -183,11 +183,12 @@ class AWS(object):
         overrides['servers'] = self.instances
         server = instances[args.server[0]]
         startup_script = server.startup_script(overrides=overrides, debug=True)
-        log.info("Length of startup script: %s/%s", len(startup_script), 16*1024)
+        max_size = getattr(server, 'max_startup_script_size', 16*1024)
+        log.info("Length of startup script: %s/%s", len(startup_script), max_size)
         if args.verbose:
             log.info("Startup script:")
             print startup_script,
-        if args.interactive:
+        if args.interactive: # pragma: no cover
             import readline
             conn = server.conn
             instance = server.instance
@@ -423,12 +424,12 @@ class AWS(object):
         args.func(sub_argv, args.func.__doc__)
 
 
-def aws(configpath=None):
+def aws(configpath=None): # pragma: no cover
     argv = sys.argv[:]
     aws = AWS(configpath=configpath)
     return aws(argv)
 
-def aws_ssh(configpath=None):
+def aws_ssh(configpath=None): # pragma: no cover
     argv = sys.argv[:]
     argv.insert(1, "ssh")
     aws = AWS(configpath=configpath)
