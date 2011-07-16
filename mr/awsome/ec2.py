@@ -42,11 +42,11 @@ class Instance(StartupScriptMixin):
                     continue
                 instances.append(instance)
         if len(instances) < 1:
-            log.info("Instance '%s' unavailable" % self.id)
+            log.info("Instance '%s' unavailable.", self.id)
             return
         elif len(instances) > 1:
             log.warn("More than one instance found, using first.")
-        log.info("Instance '%s' available" % self.id)
+        log.info("Instance '%s' available.", self.id)
         return instances[0]
 
     def image(self):
@@ -326,11 +326,11 @@ class Master(BaseMaster):
                 sys.exit(1)
             id_file = os.path.abspath(os.path.expanduser(id_file))
             if not os.path.exists(id_file):
-                log.error("The access-key-id file at '%s' doesn't exist." % id_file)
+                log.error("The access-key-id file at '%s' doesn't exist.", id_file)
                 sys.exit(1)
             key_file = os.path.abspath(os.path.expanduser(key_file))
             if not os.path.exists(key_file):
-                log.error("The secret-access-key file at '%s' doesn't exist." % key_file)
+                log.error("The secret-access-key file at '%s' doesn't exist.", key_file)
                 sys.exit(1)
             aws_id = open(id_file).readline().strip()
             aws_key = open(key_file).readline().strip()
@@ -338,10 +338,10 @@ class Master(BaseMaster):
 
     @lazy
     def regions(self):
-        import boto.ec2
+        from boto.ec2 import regions
 
         (aws_id, aws_key) = self.credentials
-        return dict((x.name, x) for x in boto.ec2.regions(
+        return dict((x.name, x) for x in regions(
             aws_access_key_id=aws_id, aws_secret_access_key=aws_key
         ))
 
@@ -351,7 +351,11 @@ class Master(BaseMaster):
 
     def get_conn(self, region_id):
         (aws_id, aws_key) = self.credentials
-        region = self.regions[region_id]
+        try:
+            region = self.regions[region_id]
+        except KeyError:
+            log.error("Region '%s' not found in regions returned by EC2.", region_id)
+            sys.exit(1)
         return region.connect(
             aws_access_key_id=aws_id, aws_secret_access_key=aws_key
         )
