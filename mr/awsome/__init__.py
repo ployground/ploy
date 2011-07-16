@@ -332,9 +332,9 @@ class AWS(object):
             user, host, port, client, known_hosts = server.init_ssh_key()
         except SSHException, e:
             log.error("Couldn't validate fingerprint for ssh connection.")
-            log.error(e)
+            log.error(unicode(e))
             log.error("Is the server finished starting up?")
-            return
+            sys.exit(1)
         client.close()
         argv[sid_index:sid_index+1] = ['-o', 'UserKnownHostsFile=%s' % known_hosts,
                                        '-l', user,

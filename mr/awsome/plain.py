@@ -16,7 +16,7 @@ class Instance(object):
 
         fingerprint = self.config.get('fingerprint')
         if fingerprint is None:
-            raise SSHException("No fingerprint set in config")
+            raise SSHException("No fingerprint set in config.")
         return fingerprint
 
     def init_ssh_key(self, user=None):
@@ -35,7 +35,10 @@ class Instance(object):
                     return
                 raise paramiko.SSHException("Fingerprint doesn't match for %s (got %s, expected %s)" % (hostname, fingerprint, self.fingerprint))
 
-        host = self.get_host()
+        try:
+            host = self.get_host()
+        except KeyError:
+            raise paramiko.SSHException("No host set in config.")
         port = self.config.get('port', 22)
         client = paramiko.SSHClient()
         sshconfig = paramiko.SSHConfig()
