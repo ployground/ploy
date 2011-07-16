@@ -86,7 +86,7 @@ class StartCommandTests(TestCase):
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
                 self.aws(['./bin/aws', 'start', 'foo'])
-            except SystemExit:
+            except SystemExit: # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         self.assertTrue(LogMock.info.called)
         self.assertEquals(LogMock.info.call_args[0][0], 'start: %s %s')
@@ -112,7 +112,7 @@ class StartCommandTests(TestCase):
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
                 self.aws(['./bin/aws', 'start', 'foo', '-o', 'ham=egg'])
-            except SystemExit:
+            except SystemExit: # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         self.assertTrue(LogMock.info.called)
         self.assertEquals(LogMock.info.call_args[0][0], 'start: %s %s')
@@ -131,7 +131,7 @@ class StartCommandTests(TestCase):
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
                 self.aws(['./bin/aws', 'start', 'foo', '-o', 'ham=egg', 'spam=1'])
-            except SystemExit:
+            except SystemExit: # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         self.assertTrue(LogMock.info.called)
         self.assertEquals(LogMock.info.call_args[0][0], 'start: %s %s')
@@ -167,7 +167,7 @@ class StartCommandTests(TestCase):
             with patch('mr.awsome.common.log') as CommonLogMock:
                 try:
                     self.aws(['./bin/aws', 'debug', 'foo'])
-                except SystemExit:
+                except SystemExit: # pragma: no cover - only if something is wrong
                     self.fail("SystemExit raised")
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 1500, 1024)
         CommonLogMock.error.assert_called_with('Startup script too big (%s > %s).', 1500, 1024)
@@ -212,7 +212,7 @@ class StatusCommandTests(TestCase):
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
                 self.aws(['./bin/aws', 'status', 'foo'])
-            except SystemExit:
+            except SystemExit: # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         LogMock.info.assert_called_with('status: %s', 'foo')
 
@@ -256,7 +256,7 @@ class StopCommandTests(TestCase):
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
                 self.aws(['./bin/aws', 'stop', 'foo'])
-            except SystemExit:
+            except SystemExit: # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         LogMock.info.assert_called_with('stop: %s', 'foo')
 
@@ -300,7 +300,7 @@ class TerminateCommandTests(TestCase):
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
                 self.aws(['./bin/aws', 'terminate', 'foo'])
-            except SystemExit:
+            except SystemExit: # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         LogMock.info.assert_called_with('terminate: %s', 'foo')
 
@@ -344,7 +344,7 @@ class DebugCommandTests(TestCase):
         with patch('mr.awsome.log') as LogMock:
             try:
                 self.aws(['./bin/aws', 'debug', 'foo'])
-            except SystemExit:
+            except SystemExit: # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 0, 1024)
 
@@ -374,7 +374,7 @@ class DebugCommandTests(TestCase):
             with patch('mr.awsome.common.log') as CommonLogMock:
                 try:
                     self.aws(['./bin/aws', 'debug', 'foo'])
-                except SystemExit:
+                except SystemExit: # pragma: no cover - only if something is wrong
                     self.fail("SystemExit raised")
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 1500, 1024)
         CommonLogMock.error.assert_called_with('Startup script too big (%s > %s).', 1500, 1024)
@@ -392,7 +392,7 @@ class DebugCommandTests(TestCase):
             with patch('mr.awsome.log') as LogMock:
                 try:
                     self.aws(['./bin/aws', 'debug', 'foo', '-v'])
-                except SystemExit:
+                except SystemExit: # pragma: no cover - only if something is wrong
                     self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         self.assertEquals(output, 'FooBar')
@@ -414,7 +414,7 @@ class DebugCommandTests(TestCase):
             with patch('mr.awsome.log') as LogMock:
                 try:
                     self.aws(['./bin/aws', 'debug', 'foo', '-v'])
-                except SystemExit:
+                except SystemExit: # pragma: no cover - only if something is wrong
                     self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         self.assertEquals(output, 'bar')
@@ -436,7 +436,7 @@ class DebugCommandTests(TestCase):
             with patch('mr.awsome.log') as LogMock:
                 try:
                     self.aws(['./bin/aws', 'debug', 'foo', '-v', '-o', 'foo=hamster'])
-                except SystemExit:
+                except SystemExit: # pragma: no cover - only if something is wrong
                     self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         self.assertEquals(output, 'hamster')
@@ -562,7 +562,7 @@ class SSHCommandTests(TestCase):
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
                 self.aws(['./bin/aws', 'ssh', 'foo'])
-            except SystemExit:
+            except SystemExit: # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         self.assertEquals(
             LogMock.info.call_args_list,

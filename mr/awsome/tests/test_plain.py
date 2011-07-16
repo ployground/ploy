@@ -100,7 +100,7 @@ class PlainTests(TestCase):
             'fingerprint = foo']))
         try:
             self.aws(['./bin/aws', 'ssh', 'foo'])
-        except SystemExit:
+        except SystemExit: # pragma: no cover - only if something is wrong
             self.fail("SystemExit raised")
         known_hosts = os.path.join(self.directory, 'known_hosts')
         self.subprocess_call_mock.assert_called_with(
