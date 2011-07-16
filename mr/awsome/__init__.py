@@ -205,7 +205,7 @@ class AWS(object):
         )
         instances = self.get_instances(command='init_ssh_key')
         parser.add_argument("server", nargs=1,
-                            metavar="server",
+                            metavar="instance",
                             help="Name of the instance or server from the config.",
                             choices=list(instances))
         parser.add_argument("...", nargs='+',
@@ -305,11 +305,11 @@ class AWS(object):
         )
         instances = self.get_instances(command='init_ssh_key')
         parser.add_argument("server", nargs=1,
-                            metavar="server",
+                            metavar="instance",
                             help="Name of the instance or server from the config.",
                             choices=list(instances))
         parser.add_argument("...", nargs=argparse.REMAINDER,
-                            help="Fabric options")
+                            help="ssh options")
         iargs = enumerate(argv)
         sid_index = None
         for i, arg in iargs:
@@ -321,9 +321,11 @@ class AWS(object):
                     continue
                 elif arg[1] in 'bcDeFiLlmOopRSw':
                     continue
+        # fake parsing for nice error messages
         if sid_index is None:
-            parser.print_help(sys.stderr)
-            return
+            parser.parse_args([])
+        else:
+            parser.parse_args([argv[sid_index]])
         server = instances[argv[sid_index]]
         from paramiko import SSHException
         try:

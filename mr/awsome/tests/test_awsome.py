@@ -474,7 +474,7 @@ class DoCommandTests(TestCase):
                 self.aws(['./bin/aws', 'do', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         self.assertIn('usage: aws do', output)
-        self.assertIn("argument server: invalid choice: 'foo'", output)
+        self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstanceButTooViewArguments(self):
         self._write_config('\n'.join([
@@ -516,3 +516,57 @@ class DoCommandTests(TestCase):
         with patch('fabric.main.main') as FabricMainMock:
             self.aws(['./bin/aws', 'do', 'foo', 'something'])
         FabricMainMock.assert_called_with()
+
+
+class SSHCommandTests(TestCase):
+    def setUp(self):
+        self.directory = tempfile.mkdtemp()
+        self.aws = AWS(self.directory)
+        self._subprocess_call_mock = patch("subprocess.call")
+        self.subprocess_call_mock = self._subprocess_call_mock.start()
+
+    def tearDown(self):
+        self.subprocess_call_mock = self._subprocess_call_mock.stop()
+        del self.subprocess_call_mock
+        shutil.rmtree(self.directory)
+        del self.directory
+
+    def _write_config(self, content):
+        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+            f.write(content)
+
+    def testCallWithNoArguments(self):
+        self._write_config('')
+        with patch('sys.stderr') as StdErrMock:
+            with self.assertRaises(SystemExit):
+                self.aws(['./bin/aws', 'ssh'])
+        output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
+        self.assertIn('usage: aws ssh', output)
+        self.assertIn('too few arguments', output)
+
+    def testCallWithNonExistingInstance(self):
+        self._write_config('')
+        with patch('sys.stderr') as StdErrMock:
+            with self.assertRaises(SystemExit):
+                self.aws(['./bin/aws', 'ssh', 'foo'])
+        output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
+        self.assertIn('usage: aws ssh', output)
+        self.assertIn("argument instance: invalid choice: 'foo'", output)
+
+    def testCallWithExistingInstance(self):
+        self._write_config('\n'.join([
+            '[plugin:null]',
+            'module = mr.awsome.tests.dummy_plugin',
+            '[dummy-instance:foo]',
+            'host = localhost']))
+        with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
+            try:
+                self.aws(['./bin/aws', 'ssh', 'foo'])
+            except SystemExit:
+                self.fail("SystemExit raised")
+        self.assertEquals(
+            LogMock.info.call_args_list,
+            [(('init_ssh_key: %s %s', 'foo', None), {}), (('client.close',), {})])
+        known_hosts = os.path.join(self.directory, 'known_hosts')
+        self.subprocess_call_mock.assert_called_with(
+            ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', 'localhost'])

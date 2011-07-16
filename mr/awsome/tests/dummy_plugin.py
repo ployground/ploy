@@ -6,6 +6,11 @@ import logging
 log = logging.getLogger('mr.awsome.dummy_plugin')
 
 
+class MockClient(object):
+    def close(self):
+        log.info('client.close')
+
+
 class Instance(StartupScriptMixin):
     max_startup_script_size = 1024
 
@@ -30,7 +35,13 @@ class Instance(StartupScriptMixin):
         log.info('terminate: %s', self.id)
 
     def init_ssh_key(self, user=None):
+        host = self.get_host()
+        port = self.config.get('port', 22)
         log.info('init_ssh_key: %s %s', self.id, user)
+        if user is None:
+            user = self.config.get('user', 'root')
+        return user, host, port, MockClient(), self.master.known_hosts
+
 
 class Master(BaseMaster):
     sectiongroupname = 'dummy-instance'
