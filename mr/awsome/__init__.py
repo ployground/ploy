@@ -338,6 +338,7 @@ class AWS(object):
         client.close()
         argv[sid_index:sid_index+1] = ['-o', 'UserKnownHostsFile=%s' % known_hosts,
                                        '-l', user,
+                                       '-p', str(port),
                                        host]
         argv[0:0] = ['ssh']
         import subprocess
