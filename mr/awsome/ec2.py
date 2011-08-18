@@ -1,6 +1,7 @@
 from lazy import lazy
 from mr.awsome.common import BaseMaster, StartupScriptMixin
-from mr.awsome.config import BaseMassager, BooleanMassager, PathMassager
+from mr.awsome.config import BaseMassager, BooleanMassager
+from mr.awsome.config import HooksMassager, PathMassager
 from mr.awsome.config import StartupScriptMassager
 import datetime
 import logging
@@ -420,6 +421,7 @@ def get_massagers():
 
     sectiongroupname = 'ec2-instance'
     massagers.extend([
+        HooksMassager(sectiongroupname, 'hooks'),
         PathMassager(sectiongroupname, 'fabfile'),
         StartupScriptMassager(sectiongroupname, 'startup_script'),
         SecuritygroupsMassager(sectiongroupname, 'securitygroups'),

@@ -1,3 +1,4 @@
+from mr.awsome.common import Hooks
 from ConfigParser import RawConfigParser
 import os
 
@@ -33,6 +34,21 @@ class PathMassager(BaseMassager):
         if not os.path.isabs(value):
             value = os.path.join(main_config.path, value)
         return value
+
+
+class HooksMassager(BaseMassager):
+    def __call__(self, main_config, sectionname):
+        value = main_config[self.sectiongroupname][sectionname][self.key]
+        hooks = Hooks()
+        for hook_spec in value.split():
+            if '.' in value:
+                prefix, name = value.rsplit('.', 1)
+                _temp = __import__(prefix, globals(), locals(), [name], -1)
+                hook = getattr(_temp, name)
+            else:
+                hook = __import__(value, globals(), locals(), [], -1)
+            hooks.add(hook())
+        return hooks
 
 
 class StartupScriptMassager(BaseMassager):

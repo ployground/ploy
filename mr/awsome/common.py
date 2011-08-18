@@ -55,6 +55,8 @@ class StartupScriptMixin(object):
                 log.error("Startup script '%s' not found.", startup_script_path['path'])
                 sys.exit(1)
             raise
+        if 'hooks' in config:
+            config['hooks'].startup_script_options(config)
         result = startup_script(**config)
         if startup_script_path.get('gzip', False):
             result = "\n".join([
@@ -81,3 +83,21 @@ class BaseMaster(object):
         for sid, config in self.main_config.get(self.sectiongroupname, {}).iteritems():
             self.instances[sid] = self.instance_class(self, sid, config)
             self.instances[sid].sectiongroupname = self.sectiongroupname
+
+
+class Hooks(object):
+    def __init__(self):
+        self.hooks = []
+
+    def add(self, hook):
+        self.hooks.append(hook)
+
+    def _iter_funcs(self, func_name):
+        for hook in self.hooks:
+            func = getattr(hook, func_name, None)
+            if func is not None:
+                yield func
+
+    def startup_script_options(self, options):
+        for func in self._iter_funcs('startup_script_options'):
+            func(options)
