@@ -104,4 +104,4 @@ class PlainTests(TestCase):
             self.fail("SystemExit raised")
         known_hosts = os.path.join(self.directory, 'known_hosts')
         self.subprocess_call_mock.assert_called_with(
-            ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', 22, 'localhost'])
+            ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])

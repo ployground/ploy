@@ -481,12 +481,10 @@ class DoCommandTests(TestCase):
             '[plugin:null]',
             'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]']))
-        with patch('sys.stderr') as StdErrMock:
+        with patch('mr.awsome.log') as LogMock:
             with self.assertRaises(SystemExit):
                 self.aws(['./bin/aws', 'do', 'foo'])
-        output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws do', output)
-        self.assertIn("too few arguments", output)
+        LogMock.error.assert_called_with('No fabfile declared.')
 
     def testCallWithMissingFabfileDeclaration(self):
         self._write_config('\n'.join([
@@ -569,4 +567,4 @@ class SSHCommandTests(TestCase):
             [(('init_ssh_key: %s %s', 'foo', None), {}), (('client.close',), {})])
         known_hosts = os.path.join(self.directory, 'known_hosts')
         self.subprocess_call_mock.assert_called_with(
-            ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', 22, 'localhost'])
+            ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])

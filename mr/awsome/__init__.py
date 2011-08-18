@@ -208,9 +208,9 @@ class AWS(object):
                             metavar="instance",
                             help="Name of the instance or server from the config.",
                             choices=list(instances))
-        parser.add_argument("...", nargs='+',
+        parser.add_argument("...", nargs=argparse.REMAINDER,
                             help="Fabric options")
-        parser.parse_args(argv)
+        parser.parse_args(argv[:1])
         old_sys_argv = sys.argv
         old_cwd = os.getcwd()
 
