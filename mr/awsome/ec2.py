@@ -149,7 +149,7 @@ class Instance(StartupScriptMixin):
                 1, 1, config['keypair'],
                 instance_type=config.get('instance_type', 'm1.small'),
                 security_groups=self.securitygroups(),
-                user_data=self.startup_script(),
+                user_data=self.startup_script(overrides=overrides),
                 placement=config['placement']
             )
             instance = reservation.instances[0]
