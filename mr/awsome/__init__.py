@@ -312,6 +312,7 @@ class AWS(object):
                             help="ssh options")
         iargs = enumerate(argv)
         sid_index = None
+        user = None
         for i, arg in iargs:
             if not arg.startswith('-'):
                 sid_index = i
@@ -320,6 +321,9 @@ class AWS(object):
                 if arg[1] in '1246AaCfgKkMNnqsTtVvXxYy':
                     continue
                 elif arg[1] in 'bcDeFiLlmOopRSw':
+                    value = iargs.next()
+                    if arg[1] == 'l':
+                        user = value[1]
                     continue
         # fake parsing for nice error messages
         if sid_index is None:
@@ -329,7 +333,7 @@ class AWS(object):
         server = instances[argv[sid_index]]
         from paramiko import SSHException
         try:
-            user, host, port, client, known_hosts = server.init_ssh_key()
+            user, host, port, client, known_hosts = server.init_ssh_key(user=user)
         except SSHException, e:
             log.error("Couldn't validate fingerprint for ssh connection.")
             log.error(unicode(e))
