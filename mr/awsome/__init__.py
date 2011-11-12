@@ -329,8 +329,11 @@ class AWS(object):
         if sid_index is None:
             parser.parse_args([])
         else:
-            parser.parse_args([argv[sid_index]])
-        server = instances[argv[sid_index]]
+            sid = argv[sid_index]
+            if '@' in sid:
+                user, sid = sid.split('@', 1)
+            parser.parse_args([sid])
+        server = instances[sid]
         from paramiko import SSHException
         try:
             user, host, port, client, known_hosts = server.init_ssh_key(user=user)
