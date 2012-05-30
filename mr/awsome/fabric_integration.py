@@ -1,5 +1,5 @@
 import fabric.network
-import paramiko
+import ssh
 
 
 instances = None
@@ -22,7 +22,7 @@ class HostConnectionCache(object):
         server = instances[key]
         try:
             user, host, port, client, known_hosts = server.init_ssh_key()
-        except paramiko.SSHException, e:
+        except ssh.SSHException, e:
             log.error("Couldn't validate fingerprint for ssh connection.")
             log.error(e)
             log.error("Is the server finished starting up?")

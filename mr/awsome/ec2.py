@@ -206,9 +206,9 @@ class Instance(StartupScriptMixin):
         return instance
 
     def init_ssh_key(self, user=None):
-        import paramiko
+        import ssh
 
-        class AWSHostKeyPolicy(paramiko.MissingHostKeyPolicy):
+        class AWSHostKeyPolicy(ssh.MissingHostKeyPolicy):
             def __init__(self, instance):
                 self.instance = instance
 
@@ -218,7 +218,7 @@ class Instance(StartupScriptMixin):
                     fp_start = False
                     output = self.instance.get_console_output().output
                     if output.strip() == '':
-                        raise paramiko.SSHException('No console output (yet) for %s' % hostname)
+                        raise ssh.SSHException('No console output (yet) for %s' % hostname)
                     for line in output.split('\n'):
                         if fp_start:
                             if fingerprint in line:
@@ -230,7 +230,7 @@ class Instance(StartupScriptMixin):
                             fp_start = True
                         elif '-----END SSH HOST KEY FINGERPRINTS-----' in line:
                             fp_start = False
-                raise paramiko.SSHException('Unknown server %s' % hostname)
+                raise ssh.SSHException('Unknown server %s' % hostname)
 
         instance = self.instance
         if instance is None:
@@ -240,7 +240,7 @@ class Instance(StartupScriptMixin):
             user = 'root'
         host = str(instance.public_dns_name)
         port = 22
-        client = paramiko.SSHClient()
+        client = ssh.SSHClient()
         client.set_missing_host_key_policy(AWSHostKeyPolicy(instance))
         known_hosts = self.master.known_hosts
         while 1:
@@ -249,7 +249,7 @@ class Instance(StartupScriptMixin):
             try:
                 client.connect(host, int(port), user)
                 break
-            except paramiko.BadHostKeyException:
+            except ssh.BadHostKeyException:
                 if os.path.exists(known_hosts):
                     os.remove(known_hosts)
                 client.get_host_keys().clear()

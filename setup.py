@@ -10,7 +10,7 @@ HISTORY = open(os.path.join(here, 'HISTORY.rst')).read()
 install_requires = [
     'setuptools',
     'boto >= 2.0',
-    'Fabric >= 0.9.0',
+    'Fabric >= 1.3.0',
     'lazy']
 
 try:

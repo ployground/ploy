@@ -12,7 +12,7 @@ class Instance(object):
         return self.config['host']
 
     def get_fingerprint(self):
-        from paramiko import SSHException
+        from ssh import SSHException
 
         fingerprint = self.config.get('fingerprint')
         if fingerprint is None:
@@ -20,9 +20,9 @@ class Instance(object):
         return fingerprint
 
     def init_ssh_key(self, user=None):
-        import paramiko
+        import ssh
 
-        class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
+        class ServerHostKeyPolicy(ssh.MissingHostKeyPolicy):
             def __init__(self, fingerprint):
                 self.fingerprint = fingerprint
 
@@ -33,15 +33,15 @@ class Instance(object):
                     if client._host_keys_filename is not None:
                         client.save_host_keys(client._host_keys_filename)
                     return
-                raise paramiko.SSHException("Fingerprint doesn't match for %s (got %s, expected %s)" % (hostname, fingerprint, self.fingerprint))
+                raise ssh.SSHException("Fingerprint doesn't match for %s (got %s, expected %s)" % (hostname, fingerprint, self.fingerprint))
 
         try:
             host = self.get_host()
         except KeyError:
-            raise paramiko.SSHException("No host set in config.")
+            raise ssh.SSHException("No host set in config.")
         port = self.config.get('port', 22)
-        client = paramiko.SSHClient()
-        sshconfig = paramiko.SSHConfig()
+        client = ssh.SSHClient()
+        sshconfig = ssh.SSHConfig()
         sshconfig.parse(open(os.path.expanduser('~/.ssh/config')))
         fingerprint = self.get_fingerprint()
         client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint))
@@ -57,7 +57,7 @@ class Instance(object):
                     user = self.config.get('user', user)
                 client.connect(hostname, int(port), user)
                 break
-            except paramiko.BadHostKeyException:
+            except ssh.BadHostKeyException:
                 if os.path.exists(known_hosts):
                     os.remove(known_hosts)
                 client.get_host_keys().clear()
