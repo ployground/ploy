@@ -16,12 +16,22 @@ class HostConnectionCache(object):
     def opened(self, key):
         return key in self._cache
 
+    def __delitem__(self, key):
+        self._cache[key].close()
+        del self._cache[key]
+
+    def __contains__(self, key):
+        return key in self._cache
+
     def __getitem__(self, key):
+        r = fabric.network.host_regex.match(key).groupdict()
+        user = r['user'] or 'root'
+        host = r['host']
         if key in self._cache:
             return self._cache[key]
-        server = instances[key]
+        server = instances[host]
         try:
-            user, host, port, client, known_hosts = server.init_ssh_key()
+            user, host, port, client, known_hosts = server.init_ssh_key(user=user)
         except ssh.SSHException, e:
             log.error("Couldn't validate fingerprint for ssh connection.")
             log.error(e)

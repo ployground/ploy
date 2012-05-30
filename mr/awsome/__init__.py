@@ -227,6 +227,8 @@ class AWS(object):
             fabric_integration.log = log
             hoststr = argv[0]
             server = instances[hoststr]
+            if 'user' in server.config:
+                hoststr = '%s@%s' % (server.config['user'], hoststr)
             # prepare the connection
             fabric.state.env.reject_unknown_hosts = True
             fabric.state.env.disable_known_hosts = True
@@ -251,6 +253,9 @@ class AWS(object):
                 def __init__(self, org):
                     self.org = org
                     self.flush = self.org.flush
+
+                def isatty(self):
+                    return False
 
                 def write(self, msg):
                     lines = msg.split('\n')
