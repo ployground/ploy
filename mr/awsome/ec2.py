@@ -281,7 +281,11 @@ class Securitygroups(object):
         if sgid not in self.securitygroups:
             if not create:
                 raise KeyError
-            sg = self.server.conn.create_security_group(sgid, securitygroup['description'])
+            if 'description' in securitygroup:
+                description = securitygroup['description']
+            else:
+                description = "security settings for %s" % sgid
+            sg = self.server.conn.create_security_group(sgid, description)
             self.update()
         else:
             sg = self.securitygroups[sgid]
