@@ -3,6 +3,10 @@ import os
 
 version = "0.10"
 
+here = os.path.abspath(os.path.dirname(__file__))
+README = open(os.path.join(here, 'README.rst')).read()
+HISTORY = open(os.path.join(here, 'HISTORY.rst')).read()
+
 install_requires = [
     'setuptools',
     'boto >= 1.9b',
@@ -18,8 +22,7 @@ except ImportError:
 setup(
     version=version,
     description="A script allowing to setup Amazon EC2 instances through configuration files.",
-    long_description=open("README.txt").read() + "\n\n" +
-                     open(os.path.join("docs", "HISTORY.txt")).read(),
+    long_description=README + "\n\n" + HISTORY,
     name="mr.awsome",
     author='Florian Schulze',
     author_email='florian.schulze@gmx.net',
