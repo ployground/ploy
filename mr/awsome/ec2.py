@@ -14,7 +14,7 @@ log = logging.getLogger('mr.awsome.ec2')
 
 
 class Instance(StartupScriptMixin):
-    max_startup_script_size = 16*1024
+    max_startup_script_size = 16 * 1024
 
     def __init__(self, master, sid, config):
         self.id = sid
@@ -252,9 +252,9 @@ class Instance(StartupScriptMixin):
 
     def snapshot(self, devs=None):
         if devs is None:
-            devs=set()
+            devs = set()
         else:
-            devs=set(devs)
+            devs = set(devs)
         volume_ids = [x[0] for x in self.config.get('volumes', []) if x[1] in devs]
         volumes = dict((x.id, x) for x in self.conn.get_all_volumes())
         for volume_id in volume_ids:
