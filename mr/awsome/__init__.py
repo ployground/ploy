@@ -339,6 +339,8 @@ class AWS(object):
                 user, sid = sid.split('@', 1)
             parser.parse_args([sid])
         server = instances[sid]
+        if user is None:
+            user = server.config.get('user')
         from ssh import SSHException
         try:
             user, host, port, client, known_hosts = server.init_ssh_key(user=user)
