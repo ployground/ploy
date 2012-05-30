@@ -40,8 +40,8 @@ class MockReservation(object):
 
 
 class MockSecuritygroup(object):
-    def __init__(self, id):
-        self.id = id
+    def __init__(self, name):
+        self.name = name
 
 
 class MockConnection(object):
