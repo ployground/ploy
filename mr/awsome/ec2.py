@@ -35,12 +35,17 @@ class Instance(StartupScriptMixin):
     def instance(self):
         instances = []
         for reservation in self.conn.get_all_instances():
-            groups = set(x.id for x in reservation.groups)
-            if groups != self.config['securitygroups']:
-                continue
+            groups = set(x.name for x in reservation.groups)
             for instance in reservation.instances:
                 if instance.state in ['shutting-down', 'terminated']:
                     continue
+                tags = getattr(instance, 'tags', {})
+                if not tags or not tags.get('Name'):
+                    if groups != self.config['securitygroups']:
+                        continue
+                else:
+                    if tags['Name'] != self.id:
+                        continue
                 instances.append(instance)
         if len(instances) < 1:
             log.info("Instance '%s' unavailable.", self.id)
@@ -59,7 +64,7 @@ class Instance(StartupScriptMixin):
         if securitygroups is None:
             self._securitygroups = securitygroups = Securitygroups(self)
         sgs = []
-        for sgid in self.config['securitygroups']:
+        for sgid in self.config.get('securitygroups', []):
             sgs.append(securitygroups.get(sgid, create=True))
         return sgs
 
@@ -164,6 +169,7 @@ class Instance(StartupScriptMixin):
             instance.update()
         sys.stdout.write("\n")
         sys.stdout.flush()
+        self.conn.create_tags([instance.id], {"Name": self.id})
         ip = config.get('ip', None)
         if ip is not None:
             addresses = [x for x in self.conn.get_all_addresses()
