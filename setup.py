@@ -3,6 +3,18 @@ import os
 
 version = "0.10"
 
+install_requires = [
+    'setuptools',
+    'boto >= 1.9b',
+    'Fabric >= 0.9.0',
+    'lazy']
+
+try:
+    import argparse
+    argparse    # make pyflakes happy...
+except ImportError:
+    install_requires.append('argparse >= 1.1')
+
 setup(
     version=version,
     description="A script allowing to setup Amazon EC2 instances through configuration files.",
@@ -16,13 +28,7 @@ setup(
     zip_safe=False,
     packages=['mr'],
     namespace_packages=['mr'],
-    install_requires=[
-        'setuptools',
-        'boto >= 1.9b',
-        'Fabric >= 0.9.0',
-        'argparse >= 1.1',
-        'lazy',
-    ],
+    install_requires=install_requires,
     entry_points="""
       [console_scripts]
       aws = mr.awsome:aws
