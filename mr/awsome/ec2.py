@@ -13,14 +13,60 @@ import time
 log = logging.getLogger('mr.awsome.ec2')
 
 
-class Instance(StartupScriptMixin):
-    max_startup_script_size = 16 * 1024
+class InitSSHKeyMixin(object):
+    def init_ssh_key(self, user=None):
+        import ssh
 
-    def __init__(self, master, sid, config):
-        self.id = sid
-        self.master = master
-        self.config = config
+        class AWSHostKeyPolicy(ssh.MissingHostKeyPolicy):
+            def __init__(self, instance):
+                self.instance = instance
 
+            def missing_host_key(self, client, hostname, key):
+                fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
+                if self.instance.public_dns_name == hostname:
+                    fp_start = False
+                    output = self.instance.get_console_output().output
+                    if output.strip() == '':
+                        raise ssh.SSHException('No console output (yet) for %s' % hostname)
+                    for line in output.split('\n'):
+                        if fp_start:
+                            if fingerprint in line:
+                                client._host_keys.add(hostname, key.get_name(), key)
+                                if client._host_keys_filename is not None:
+                                    client.save_host_keys(client._host_keys_filename)
+                                return
+                        if '-----BEGIN SSH HOST KEY FINGERPRINTS-----' in line:
+                            fp_start = True
+                        elif '-----END SSH HOST KEY FINGERPRINTS-----' in line:
+                            fp_start = False
+                raise ssh.SSHException('Unknown server %s' % hostname)
+
+        instance = self.instance
+        if instance is None:
+            log.error("Can't establish ssh connection.")
+            return
+        if user is None:
+            user = 'root'
+        host = str(instance.public_dns_name)
+        port = 22
+        client = ssh.SSHClient()
+        client.set_missing_host_key_policy(AWSHostKeyPolicy(instance))
+        known_hosts = self.master.known_hosts
+        while 1:
+            if os.path.exists(known_hosts):
+                client.load_host_keys(known_hosts)
+            try:
+                client.connect(host, int(port), user)
+                break
+            except ssh.BadHostKeyException:
+                if os.path.exists(known_hosts):
+                    os.remove(known_hosts)
+                client.get_host_keys().clear()
+        client.save_host_keys(known_hosts)
+        return user, host, port, client, known_hosts
+
+
+class ConnMixin(object):
     @lazy
     def conn(self):
         region_id = self.config.get(
@@ -30,6 +76,15 @@ class Instance(StartupScriptMixin):
             log.error("No region set in ec2-instance:%s or ec2-master:%s config" % (self.id, self.master.id))
             sys.exit(1)
         return self.master.get_conn(region_id)
+
+
+class Instance(StartupScriptMixin, InitSSHKeyMixin, ConnMixin):
+    max_startup_script_size = 16 * 1024
+
+    def __init__(self, master, sid, config):
+        self.id = sid
+        self.master = master
+        self.config = config
 
     @lazy
     def instance(self):
@@ -205,57 +260,6 @@ class Instance(StartupScriptMixin):
 
         return instance
 
-    def init_ssh_key(self, user=None):
-        import ssh
-
-        class AWSHostKeyPolicy(ssh.MissingHostKeyPolicy):
-            def __init__(self, instance):
-                self.instance = instance
-
-            def missing_host_key(self, client, hostname, key):
-                fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
-                if self.instance.public_dns_name == hostname:
-                    fp_start = False
-                    output = self.instance.get_console_output().output
-                    if output.strip() == '':
-                        raise ssh.SSHException('No console output (yet) for %s' % hostname)
-                    for line in output.split('\n'):
-                        if fp_start:
-                            if fingerprint in line:
-                                client._host_keys.add(hostname, key.get_name(), key)
-                                if client._host_keys_filename is not None:
-                                    client.save_host_keys(client._host_keys_filename)
-                                return
-                        if '-----BEGIN SSH HOST KEY FINGERPRINTS-----' in line:
-                            fp_start = True
-                        elif '-----END SSH HOST KEY FINGERPRINTS-----' in line:
-                            fp_start = False
-                raise ssh.SSHException('Unknown server %s' % hostname)
-
-        instance = self.instance
-        if instance is None:
-            log.error("Can't establish ssh connection.")
-            return
-        if user is None:
-            user = 'root'
-        host = str(instance.public_dns_name)
-        port = 22
-        client = ssh.SSHClient()
-        client.set_missing_host_key_policy(AWSHostKeyPolicy(instance))
-        known_hosts = self.master.known_hosts
-        while 1:
-            if os.path.exists(known_hosts):
-                client.load_host_keys(known_hosts)
-            try:
-                client.connect(host, int(port), user)
-                break
-            except ssh.BadHostKeyException:
-                if os.path.exists(known_hosts):
-                    os.remove(known_hosts)
-                client.get_host_keys().clear()
-        client.save_host_keys(known_hosts)
-        return user, host, port, client, known_hosts
-
     def snapshot(self, devs=None):
         if devs is None:
             devs = set()
@@ -269,6 +273,18 @@ class Instance(StartupScriptMixin):
             description = "%s-%s" % (date, volume_id)
             log.info("Creating snapshot for volume %s on %s (%s)" % (volume_id, self.id, description))
             volume.create_snapshot(description=description)
+
+
+class Connection(InitSSHKeyMixin, ConnMixin):
+    """ This is more or less a dummy object to get a connection to AWS for
+        Fabric scripts. """
+    def __init__(self, master, sid, config):
+        self.id = sid
+        self.master = master
+        self.config = config
+
+    def get_host(self):
+        return None
 
 
 class Securitygroups(object):
@@ -321,8 +337,9 @@ class Securitygroups(object):
 
 
 class Master(BaseMaster):
-    sectiongroupname = 'ec2-instance'
-    instance_class = Instance
+    section_info = {
+        'ec2-instance': Instance,
+        'ec2-connection': Connection}
 
     @lazy
     def credentials(self):
@@ -438,6 +455,10 @@ def get_massagers():
         VolumesMassager(sectiongroupname, 'volumes'),
         SnapshotsMassager(sectiongroupname, 'snapshots'),
         BooleanMassager(sectiongroupname, 'delete-volumes-on-terminate')])
+
+    sectiongroupname = 'ec2-connection'
+    massagers.extend([
+        PathMassager(sectiongroupname, 'fabfile')])
 
     sectiongroupname = 'ec2-securitygroup'
     massagers.extend([

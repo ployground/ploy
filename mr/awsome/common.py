@@ -80,9 +80,12 @@ class BaseMaster(object):
         self.master_config = master_config
         self.known_hosts = os.path.join(self.main_config.path, 'known_hosts')
         self.instances = {}
-        for sid, config in self.main_config.get(self.sectiongroupname, {}).iteritems():
-            self.instances[sid] = self.instance_class(self, sid, config)
-            self.instances[sid].sectiongroupname = self.sectiongroupname
+        if getattr(self, 'section_info', None) is None:
+            self.section_info = {self.sectiongroupname: self.instance_class}
+        for sectiongroupname, instance_class in self.section_info.items():
+            for sid, config in self.main_config.get(sectiongroupname, {}).iteritems():
+                self.instances[sid] = instance_class(self, sid, config)
+                self.instances[sid].sectiongroupname = sectiongroupname
 
 
 class Hooks(object):
