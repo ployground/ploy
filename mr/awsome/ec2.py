@@ -24,21 +24,14 @@ class InitSSHKeyMixin(object):
             def missing_host_key(self, client, hostname, key):
                 fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
                 if self.instance.public_dns_name == hostname:
-                    fp_start = False
                     output = self.instance.get_console_output().output
                     if output.strip() == '':
                         raise ssh.SSHException('No console output (yet) for %s' % hostname)
-                    for line in output.split('\n'):
-                        if fp_start:
-                            if fingerprint in line:
-                                client._host_keys.add(hostname, key.get_name(), key)
-                                if client._host_keys_filename is not None:
-                                    client.save_host_keys(client._host_keys_filename)
-                                return
-                        if '-----BEGIN SSH HOST KEY FINGERPRINTS-----' in line:
-                            fp_start = True
-                        elif '-----END SSH HOST KEY FINGERPRINTS-----' in line:
-                            fp_start = False
+                    if fingerprint in output:
+                        client._host_keys.add(hostname, key.get_name(), key)
+                        if client._host_keys_filename is not None:
+                            client.save_host_keys(client._host_keys_filename)
+                        return
                 raise ssh.SSHException('Unknown server %s' % hostname)
 
         instance = self.instance
