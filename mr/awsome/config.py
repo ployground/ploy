@@ -1,6 +1,7 @@
 from mr.awsome.common import Hooks
 from ConfigParser import RawConfigParser
 import os
+import warnings
 
 
 class BaseMassager(object):
@@ -89,15 +90,19 @@ class Config(dict):
                 'plain': {
                     'module': 'mr.awsome.plain'}}
             if 'instance' in self:
+                warnings.warn("The 'instance' section type is deprecated, use 'ec2-instance' instead.")
                 self['ec2-instance'] = self['instance']
                 del self['instance']
             if 'securitygroup' in self:
+                warnings.warn("The 'securitygroup' section type is deprecated, use 'ec2-securitygroup' instead.")
                 self['ec2-securitygroup'] = self['securitygroup']
                 del self['securitygroup']
             if 'server' in self:
+                warnings.warn("The 'server' section type is deprecated, use 'plain-instance' instead.")
                 self['plain-instance'] = self['server']
                 del self['server']
             if 'global' in self and 'aws' in self['global']:
+                warnings.warn("The 'aws' section type is deprecated, define an 'ec2-master' instead.")
                 self.setdefault('ec2-master', {})
                 self['ec2-master']['default'] = self['global']['aws']
                 del self['global']['aws']
