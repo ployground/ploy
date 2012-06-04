@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.10 - Unreleased
+0.10 - 2012-06-04
 -----------------
 
 * Added ``ec2-connection`` which helps in writing Fabric scripts which don't
