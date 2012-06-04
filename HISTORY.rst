@@ -4,6 +4,32 @@ Changelog
 0.10 - Unreleased
 -----------------
 
+* Added ``ec2-connection`` which helps in writing Fabric scripts which don't
+  connect to a server but need access to the config and AWS (like uploading
+  something to S3).
+  [fschulze]
+
+* Fix several problems with using a user name other than ``root`` for the
+  ``do`` and ``ssh`` commands.
+  [fschulze]
+
+* Require Fabric >= 1.3.0.
+  [fschulze]
+
+* Require boto >= 2.0.
+  [fschulze]
+
+* Added hook for startup script options.
+  [fschulze]
+
+* Added possibility to configure hooks.
+  [fschulze]
+
+* Refactored to enable plugins for different virtualization or cloud providers.
+  [fschulze]
+
+* Added lots of tests.
+  [fschulze]
 
 
 0.9 - 2010-12-09

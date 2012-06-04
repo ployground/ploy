@@ -147,6 +147,34 @@ the server (this only works with other servers already started, not the one
 for which the startup script is for, since the DNS isn't set at the time the
 script is created).
 
+You can modify the options for the startup script by declaring a hook like this
+in your config::
+
+  hooks = mymodule.Hooks
+
+Where ``Hooks`` is a class with a ``startup_script_options`` method. Here is an
+example which adds an ``addresses`` option containing the IP address of
+available EC2 instances::
+
+  class _IPProxy(object):
+      def __init__(self, servers):
+          self.servers = servers
+
+      def __getitem__(self, value):
+          result = self.servers[value]
+          instance = result.instance
+          if instance is None:
+              # return a dummy address
+              return u'192.168.0.1'
+          return result.instance.private_ip_address
+
+
+  class Hooks(object):
+      def startup_script_options(self, options):
+          addresses = options.get('addresses')
+          if addresses is None:
+              options['addresses'] = _IPProxy(options['servers'])
+
 You can add a ``gzip:`` prefix before the filename to let the script be self
 extracting. The code used looks like this::
 
