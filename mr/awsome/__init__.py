@@ -2,6 +2,7 @@ import pkg_resources
 pkg_resources.declare_namespace(__name__)
 
 from lazy import lazy
+from mr.awsome.common import prepare_known_hosts
 from mr.awsome.config import Config
 from mr.awsome import template
 import logging
@@ -48,7 +49,9 @@ class AWS(object):
 
     @lazy
     def known_hosts(self):
-        return os.path.join(self.config.path, 'known_hosts')
+        known_hosts = prepare_known_hosts(
+            os.path.join(self.config.path, 'known_hosts'))
+        return known_hosts
 
     def get_masters(self, command):
         masters = []
@@ -346,8 +349,9 @@ class AWS(object):
             user, host, port, client, known_hosts = server.init_ssh_key(user=user)
         except SSHException, e:
             log.error("Couldn't validate fingerprint for ssh connection.")
-            log.error(unicode(e))
-            log.error("Is the server finished starting up?")
+            log.error("The error was:")
+            log.error(u"    %s" % unicode(e))
+            log.warn("Is the server finished starting up?")
             sys.exit(1)
         client.close()
         argv[sid_index:sid_index+1] = ['-o', 'UserKnownHostsFile=%s' % known_hosts,

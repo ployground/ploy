@@ -77,7 +77,10 @@ class PlainTests(TestCase):
         self.assertEquals(
             LogMock.error.call_args_list, [
                 (("Couldn't validate fingerprint for ssh connection.",), {}),
-                (("No host set in config.",), {}),
+                (("The error was:",), {}),
+                (("    No host set in config.",), {})])
+        self.assertEquals(
+            LogMock.warn.call_args_list, [
                 (('Is the server finished starting up?',), {})])
 
     def testSSHWithNoFingerprint(self):
@@ -90,7 +93,10 @@ class PlainTests(TestCase):
         self.assertEquals(
             LogMock.error.call_args_list, [
                 (("Couldn't validate fingerprint for ssh connection.",), {}),
-                (("No fingerprint set in config.",), {}),
+                (("The error was:",), {}),
+                (("    No fingerprint set in config.",), {})])
+        self.assertEquals(
+            LogMock.warn.call_args_list, [
                 (('Is the server finished starting up?',), {})])
 
     def testSSH(self):

@@ -6,6 +6,7 @@ except ImportError: # pragma: no cover
 import gzip
 import logging
 import os
+import socket
 import sys
 
 
@@ -31,6 +32,53 @@ def strip_hashcomments(value):
     else:
         return "\n".join(lines)
     return "\n".join(result)
+
+
+def prepare_known_hosts(known_hosts):
+    if not os.path.exists(known_hosts):
+        # create an empty file
+        open(known_hosts, 'w').close()
+    from ssh import SSHException
+    from ssh.hostkeys import HostKeys, HostKeyEntry
+    keys = HostKeys()
+    with open(known_hosts) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            try:
+                e = HostKeyEntry.from_line(line)
+            except SSHException, e:
+                # filter out invalid keys
+                if e.args and e.args[0] == 'Invalid key':
+                    continue
+                raise
+            if e is not None:
+                keys._entries.append(e)
+    keys.save(known_hosts)
+    return known_hosts
+
+
+def _getaddrinfo(hostname, port):
+    for (family, socktype, proto, canonname, sockaddr) in socket.getaddrinfo(hostname, port, socket.AF_UNSPEC, socket.SOCK_STREAM):
+        if socktype == socket.SOCK_STREAM:
+            af = family
+            addr = sockaddr
+            break
+    else:
+        # some OS like AIX don't indicate SOCK_STREAM support, so just guess. :(
+        af, _, _, _, addr = socket.getaddrinfo(hostname, port, socket.AF_UNSPEC, socket.SOCK_STREAM)
+    return addr
+
+
+def remove_host_from_known_hosts(known_hosts, host, port):
+    from ssh.hostkeys import HostKeys
+    keys = HostKeys(known_hosts)
+    addr = _getaddrinfo(host, port)
+    entries = keys.lookup(host)._entries + keys.lookup(addr[0])._entries
+    for entry in entries:
+        keys._entries = [x for x in keys._entries if x != entry]
+    keys.save(known_hosts)
 
 
 class StartupScriptMixin(object):
@@ -78,7 +126,8 @@ class BaseMaster(object):
         self.id = id
         self.main_config = main_config
         self.master_config = master_config
-        self.known_hosts = os.path.join(self.main_config.path, 'known_hosts')
+        self.known_hosts = prepare_known_hosts(
+            os.path.join(self.main_config.path, 'known_hosts'))
         self.instances = {}
         if getattr(self, 'section_info', None) is None:
             self.section_info = {self.sectiongroupname: self.instance_class}

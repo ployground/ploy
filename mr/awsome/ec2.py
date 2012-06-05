@@ -1,5 +1,6 @@
 from lazy import lazy
 from mr.awsome.common import BaseMaster, StartupScriptMixin
+from mr.awsome.common import remove_host_from_known_hosts
 from mr.awsome.config import BaseMassager, BooleanMassager
 from mr.awsome.config import HooksMassager, PathMassager
 from mr.awsome.config import StartupScriptMassager
@@ -36,7 +37,7 @@ class InitSSHKeyMixin(object):
 
         instance = self.instance
         if instance is None:
-            log.error("Can't establish ssh connection.")
+            log.error("Can't establish connection to '%s'." % self.id)
             return
         if user is None:
             user = 'root'
@@ -45,15 +46,17 @@ class InitSSHKeyMixin(object):
         client = ssh.SSHClient()
         client.set_missing_host_key_policy(AWSHostKeyPolicy(instance))
         known_hosts = self.master.known_hosts
+        retried = False
         while 1:
-            if os.path.exists(known_hosts):
-                client.load_host_keys(known_hosts)
+            client.load_host_keys(known_hosts)
             try:
                 client.connect(host, int(port), user)
                 break
             except ssh.BadHostKeyException:
-                if os.path.exists(known_hosts):
-                    os.remove(known_hosts)
+                if retried:
+                    raise
+                retried = True
+                remove_host_from_known_hosts(known_hosts, host, port)
                 client.get_host_keys().clear()
         client.save_host_keys(known_hosts)
         return user, host, port, client, known_hosts

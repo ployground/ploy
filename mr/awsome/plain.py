@@ -1,4 +1,5 @@
 from mr.awsome.common import BaseMaster
+from mr.awsome.common import remove_host_from_known_hosts
 import os
 
 
@@ -46,9 +47,9 @@ class Instance(object):
         fingerprint = self.get_fingerprint()
         client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint))
         known_hosts = self.master.known_hosts
+        retried = False
         while 1:
-            if os.path.exists(known_hosts):
-                client.load_host_keys(known_hosts)
+            client.load_host_keys(known_hosts)
             try:
                 hostname = sshconfig.lookup(host).get('hostname', host)
                 port = sshconfig.lookup(host).get('port', port)
@@ -58,8 +59,10 @@ class Instance(object):
                 client.connect(hostname, int(port), user)
                 break
             except ssh.BadHostKeyException:
-                if os.path.exists(known_hosts):
-                    os.remove(known_hosts)
+                if retried:
+                    raise
+                retried = True
+                remove_host_from_known_hosts(known_hosts, hostname, port)
                 client.get_host_keys().clear()
         client.save_host_keys(known_hosts)
         return user, host, port, client, known_hosts

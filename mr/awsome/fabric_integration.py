@@ -1,5 +1,6 @@
 import fabric.network
 import ssh
+import sys
 
 
 instances = None
@@ -34,9 +35,10 @@ class HostConnectionCache(object):
             user, host, port, client, known_hosts = server.init_ssh_key(user=user)
         except ssh.SSHException, e:
             log.error("Couldn't validate fingerprint for ssh connection.")
-            log.error(e)
-            log.error("Is the server finished starting up?")
-            return
+            log.error("The error was:")
+            log.error(u"    %s" % unicode(e))
+            log.warn("Is the server finished starting up?")
+            sys.exit(1)
         self._cache[key] = client
         return client
 
