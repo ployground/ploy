@@ -118,7 +118,7 @@ class Config(dict):
             else:
                 module = __import__(config['module'], globals(), locals(), [], -1)
             config['module'] = module
-            for massager in getattr(module, 'get_massagers', lambda:[])():
+            for massager in getattr(module, 'get_massagers', lambda: [])():
                 self._add_massager(massager)
             get_macro_cleaners = getattr(module, 'get_macro_cleaners', None)
             if get_macro_cleaners is not None:

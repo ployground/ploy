@@ -1,7 +1,7 @@
 try:
     import cStringIO
-    StringIO = cStringIO.StringIO # shutup pyflakes
-except ImportError: # pragma: no cover
+    StringIO = cStringIO.StringIO  # shutup pyflakes
+except ImportError:  # pragma: no cover
     from StringIO import StringIO
 import gzip
 import logging
@@ -39,7 +39,7 @@ class StartupScriptMixin(object):
             self.sectiongroupname, self.id, overrides)
 
     def startup_script(self, overrides=None, debug=False):
-        from mr.awsome import template # avoid circular import
+        from mr.awsome import template  # avoid circular import
 
         config = self.get_config(overrides)
         startup_script_path = config.get('startup_script', None)

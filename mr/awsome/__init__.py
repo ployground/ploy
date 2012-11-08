@@ -183,16 +183,16 @@ class AWS(object):
         overrides['servers'] = self.instances
         server = instances[args.server[0]]
         startup_script = server.startup_script(overrides=overrides, debug=True)
-        max_size = getattr(server, 'max_startup_script_size', 16*1024)
+        max_size = getattr(server, 'max_startup_script_size', 16 * 1024)
         log.info("Length of startup script: %s/%s", len(startup_script), max_size)
         if args.verbose:
             log.info("Startup script:")
             print startup_script,
-        if args.interactive: # pragma: no cover
+        if args.interactive:  # pragma: no cover
             import readline
             conn = server.conn
             instance = server.instance
-            conn, instance # shutup pyflakes
+            conn, instance  # shutup pyflakes
             readline.parse_and_bind('tab: complete')
             __import__("code").interact(local=locals())
 
@@ -276,7 +276,7 @@ class AWS(object):
                 sys.stdout = old_stdout
                 sys.stderr = old_stderr
         finally:
-            if fabric.state.connections.opened(hoststr): # pragma: no cover
+            if fabric.state.connections.opened(hoststr):  # pragma: no cover
                 fabric.state.connections[hoststr].close()
             sys.argv = old_sys_argv
             os.chdir(old_cwd)
@@ -354,10 +354,11 @@ class AWS(object):
             log.error("Is the server finished starting up?")
             sys.exit(1)
         client.close()
-        argv[sid_index:sid_index+1] = ['-o', 'UserKnownHostsFile=%s' % known_hosts,
-                                       '-l', user,
-                                       '-p', str(port),
-                                       host]
+        argv[sid_index:sid_index + 1] = [
+            '-o', 'UserKnownHostsFile=%s' % known_hosts,
+            '-l', user,
+            '-p', str(port),
+            host]
         argv[0:0] = ['ssh']
         import subprocess
         subprocess.call(argv)
@@ -449,12 +450,13 @@ class AWS(object):
         args.func(sub_argv, args.func.__doc__)
 
 
-def aws(configpath=None): # pragma: no cover
+def aws(configpath=None):  # pragma: no cover
     argv = sys.argv[:]
     aws = AWS(configpath=configpath)
     return aws(argv)
 
-def aws_ssh(configpath=None): # pragma: no cover
+
+def aws_ssh(configpath=None):  # pragma: no cover
     argv = sys.argv[:]
     argv.insert(1, "ssh")
     aws = AWS(configpath=configpath)
