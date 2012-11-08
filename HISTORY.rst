@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.11 - Unreleased
+0.11 - 2012-11-08
 -----------------
 
 * Support both the ``ssh`` and ``paramiko`` libraries depending on which
