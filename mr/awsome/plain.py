@@ -54,6 +54,11 @@ class Instance(object):
         fingerprint = self.get_fingerprint()
         client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint))
         known_hosts = self.master.known_hosts
+        proxy_command = sshconfig.lookup(host).get('proxycommand', None)
+        if proxy_command:
+            sock = paramiko.ProxyCommand(proxy_command)
+        else:
+            sock = None
         while 1:
             if os.path.exists(known_hosts):
                 client.load_host_keys(known_hosts)
@@ -63,7 +68,7 @@ class Instance(object):
                 if user is None:
                     user = sshconfig.lookup(host).get('user', 'root')
                     user = self.config.get('user', user)
-                client.connect(hostname, int(port), user)
+                client.connect(hostname, int(port), user, sock=sock)
                 break
             except paramiko.BadHostKeyException:
                 if os.path.exists(known_hosts):

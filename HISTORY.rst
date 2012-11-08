@@ -4,6 +4,9 @@ Changelog
 0.12 - Unreleased
 -----------------
 
+* Support ``ProxyCommand`` from ``~/.ssh/config`` for plain instances.
+  Requires Fabric 1.5.0 and Paramiko 1.9.0 or newer.
+  [fschulze]
 
 
 0.11 - 2012-11-08
