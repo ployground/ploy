@@ -36,5 +36,4 @@ setup(
       [console_scripts]
       aws = mr.awsome:aws
       assh = mr.awsome:aws_ssh
-    """,
-)
+    """)
