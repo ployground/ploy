@@ -2,6 +2,14 @@ from mr.awsome.common import BaseMaster
 import os
 
 
+class InstanceFormattingWrapper(object):
+    def __init__(self, instance):
+        self.instance = instance
+
+    def __getattr__(self, name):
+        return self.instance.config[name]
+
+
 class Instance(object):
     def __init__(self, master, sid, config):
         self.id = sid
@@ -54,7 +62,15 @@ class Instance(object):
         fingerprint = self.get_fingerprint()
         client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint))
         known_hosts = self.master.known_hosts
-        proxy_command = sshconfig.lookup(host).get('proxycommand', None)
+        proxy_command = self.config.get('proxycommand', None)
+        if proxy_command is None:
+            proxy_command = sshconfig.lookup(host).get('proxycommand', None)
+        else:
+            d = dict(
+                (k, InstanceFormattingWrapper(v))
+                for k, v in self.master.instances.items())
+            d.update(self.config)
+            proxy_command = proxy_command.format(**d)
         if proxy_command:
             sock = paramiko.ProxyCommand(proxy_command)
         else:
@@ -78,7 +94,15 @@ class Instance(object):
                     os.remove(known_hosts)
                 client.get_host_keys().clear()
         client.save_host_keys(known_hosts)
-        return user, host, port, client, known_hosts
+        result = dict(
+            user=user,
+            host=host,
+            port=port,
+            client=client,
+            UserKnownHostsFile=known_hosts)
+        if proxy_command:
+            result['ProxyCommand'] = proxy_command
+        return result
 
 
 class Master(BaseMaster):

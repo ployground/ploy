@@ -60,7 +60,12 @@ class InitSSHKeyMixin(object):
                     os.remove(known_hosts)
                 client.get_host_keys().clear()
         client.save_host_keys(known_hosts)
-        return user, host, port, client, known_hosts
+        return dict(
+            user=user,
+            host=host,
+            port=port,
+            client=client,
+            UserKnownHostsFile=known_hosts)
 
 
 class ConnMixin(object):

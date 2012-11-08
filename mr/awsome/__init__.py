@@ -347,18 +347,27 @@ class AWS(object):
         except ImportError:
             from ssh import SSHException
         try:
-            user, host, port, client, known_hosts = server.init_ssh_key(user=user)
+            ssh_info = server.init_ssh_key(user=user)
         except SSHException, e:
             log.error("Couldn't validate fingerprint for ssh connection.")
             log.error(unicode(e))
             log.error("Is the server finished starting up?")
             sys.exit(1)
-        client.close()
-        argv[sid_index:sid_index + 1] = [
-            '-o', 'UserKnownHostsFile=%s' % known_hosts,
-            '-l', user,
-            '-p', str(port),
-            host]
+        ssh_info['client'].close()
+        additional_args = []
+        for key in ssh_info:
+            if key[0].isupper():
+                additional_args.append('-o')
+                additional_args.append('%s=%s' % (key, ssh_info[key]))
+        if 'user' in ssh_info:
+            additional_args.append('-l')
+            additional_args.append(ssh_info['user'])
+        if 'port' in ssh_info:
+            additional_args.append('-p')
+            additional_args.append(str(ssh_info['port']))
+        if 'host' in ssh_info:
+            additional_args.append(ssh_info['host'])
+        argv[sid_index:sid_index + 1] = additional_args
         argv[0:0] = ['ssh']
         import subprocess
         subprocess.call(argv)

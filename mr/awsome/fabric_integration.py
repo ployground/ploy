@@ -35,14 +35,14 @@ class HostConnectionCache(object):
             return self._cache[key]
         server = instances[host]
         try:
-            user, host, port, client, known_hosts = server.init_ssh_key(user=user)
+            ssh_info = server.init_ssh_key(user=user)
         except paramiko.SSHException, e:
             log.error("Couldn't validate fingerprint for ssh connection.")
             log.error(e)
             log.error("Is the server finished starting up?")
             return
-        self._cache[key] = client
-        return client
+        self._cache[key] = ssh_info['client']
+        return ssh_info['client']
 
 
 def normalize(host_string, omit_port=False):

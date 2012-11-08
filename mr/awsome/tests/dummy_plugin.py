@@ -40,7 +40,12 @@ class Instance(StartupScriptMixin):
         log.info('init_ssh_key: %s %s', self.id, user)
         if user is None:
             user = self.config.get('user', 'root')
-        return user, host, port, MockClient(), self.master.known_hosts
+        return dict(
+            user=user,
+            host=host,
+            port=port,
+            client=MockClient(),
+            UserKnownHostsFile=self.master.known_hosts)
 
 
 class Master(BaseMaster):
