@@ -68,7 +68,10 @@ class Instance(object):
                 if user is None:
                     user = sshconfig.lookup(host).get('user', 'root')
                     user = self.config.get('user', user)
-                client.connect(hostname, int(port), user, sock=sock)
+                if sock is None:
+                    client.connect(hostname, int(port), user)
+                else:
+                    client.connect(hostname, int(port), user, sock=sock)
                 break
             except paramiko.BadHostKeyException:
                 if os.path.exists(known_hosts):
