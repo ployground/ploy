@@ -15,9 +15,13 @@ log = logging.getLogger('mr.awsome.ec2')
 
 class InitSSHKeyMixin(object):
     def init_ssh_key(self, user=None):
-        import ssh
+        try:
+            import paramiko
+            paramiko  # shutup pyflakes
+        except ImportError:
+            import ssh as paramiko
 
-        class AWSHostKeyPolicy(ssh.MissingHostKeyPolicy):
+        class AWSHostKeyPolicy(paramiko.MissingHostKeyPolicy):
             def __init__(self, instance):
                 self.instance = instance
 
@@ -26,13 +30,13 @@ class InitSSHKeyMixin(object):
                 if self.instance.public_dns_name == hostname:
                     output = self.instance.get_console_output().output
                     if output.strip() == '':
-                        raise ssh.SSHException('No console output (yet) for %s' % hostname)
+                        raise paramiko.SSHException('No console output (yet) for %s' % hostname)
                     if fingerprint in output:
                         client._host_keys.add(hostname, key.get_name(), key)
                         if client._host_keys_filename is not None:
                             client.save_host_keys(client._host_keys_filename)
                         return
-                raise ssh.SSHException('Unknown server %s' % hostname)
+                raise paramiko.SSHException('Unknown server %s' % hostname)
 
         instance = self.instance
         if instance is None:
@@ -42,7 +46,7 @@ class InitSSHKeyMixin(object):
             user = 'root'
         host = str(instance.public_dns_name)
         port = 22
-        client = ssh.SSHClient()
+        client = paramiko.SSHClient()
         client.set_missing_host_key_policy(AWSHostKeyPolicy(instance))
         known_hosts = self.master.known_hosts
         while 1:
@@ -51,7 +55,7 @@ class InitSSHKeyMixin(object):
             try:
                 client.connect(host, int(port), user)
                 break
-            except ssh.BadHostKeyException:
+            except paramiko.BadHostKeyException:
                 if os.path.exists(known_hosts):
                     os.remove(known_hosts)
                 client.get_host_keys().clear()

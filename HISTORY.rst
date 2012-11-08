@@ -4,6 +4,9 @@ Changelog
 0.11 - Unreleased
 -----------------
 
+* Support both the ``ssh`` and ``paramiko`` libraries depending on which
+  Fabric version is used.
+  [fschulze]
 
 
 0.10 - 2012-06-04

@@ -1,5 +1,9 @@
 import fabric.network
-import ssh
+try:
+    import paramiko
+    paramiko  # shutup pyflakes
+except ImportError:
+    import ssh as paramiko
 
 
 instances = None
@@ -32,7 +36,7 @@ class HostConnectionCache(object):
         server = instances[host]
         try:
             user, host, port, client, known_hosts = server.init_ssh_key(user=user)
-        except ssh.SSHException, e:
+        except paramiko.SSHException, e:
             log.error("Couldn't validate fingerprint for ssh connection.")
             log.error(e)
             log.error("Is the server finished starting up?")
