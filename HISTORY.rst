@@ -4,6 +4,9 @@ Changelog
 0.12 - Unreleased
 -----------------
 
+* Fix Fabric integration for newer versions of Fabric.
+  [fschulze]
+
 * Support ``proxycommand`` option for plain instances. This also caused a
   change in the ``init_ssh_key`` API for plugins.
   [fschulze]

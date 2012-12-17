@@ -10,6 +10,12 @@ instances = None
 log = None
 
 
+if getattr(fabric.network, 'host_regex', None) is not None:
+    parse_host_string = lambda x: fabric.network.host_regex.match(x).groupdict()
+else:
+    parse_host_string = lambda x: fabric.network.parse_host_string(x)
+
+
 class HostConnectionCache(object):
     def __init__(self):
         self._cache = dict()
@@ -28,7 +34,7 @@ class HostConnectionCache(object):
         return key in self._cache
 
     def __getitem__(self, key):
-        r = fabric.network.host_regex.match(key).groupdict()
+        r = parse_host_string(key)
         user = r['user'] or 'root'
         host = r['host']
         if key in self._cache:
@@ -50,7 +56,7 @@ def normalize(host_string, omit_port=False):
     if not host_string:
         return ('', '') if omit_port else ('', '', '')
     # Get user, host and port separately
-    r = fabric.network.host_regex.match(host_string).groupdict()
+    r = parse_host_string(host_string)
     user = r['user'] or 'root'
     host = r['host']
     port = r['port'] or '22'
