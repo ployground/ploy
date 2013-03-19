@@ -218,7 +218,7 @@ class Instance(StartupScriptMixin, InitSSHKeyMixin, ConnMixin):
             log.info("Instance created, waiting until it's available")
         while instance.state != 'running':
             if instance.state != 'pending':
-                log.error("Something went wrong, instance status: %s", instance.status)
+                log.error("Something went wrong, instance status: %s", instance.state)
                 return
             time.sleep(5)
             sys.stdout.write(".")
