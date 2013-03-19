@@ -174,7 +174,7 @@ class Instance(StartupScriptMixin, InitSSHKeyMixin, ConnMixin):
         instance = self.instance
         if instance is None:
             return
-        if instance.state != 'running':
+        if instance.state not in ('running', 'stopped'):
             log.info("Instance state: %s", instance.state)
             log.info("Instance not terminated")
             return
@@ -208,7 +208,15 @@ class Instance(StartupScriptMixin, InitSSHKeyMixin, ConnMixin):
         instance = self.instance
         if instance is not None:
             log.info("Instance state: %s", instance.state)
-            log.info("Instance already started, waiting until it's available")
+            if instance.state == 'stopping':
+                log.info("The instance is currently stopping")
+                return
+            if instance.state == 'stopped':
+                log.info("Starting stopped instance '%s'" % self.id)
+                instance.modify_attribute('instanceType', config.get('instance_type', 'm1.small'))
+                instance.start()
+            else:
+                log.info("Instance already started, waiting until it's available")
         else:
             log.info("Creating instance '%s'" % self.id)
             reservation = self.image().run(

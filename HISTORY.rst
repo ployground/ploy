@@ -4,6 +4,9 @@ Changelog
 0.12 - Unreleased
 -----------------
 
+* Added support for EBS boot instances.
+  [fschulze]
+
 * Add option ``ssh-key-filename`` to point to a private ssh key for ec2 and
   plain instances.
   [fschulze]
