@@ -4,6 +4,10 @@ Changelog
 0.12 - Unreleased
 -----------------
 
+* Add option ``ssh-key-filename`` to point to a private ssh key for ec2 and
+  plain instances.
+  [fschulze]
+
 * Fix Fabric integration for newer versions of Fabric.
   [fschulze]
 

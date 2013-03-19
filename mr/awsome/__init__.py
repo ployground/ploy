@@ -367,6 +367,9 @@ class AWS(object):
             additional_args.append(str(ssh_info['port']))
         if 'host' in ssh_info:
             additional_args.append(ssh_info['host'])
+        if server.config.get('ssh-key-filename'):
+            additional_args.append('-i')
+            additional_args.append(server.config.get('ssh-key-filename'))
         argv[sid_index:sid_index + 1] = additional_args
         argv[0:0] = ['ssh']
         import subprocess

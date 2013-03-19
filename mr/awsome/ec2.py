@@ -48,12 +48,16 @@ class InitSSHKeyMixin(object):
         port = 22
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(AWSHostKeyPolicy(instance))
+        client_args = dict(
+            port=int(port),
+            username=user,
+            key_filename=self.config.get('ssh-key-filename', None))
         known_hosts = self.master.known_hosts
         while 1:
             if os.path.exists(known_hosts):
                 client.load_host_keys(known_hosts)
             try:
-                client.connect(host, int(port), user)
+                client.connect(host, **client_args)
                 break
             except paramiko.BadHostKeyException:
                 if os.path.exists(known_hosts):
@@ -452,6 +456,7 @@ def get_massagers():
     massagers.extend([
         HooksMassager(sectiongroupname, 'hooks'),
         PathMassager(sectiongroupname, 'fabfile'),
+        PathMassager(sectiongroupname, 'ssh-key-filename'),
         StartupScriptMassager(sectiongroupname, 'startup_script'),
         SecuritygroupsMassager(sectiongroupname, 'securitygroups'),
         VolumesMassager(sectiongroupname, 'volumes'),
