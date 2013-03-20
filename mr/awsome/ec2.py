@@ -113,8 +113,9 @@ class Instance(StartupScriptMixin, InitSSHKeyMixin, ConnMixin):
             return
         elif len(instances) > 1:
             log.warn("More than one instance found, using first.")
-        log.info("Instance '%s' available.", self.id)
-        return instances[0]
+        instance = instances[0]
+        log.info("Instance '%s' (%s) available.", self.id, instance.id)
+        return instance
 
     def image(self):
         images = self.conn.get_all_images([self.config['image']])
