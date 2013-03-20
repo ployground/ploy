@@ -172,9 +172,11 @@ class AWS(object):
                             help="Name of the instance from the config.",
                             choices=list(instances))
         parser.add_argument("-v", "--verbose", dest="verbose",
-                          action="store_true", help="Print more info")
+                            action="store_true", help="Print more info and output the startup script")
         parser.add_argument("-i", "--interactive", dest="interactive",
-                          action="store_true", help="Creates a connection and drops you into pdb")
+                            action="store_true", help="Creates a connection and drops you into pdb")
+        parser.add_argument("-r", "--raw", dest="raw",
+                            action="store_true", help="Outputs the raw possibly compressed startup script")
         parser.add_argument("-o", "--override", nargs="*", type=str,
                             dest="overrides", metavar="OVERRIDE",
                             help="Option to override server config for startup script (name=value).")
@@ -184,10 +186,21 @@ class AWS(object):
         server = instances[args.server[0]]
         startup_script = server.startup_script(overrides=overrides, debug=True)
         max_size = getattr(server, 'max_startup_script_size', 16 * 1024)
-        log.info("Length of startup script: %s/%s", len(startup_script), max_size)
+        log.info("Length of startup script: %s/%s", len(startup_script['raw']), max_size)
         if args.verbose:
-            log.info("Startup script:")
-            print startup_script,
+            if 'startup_script' in server.config:
+                if startup_script['original'] == startup_script['raw']:
+                    log.info("Startup script:")
+                elif args.raw:
+                    log.info("Compressed startup script:")
+                else:
+                    log.info("Uncompressed startup script:")
+            else:
+                log.info("No startup script specified")
+        if args.raw:
+            print startup_script['raw'],
+        elif args.verbose:
+            print startup_script['original'],
         if args.interactive:  # pragma: no cover
             import readline
             conn = server.conn

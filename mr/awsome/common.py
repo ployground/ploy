@@ -44,7 +44,10 @@ class StartupScriptMixin(object):
         config = self.get_config(overrides)
         startup_script_path = config.get('startup_script', None)
         if startup_script_path is None:
-            return ''
+            if debug:
+                return dict(original='', raw='')
+            else:
+                return ''
         try:
             startup_script = template.Template(
                 startup_script_path['path'],
@@ -57,20 +60,25 @@ class StartupScriptMixin(object):
             raise
         if 'hooks' in config:
             config['hooks'].startup_script_options(config)
-        result = startup_script(**config)
+        result = dict(original=startup_script(**config))
         if startup_script_path.get('gzip', False):
-            result = "\n".join([
+            result['raw'] = "\n".join([
                 "#!/bin/bash",
                 "tail -n+4 $0 | gunzip -c | bash",
                 "exit $?",
-                gzip_string(result)
+                gzip_string(result['original'])
             ])
+        else:
+            result['raw'] = result['original']
         max_size = getattr(self, 'max_startup_script_size', None)
         if max_size is not None and len(result) >= max_size:
             log.error("Startup script too big (%s > %s).", len(result), max_size)
             if not debug:
                 sys.exit(1)
-        return result
+        if debug:
+            return result
+        else:
+            return result['raw']
 
 
 class BaseMaster(object):
