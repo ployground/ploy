@@ -173,6 +173,8 @@ class AWS(object):
                             choices=list(instances))
         parser.add_argument("-v", "--verbose", dest="verbose",
                             action="store_true", help="Print more info and output the startup script")
+        parser.add_argument("-c", "--console-output", dest="console_output",
+                            action="store_true", help="Prints the console output of the instance if available")
         parser.add_argument("-i", "--interactive", dest="interactive",
                             action="store_true", help="Creates a connection and drops you into pdb")
         parser.add_argument("-r", "--raw", dest="raw",
@@ -201,6 +203,8 @@ class AWS(object):
             print startup_script['raw'],
         elif args.verbose:
             print startup_script['original'],
+        if args.console_output:
+            print server.instance.get_console_output().output
         if args.interactive:  # pragma: no cover
             import readline
             conn = server.conn
