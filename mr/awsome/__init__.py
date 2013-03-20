@@ -207,7 +207,13 @@ class AWS(object):
             instance = server.instance
             conn, instance  # shutup pyflakes
             readline.parse_and_bind('tab: complete')
-            __import__("code").interact(local=locals())
+            local = locals()
+            try:
+                import rlcompleter
+                readline.set_completer(rlcompleter.Completer(local).complete)
+            except ImportError:
+                pass
+            __import__("code").interact(local=local)
 
     def cmd_do(self, argv, help):
         """Do stuff on the cluster (using fabric)"""
