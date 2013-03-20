@@ -29,7 +29,7 @@ class InitSSHKeyMixin(object):
                 fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
                 if self.instance.public_dns_name == hostname:
                     output = self.instance.get_console_output().output
-                    if output.strip() == '':
+                    if output is None or output.strip() == '':
                         raise paramiko.SSHException('No console output (yet) for %s' % hostname)
                     if fingerprint in output:
                         client._host_keys.add(hostname, key.get_name(), key)
