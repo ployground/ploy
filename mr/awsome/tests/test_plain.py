@@ -10,14 +10,14 @@ class PlainTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
         self.aws = AWS(self.directory)
-        try:
+        try:  # pragma: no cover - we support both
             self._ssh_client_mock = patch("paramiko.SSHClient")
-        except ImportError:
+        except ImportError:  # pragma: no cover - we support both
             self._ssh_client_mock = patch("ssh.SSHClient")
         self.ssh_client_mock = self._ssh_client_mock.start()
-        try:
+        try:  # pragma: no cover - we support both
             self._ssh_config_mock = patch("paramiko.SSHConfig")
-        except ImportError:
+        except ImportError:  # pragma: no cover - we support both
             self._ssh_config_mock = patch("ssh.SSHConfig")
         self.ssh_config_mock = self._ssh_config_mock.start()
         self.ssh_config_mock().lookup.return_value = {}

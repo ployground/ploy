@@ -20,10 +20,10 @@ class Instance(object):
         return self.config['host']
 
     def get_fingerprint(self):
-        try:
+        try:  # pragma: no cover - we support both
             from paramiko import SSHException
             SSHException  # shutup pyflakes
-        except ImportError:
+        except ImportError:  # pragma: no cover - we support both
             from ssh import SSHException
 
         fingerprint = self.config.get('fingerprint')
@@ -32,10 +32,10 @@ class Instance(object):
         return fingerprint
 
     def init_ssh_key(self, user=None):
-        try:
+        try:  # pragma: no cover - we support both
             import paramiko
             paramiko  # shutup pyflakes
-        except ImportError:
+        except ImportError:  # pragma: no cover - we support both
             import ssh as paramiko
 
         class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):

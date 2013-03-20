@@ -180,14 +180,14 @@ class EC2Tests(TestCase):
         self.aws = AWS(self.directory)
         self._boto_ec2_regions_mock = patch("boto.ec2.regions")
         self.boto_ec2_regions_mock = self._boto_ec2_regions_mock.start()
-        try:
+        try:  # pragma: no cover - we support both
             self._ssh_client_mock = patch("paramiko.SSHClient")
-        except ImportError:
+        except ImportError:  # pragma: no cover - we support both
             self._ssh_client_mock = patch("ssh.SSHClient")
         self.ssh_client_mock = self._ssh_client_mock.start()
-        try:
+        try:  # pragma: no cover - we support both
             self._ssh_config_mock = patch("paramiko.SSHConfig")
-        except ImportError:
+        except ImportError:  # pragma: no cover - we support both
             self._ssh_config_mock = patch("ssh.SSHConfig")
         self.ssh_config_mock = self._ssh_config_mock.start()
         self.ssh_config_mock().lookup.return_value = {}

@@ -364,10 +364,10 @@ class AWS(object):
         server = instances[sid]
         if user is None:
             user = server.config.get('user')
-        try:
+        try:  # pragma: no cover - we support both
             from paramiko import SSHException
             SSHException  # shutup pyflakes
-        except ImportError:
+        except ImportError:  # pragma: no cover - we support both
             from ssh import SSHException
         try:
             ssh_info = server.init_ssh_key(user=user)

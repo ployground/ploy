@@ -15,10 +15,10 @@ log = logging.getLogger('mr.awsome.ec2')
 
 class InitSSHKeyMixin(object):
     def init_ssh_key(self, user=None):
-        try:
+        try:  # pragma: no cover - we support both
             import paramiko
             paramiko  # shutup pyflakes
-        except ImportError:
+        except ImportError:  # pragma: no cover - we support both
             import ssh as paramiko
 
         class AWSHostKeyPolicy(paramiko.MissingHostKeyPolicy):

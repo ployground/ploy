@@ -1,8 +1,8 @@
 import fabric.network
-try:
+try:  # pragma: no cover - we support both
     import paramiko
     paramiko  # shutup pyflakes
-except ImportError:
+except ImportError:  # pragma: no cover - we support both
     import ssh as paramiko
 
 
