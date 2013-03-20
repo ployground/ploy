@@ -461,6 +461,11 @@ class ConnectionsMassager(BaseMassager):
 def get_massagers():
     massagers = []
 
+    sectiongroupname = 'ec2-master'
+    massagers.extend([
+        PathMassager(sectiongroupname, 'access-key-id'),
+        PathMassager(sectiongroupname, 'secret-access-key')])
+
     sectiongroupname = 'ec2-instance'
     massagers.extend([
         HooksMassager(sectiongroupname, 'hooks'),

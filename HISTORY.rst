@@ -4,6 +4,11 @@ Changelog
 0.12 - Unreleased
 -----------------
 
+* Use PathMassager for ``access-key-id`` and ``secret-access-key`` in the
+  ``ec2-master`` section. This might break existing relative paths for these
+  options.
+  [fschulze]
+
 * Added support for EBS boot instances.
   [fschulze]
 
