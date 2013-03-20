@@ -251,6 +251,7 @@ class EC2Tests(TestCase):
         reservation.groups = [MockSecuritygroup('foo')]
         region.connection.reservations.append(reservation)
         instance = MockInstance()
+        instance.id = 'i-12345678'
         reservation.instances.append(instance)
         self.boto_ec2_regions_mock.return_value = [region]
         with patch('mr.awsome.ec2.log') as LogMock:
@@ -262,7 +263,7 @@ class EC2Tests(TestCase):
             aws_access_key_id='ham', aws_secret_access_key='egg')
         self.assertEquals(
             LogMock.info.call_args_list, [
-                (("Instance '%s' available.", 'foo'), {}),
+                (("Instance '%s' (%s) available.", 'foo', instance.id), {}),
                 (("Instance running.",), {}),
                 (("Instances DNS name %s", 'ec2-257-1-2-3.example.com'), {}),
                 (("Instances private DNS name %s", 'ec2-10-0-0-1.example.com'), {}),

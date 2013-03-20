@@ -71,8 +71,8 @@ class StartupScriptMixin(object):
         else:
             result['raw'] = result['original']
         max_size = getattr(self, 'max_startup_script_size', None)
-        if max_size is not None and len(result) >= max_size:
-            log.error("Startup script too big (%s > %s).", len(result), max_size)
+        if max_size is not None and len(result['raw']) >= max_size:
+            log.error("Startup script too big (%s > %s).", len(result['raw']), max_size)
             if not debug:
                 sys.exit(1)
         if debug:
