@@ -127,23 +127,25 @@ class Config(dict):
     def _expand(self, sectiongroupname, sectionname, section, seen):
         if (sectiongroupname, sectionname) in seen:
             raise ValueError("Circular macro expansion.")
-        macrogroupname = sectiongroupname
-        macroname = section['<']
         seen.add((sectiongroupname, sectionname))
-        if ':' in macroname:
-            macrogroupname, macroname = macroname.split(':')
-        macro = self[macrogroupname][macroname]
-        if '<' in macro:
-            self._expand(macrogroupname, macroname, macro, seen)
+        macronames = section['<'].split()
+        for macroname in macronames:
+            if ':' in macroname:
+                macrogroupname, macroname = macroname.split(':')
+            else:
+                macrogroupname = sectiongroupname
+            macro = self[macrogroupname][macroname]
+            if '<' in macro:
+                self._expand(macrogroupname, macroname, macro, seen)
+            if sectiongroupname in self.macro_cleaners:
+                macro = dict(macro)
+                self.macro_cleaners[sectiongroupname](macro)
+            for key in macro:
+                if key not in section:
+                    section[key] = macro[key]
         # this needs to be after the recursive _expand call, so circles are
         # properly detected
         del section['<']
-        if sectiongroupname in self.macro_cleaners:
-            macro = dict(macro)
-            self.macro_cleaners[sectiongroupname](macro)
-        for key in macro:
-            if key not in section:
-                section[key] = macro[key]
 
     def __init__(self, config, path=None, bbb_config=False):
         self.config = config
