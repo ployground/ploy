@@ -186,6 +186,8 @@ class Config(dict):
 
     def get_section_with_overrides(self, sectiongroupname, sectionname, overrides):
         config = self[sectiongroupname][sectionname].copy()
+        config['__groupname__'] = sectiongroupname
+        config['__name__'] = sectionname
         if overrides is None:
             return config
         dummy = {sectiongroupname: {sectionname: config}}
