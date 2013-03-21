@@ -81,6 +81,33 @@ class StartupScriptMixin(object):
             return result['raw']
 
 
+class FabricMixin(object):
+    def do(self, task, *args, **kwargs):
+        from mr.awsome import fabric_integration
+        # this needs to be done before any other fabric module import
+        fabric_integration.patch()
+        fabric_integration.instances = self.master.instances
+        fabric_integration.log = log
+
+        from fabric.main import load_fabfile
+        from fabric.state import env
+        env.reject_unknown_hosts = True
+        env.disable_known_hosts = True
+
+        fabfile = self.config['fabfile']
+        docstring, callables, default = load_fabfile(fabfile)
+        env.host_string = "{}@{}".format(
+            self.config.get('user', 'root'),
+            self.id)
+        result = callables[task](*args, **kwargs)
+        fabric_integration.instances = None
+        fabric_integration.log = None
+        del env['reject_unknown_hosts']
+        del env['disable_known_hosts']
+        env.host_string = None
+        return result
+
+
 class BaseMaster(object):
     def __init__(self, main_config, id, master_config):
         self.id = id

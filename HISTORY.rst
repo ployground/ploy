@@ -4,6 +4,10 @@ Changelog
 0.12 - Unreleased
 -----------------
 
+* Added ``do`` method on ec2 and plain instances which allows to call fabric
+  commands.
+  [fschulze]
+
 * Use PathMassager for ``access-key-id`` and ``secret-access-key`` in the
   ``ec2-master`` section. This might break existing relative paths for these
   options.

@@ -1,5 +1,5 @@
 from lazy import lazy
-from mr.awsome.common import BaseMaster, StartupScriptMixin
+from mr.awsome.common import BaseMaster, FabricMixin, StartupScriptMixin
 from mr.awsome.config import BaseMassager, BooleanMassager
 from mr.awsome.config import HooksMassager, PathMassager
 from mr.awsome.config import StartupScriptMassager
@@ -84,7 +84,7 @@ class ConnMixin(object):
         return self.master.get_conn(region_id)
 
 
-class Instance(StartupScriptMixin, InitSSHKeyMixin, ConnMixin):
+class Instance(FabricMixin, StartupScriptMixin, InitSSHKeyMixin, ConnMixin):
     max_startup_script_size = 16 * 1024
 
     def __init__(self, master, sid, config):

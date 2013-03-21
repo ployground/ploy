@@ -1,4 +1,4 @@
-from mr.awsome.common import BaseMaster
+from mr.awsome.common import BaseMaster, FabricMixin
 import os
 
 
@@ -10,7 +10,7 @@ class InstanceFormattingWrapper(object):
         return self.instance.config[name]
 
 
-class Instance(object):
+class Instance(FabricMixin):
     def __init__(self, master, sid, config):
         self.id = sid
         self.master = master
