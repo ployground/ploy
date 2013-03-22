@@ -136,6 +136,10 @@ class Hooks(object):
             if func is not None:
                 yield func
 
+    def before_start(self, server):
+        for func in self._iter_funcs('before_start'):
+            func(server)
+
     def startup_script_options(self, options):
         for func in self._iter_funcs('startup_script_options'):
             func(options)
