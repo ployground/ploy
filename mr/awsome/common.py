@@ -147,6 +147,10 @@ class Hooks(object):
             if func is not None:
                 yield func
 
+    def after_terminate(self, server):
+        for func in self._iter_funcs('after_terminate'):
+            func(server)
+
     def before_start(self, server):
         for func in self._iter_funcs('before_start'):
             func(server)

@@ -120,6 +120,8 @@ class AWS(object):
         args = parser.parse_args(argv)
         server = instances[args.server[0]]
         server.terminate()
+        if 'hooks' in server.config:
+            server.config['hooks'].after_terminate(server)
 
     def _parse_overrides(self, options):
         overrides = dict()
