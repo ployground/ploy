@@ -89,6 +89,18 @@ Then you can add the info about the server instance itself like this::
   startup_script = startup-demo-server
   fabfile = `fabfile.py`_
 
+**Ephemeral disks**
+
+You can setup the use of more than one ephemeral disk like this::
+
+  [ec2-instance:demo-server]
+  ...
+  instance_type = m1.large
+  device_map = /dev/sdb:ephemeral0 /dev/sdc:ephemeral1
+
+Consult the AWS documentation to see how many ephemeral disks each instance type
+has.
+
 **Startup scripts**
 
 The startup_script option above allows you to write a script which is run

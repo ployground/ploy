@@ -215,6 +215,7 @@ class Instance(FabricMixin, StartupScriptMixin, InitSSHKeyMixin, ConnMixin):
             if instance.state == 'stopped':
                 log.info("Starting stopped instance '%s'" % self.id)
                 instance.modify_attribute('instanceType', config.get('instance_type', 'm1.small'))
+                instance.modify_attribute('blockDeviceMapping', config.get('device_map', None))
                 instance.start()
             else:
                 log.info("Instance already started, waiting until it's available")
@@ -223,6 +224,7 @@ class Instance(FabricMixin, StartupScriptMixin, InitSSHKeyMixin, ConnMixin):
             reservation = self.image().run(
                 1, 1, config['keypair'],
                 instance_type=config.get('instance_type', 'm1.small'),
+                block_device_map=config.get('device_map', None),
                 security_groups=self.securitygroups(),
                 user_data=self.startup_script(overrides=overrides),
                 placement=config['placement']
@@ -421,6 +423,21 @@ class SecuritygroupsMassager(BaseMassager):
         return set(securitygroups)
 
 
+class DevicemapMassager(BaseMassager):
+    def __call__(self, main_config, sectionname):
+        from boto.ec2.blockdevicemapping import BlockDeviceMapping
+        from boto.ec2.blockdevicemapping import BlockDeviceType
+
+        value = main_config[self.sectiongroupname][sectionname][self.key]
+        device_map = BlockDeviceMapping()
+        for mapping in value.split():
+            device_path, ephemeral_name = mapping.split(':')
+            device = BlockDeviceType()
+            device.ephemeral_name = ephemeral_name
+            device_map[device_path] = device
+        return device_map
+
+
 class VolumesMassager(BaseMassager):
     def __call__(self, main_config, sectionname):
         value = main_config[self.sectiongroupname][sectionname][self.key]
@@ -474,6 +491,7 @@ def get_massagers():
         StartupScriptMassager(sectiongroupname, 'startup_script'),
         SecuritygroupsMassager(sectiongroupname, 'securitygroups'),
         VolumesMassager(sectiongroupname, 'volumes'),
+        DevicemapMassager(sectiongroupname, 'device_map'),
         SnapshotsMassager(sectiongroupname, 'snapshots'),
         BooleanMassager(sectiongroupname, 'delete-volumes-on-terminate')])
 

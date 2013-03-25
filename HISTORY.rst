@@ -4,6 +4,9 @@ Changelog
 0.12 - Unreleased
 -----------------
 
+* Support block device maps to enable use of more than one ephemeral disk.
+  [fschulze]
+
 * Added ``do`` method on ec2 and plain instances which allows to call fabric
   commands.
   [fschulze]
