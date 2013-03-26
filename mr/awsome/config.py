@@ -13,6 +13,10 @@ class BaseMassager(object):
         return main_config[self.sectiongroupname][sectionname][self.key]
 
 
+class BaseMassagerPlugin(BaseMassager):
+    plugin = True
+
+
 class BooleanMassager(BaseMassager):
     def __call__(self, main_config, sectionname):
         value = main_config[self.sectiongroupname][sectionname][self.key]
@@ -37,19 +41,37 @@ class PathMassager(BaseMassager):
         return value
 
 
+def resolve_dotted_name(value):
+    if '.' in value:
+        prefix, name = value.rsplit('.', 1)
+        _temp = __import__(prefix, globals(), locals(), [name], -1)
+        return getattr(_temp, name)
+    else:
+        return __import__(value, globals(), locals(), [], -1)
+
+
 class HooksMassager(BaseMassager):
     def __call__(self, main_config, sectionname):
         value = main_config[self.sectiongroupname][sectionname][self.key]
         hooks = Hooks()
         for hook_spec in value.split():
-            if '.' in value:
-                prefix, name = value.rsplit('.', 1)
-                _temp = __import__(prefix, globals(), locals(), [name], -1)
-                hook = getattr(_temp, name)
-            else:
-                hook = __import__(value, globals(), locals(), [], -1)
-            hooks.add(hook())
+            hooks.add(resolve_dotted_name(hook_spec)())
         return hooks
+
+
+class MassagersMassager(BaseMassager):
+    def __call__(self, main_config, sectionname):
+        value = main_config[self.sectiongroupname][sectionname][self.key]
+        massagers = []
+        for spec in value.split('\n'):
+            spec = spec.strip()
+            if not spec:
+                continue
+            key, massager = spec.split('=')
+            sectiongroupname, key = tuple(x.strip() for x in key.split(':'))
+            massager = resolve_dotted_name(massager.strip())
+            massagers.append(massager(sectiongroupname, key))
+        return massagers
 
 
 class StartupScriptMassager(BaseMassager):
@@ -78,7 +100,8 @@ class Config(dict):
     def _add_massager(self, massager):
         key = (massager.sectiongroupname, massager.key)
         if key in self.massagers:
-            raise ValueError("Massager for option '%s' in section group '%s' already registered." % (massager.key, massager.sectiongroupname))
+            if not getattr(self.massagers[key], 'plugin', False):
+                raise ValueError("Massager for option '%s' in section group '%s' already registered." % (massager.key, massager.sectiongroupname))
         self.massagers[key] = massager
 
     def _load_plugins(self):
@@ -178,6 +201,12 @@ class Config(dict):
                 section = sectiongroup[sectionname]
                 if '<' in section:
                     self._expand(sectiongroupname, sectionname, section, seen)
+                if 'massagers' in section:
+                    massagers = MassagersMassager(
+                        sectiongroupname,
+                        'massagers')(self, sectionname)
+                    for massager in massagers:
+                        self._add_massager(massager)
                 for key in section:
                     massage = self.massagers.get((sectiongroupname, key))
                     if callable(massage):

@@ -4,6 +4,9 @@ Changelog
 0.12 - Unreleased
 -----------------
 
+* Allow adding of custom config massagers from inside the config.
+  [fschulze]
+
 * Support block device maps to enable use of more than one ephemeral disk.
   [fschulze]
 
