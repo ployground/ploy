@@ -4,6 +4,12 @@ Changelog
 0.12 - Unreleased
 -----------------
 
+* There is no need to add the AWS account id to security group names anymore.
+  [fschulze]
+
+* Rules are removed from security groups if they aren't defined in the config.
+  [fschulze]
+
 * Allow adding of custom config massagers from inside the config.
   [fschulze]
 

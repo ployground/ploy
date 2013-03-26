@@ -331,25 +331,61 @@ class Securitygroups(object):
         if create:
             from boto.ec2.securitygroup import GroupOrCIDR
 
-            rules = set()
+            rules = {}
             for rule in sg.rules:
                 for grant in rule.grants:
                     if grant.cidr_ip:
-                        rules.add((rule.ip_protocol, int(rule.from_port),
-                                   int(rule.to_port), grant.cidr_ip))
+                        key = (
+                            rule.ip_protocol,
+                            int(rule.from_port),
+                            int(rule.to_port),
+                            grant.cidr_ip)
                     else:
-                        rules.add('%s-%s' % (grant.name, grant.owner_id))
+                        key = (
+                            rule.ip_protocol,
+                            int(rule.from_port),
+                            int(rule.to_port),
+                            grant.name)
+                    rules[key] = (rule, grant)
+            # cleanup rules from config
+            connections = []
             for connection in securitygroup['connections']:
+                if connection[3].endswith("-%s" % sg.owner_id):
+                    # backward compatibility, strip the owner_id
+                    connection = (
+                        connection[0],
+                        connection[1],
+                        connection[2],
+                        connection[3].rstrip("-%s" % sg.owner_id))
+                connections.append(connection)
+            # delete rules which aren't defined in the config
+            for connection in set(rules).difference(connections):
+                rule, grant = rules[connection]
+                status = sg.revoke(
+                    ip_protocol=rule.ip_protocol,
+                    from_port=int(rule.from_port),
+                    to_port=int(rule.to_port),
+                    cidr_ip=grant.cidr_ip,
+                    src_group=grant)
+                if status:
+                    del rules[connection]
+            for connection in connections:
                 if connection in rules:
                     continue
-                if '-' in connection[3]:
-                    if connection[3] in rules:
-                        continue
-                    grant = GroupOrCIDR()
-                    grant.name, grant.ownerid = connection[3].rsplit('-', 1)
-                    sg.authorize(src_group=grant)
+                cidr_ip = None
+                src_group = None
+                if '/' in connection[3]:
+                    cidr_ip = connection[3]
                 else:
-                    sg.authorize(*connection)
+                    src_group = GroupOrCIDR()
+                    src_group.name = connection[3]
+                    src_group.ownerid = sg.owner_id
+                sg.authorize(
+                    ip_protocol=connection[0],
+                    from_port=connection[1],
+                    to_port=connection[2],
+                    cidr_ip=cidr_ip,
+                    src_group=src_group)
         return sg
 
 
