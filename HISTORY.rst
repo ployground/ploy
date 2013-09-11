@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.12 - Unreleased
+0.12 - 2013-09-11
 -----------------
 
 * There is no need to add the AWS account id to security group names anymore.
