@@ -36,6 +36,7 @@ class IntegerMassager(BaseMassager):
 class PathMassager(BaseMassager):
     def __call__(self, main_config, sectionname):
         value = main_config[self.sectiongroupname][sectionname][self.key]
+        value = os.path.expanduser(value)
         if not os.path.isabs(value):
             value = os.path.join(main_config.path, value)
         return value

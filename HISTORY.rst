@@ -4,6 +4,10 @@ Changelog
 0.13 - Unreleased
 -----------------
 
+* Use os.path.expanduser on all paths, so that one can use ~ in config values
+  like the aws keys.
+  [fschulze]
+
 
 0.12 - 2013-09-11
 -----------------
