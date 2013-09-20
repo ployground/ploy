@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.13 - Unreleased
+0.13 - 2013-09-20
 -----------------
 
 * Use os.path.expanduser on all paths, so that one can use ~ in config values
