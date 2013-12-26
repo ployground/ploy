@@ -35,7 +35,7 @@ class AWS(object):
         if not os.path.exists(configpath):
             log.error("Config '%s' doesn't exist." % configpath)
             sys.exit(1)
-        config = Config(configpath, bbb_config=True)
+        config = Config(configpath)
         config.parse()
         return config
 
@@ -43,7 +43,8 @@ class AWS(object):
     def masters(self):
         masters = []
         for plugin in self.config['plugin'].values():
-            masters.extend(plugin['module'].get_masters(self.config))
+            if 'get_masters' in plugin:
+                masters.extend(plugin['get_masters'](self.config))
         return masters
 
     @lazy

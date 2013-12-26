@@ -555,3 +555,9 @@ def get_masters(main_config):
     masters = main_config.get('ec2-master', {})
     for master, master_config in masters.iteritems():
         yield Master(main_config, master, master_config)
+
+
+providerplugin = dict(
+    get_massagers=get_massagers,
+    get_macro_cleaners=get_macro_cleaners,
+    get_masters=get_masters)

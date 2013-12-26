@@ -48,18 +48,13 @@ Plugins
 =======
 
 Support for backends is implemented by plugins. Two plugins are included with
-mr.awsome. To use the plugins, you have to configure one or more masters,
-like this::
+mr.awsome.
 
-  [ec2-master:default]
-  module = mr.awsome.ec2
+``plain``
+  For regular servers not otherwise supported by mr.awsome.
 
-  [plain-master:default]
-  module = mr.awsome.plain
-
-The ``ec2-master`` is for the Amazon cloud. The ``plain-master`` is for
-servers reachable by ssh which you want to included in the config for Fabric
-integration and easy ssh access with a centralized config.
+``ec2``
+  This plugin is for Amazon Elastic Cloud Computing (EC2).
 
 
 Plain

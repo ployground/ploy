@@ -4,6 +4,9 @@ Changelog
 0.14 - Unreleased
 -----------------
 
+* Load plugins via entry points instead of the ``plugin`` section in the config.
+  [fschulze]
+
 * Allow fallback to password for ssh to plain instances.
   [fschulze]
 

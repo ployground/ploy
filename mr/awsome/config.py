@@ -1,6 +1,7 @@
 from mr.awsome.common import Hooks
 from ConfigParser import RawConfigParser
 import os
+import pkg_resources
 import warnings
 
 
@@ -106,47 +107,17 @@ class Config(dict):
         self.massagers[key] = massager
 
     def _load_plugins(self):
-        if self._bbb_config and 'plugin' not in self:
-            # define default plugins for backward compatibility
-            self['plugin'] = {
-                'ec2': {
-                    'module': 'mr.awsome.ec2'},
-                'plain': {
-                    'module': 'mr.awsome.plain'}}
-            if 'instance' in self:
-                warnings.warn("The 'instance' section type is deprecated, use 'ec2-instance' instead.")
-                self['ec2-instance'] = self['instance']
-                del self['instance']
-            if 'securitygroup' in self:
-                warnings.warn("The 'securitygroup' section type is deprecated, use 'ec2-securitygroup' instead.")
-                self['ec2-securitygroup'] = self['securitygroup']
-                del self['securitygroup']
-            if 'server' in self:
-                warnings.warn("The 'server' section type is deprecated, use 'plain-instance' instead.")
-                self['plain-instance'] = self['server']
-                del self['server']
-            if 'global' in self and 'aws' in self['global']:
-                warnings.warn("The 'aws' section type is deprecated, define an 'ec2-master' instead.")
-                self.setdefault('ec2-master', {})
-                self['ec2-master']['default'] = self['global']['aws']
-                del self['global']['aws']
-                if len(self['global']) == 0:
-                    del self['global']
-            if 'plain-master' not in self:
-                self['plain-master'] = {'default': {}}
-        for config in self.get('plugin', {}).values():
-            if '.' in config['module']:
-                prefix, name = config['module'].rsplit('.', 1)
-                _temp = __import__(prefix, globals(), locals(), [name], -1)
-                module = getattr(_temp, name)
-            else:
-                module = __import__(config['module'], globals(), locals(), [], -1)
-            config['module'] = module
-            for massager in getattr(module, 'get_massagers', lambda: [])():
+        if 'plugin' in self:
+            warnings.warn("The 'plugin' section isn't used anymore.")
+        self['plugin'] = {}
+        group = 'mr.awsome.providerplugins'
+        for entrypoint in pkg_resources.iter_entry_points(group=group):
+            plugin = entrypoint.load()
+            self['plugin'][entrypoint.name] = plugin
+            for massager in plugin.get('get_massagers', lambda: [])():
                 self._add_massager(massager)
-            get_macro_cleaners = getattr(module, 'get_macro_cleaners', None)
-            if get_macro_cleaners is not None:
-                self.macro_cleaners.update(get_macro_cleaners(config))
+            if 'get_macro_cleaners' in plugin:
+                self.macro_cleaners.update(plugin['get_macro_cleaners'](self))
 
     def _expand(self, sectiongroupname, sectionname, section, seen):
         if (sectiongroupname, sectionname) in seen:
@@ -174,7 +145,6 @@ class Config(dict):
     def __init__(self, config, path=None, bbb_config=False):
         self.config = config
         self.path = path
-        self._bbb_config = bbb_config
         self.massagers = {}
         self.macro_cleaners = {}
 

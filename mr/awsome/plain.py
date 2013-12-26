@@ -146,3 +146,8 @@ def get_masters(main_config):
     masters = main_config.get('plain-master', {'default': {}})
     for master, master_config in masters.iteritems():
         yield Master(main_config, master, master_config)
+
+
+providerplugin = dict(
+    get_massagers=get_massagers,
+    get_masters=get_masters)

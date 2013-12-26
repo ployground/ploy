@@ -36,4 +36,7 @@ setup(
       [console_scripts]
       aws = mr.awsome:aws
       assh = mr.awsome:aws_ssh
+      [mr.awsome.providerplugins]
+      plain = mr.awsome.plain:providerplugin
+      ec2 = mr.awsome.ec2:providerplugin
     """)
