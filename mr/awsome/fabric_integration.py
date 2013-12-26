@@ -1,4 +1,5 @@
 import fabric.network
+import sys
 try:  # pragma: no cover - we support both
     import paramiko
     paramiko  # shutup pyflakes
@@ -46,7 +47,7 @@ class HostConnectionCache(object):
             log.error("Couldn't validate fingerprint for ssh connection.")
             log.error(e)
             log.error("Is the server finished starting up?")
-            return
+            sys.exit(1)
         self._cache[key] = ssh_info['client']
         return ssh_info['client']
 
