@@ -33,6 +33,41 @@ def strip_hashcomments(value):
     return "\n".join(result)
 
 
+def yesno(question, default=None, all=False):
+    if default is True:
+        question = "%s [Yes/no" % question
+        answers = {
+            False: ('n', 'no'),
+            True: ('', 'y', 'yes'),
+        }
+    elif default is False:
+        question = "%s [Yes/no" % question
+        answers = {
+            False: ('n', 'no'),
+            True: ('', 'y', 'yes'),
+        }
+    else:
+        question = "%s [yes/no" % question
+        answers = {
+            False: ('n', 'no'),
+            True: ('y', 'yes'),
+        }
+    if all:
+        answers['all'] = ('a', 'all')
+        question = "%s/all] " % question
+    else:
+        question = "%s] " % question
+    while 1:
+        answer = raw_input(question).lower()
+        for option in answers:
+            if answer in answers[option]:
+                return option
+        if all:
+            print >>sys.stderr, "You have to answer with y, yes, n, no, a or all."
+        else:
+            print >>sys.stderr, "You have to answer with y, yes, n or no."
+
+
 class StartupScriptMixin(object):
     def get_config(self, overrides=None):
         return self.master.main_config.get_section_with_overrides(

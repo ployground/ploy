@@ -7,6 +7,9 @@ Changelog
 * Allow fallback to password for ssh to plain instances.
   [fschulze]
 
+* Add option to ask for manual fingerprint validation for plain instances.
+  [fschulze]
+
 
 0.13 - 2013-09-20
 -----------------

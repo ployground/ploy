@@ -1,6 +1,7 @@
-from mr.awsome.common import BaseMaster, FabricMixin
+from mr.awsome.common import BaseMaster, FabricMixin, yesno
 import getpass
 import os
+import sys
 
 
 class InstanceFormattingWrapper(object):
@@ -42,10 +43,18 @@ class Instance(FabricMixin):
         class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
             def __init__(self, fingerprint):
                 self.fingerprint = fingerprint
+                self.ask = True
 
             def missing_host_key(self, client, hostname, key):
                 fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
-                if fingerprint == self.fingerprint:
+                if self.fingerprint.lower() in ('ask', 'none'):
+                    if not self.ask:
+                        return
+                    if yesno("WARNING! Automatic fingerprint checking disabled. Got fingerprint %s. Continue?" % fingerprint):
+                        self.ask = False
+                        return
+                    sys.exit(1)
+                elif fingerprint == self.fingerprint:
                     client._host_keys.add(hostname, key.get_name(), key)
                     if client._host_keys_filename is not None:
                         client.save_host_keys(client._host_keys_filename)
