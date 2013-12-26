@@ -64,6 +64,7 @@ class Instance(FabricMixin):
         fingerprint = self.get_fingerprint()
         client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint))
         known_hosts = self.master.known_hosts
+        client.known_hosts = None
         proxy_command = self.config.get('proxycommand', None)
         if proxy_command is None:
             proxy_command = sshconfig.lookup(host).get('proxycommand', None)
