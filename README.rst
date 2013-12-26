@@ -62,6 +62,41 @@ servers reachable by ssh which you want to included in the config for Fabric
 integration and easy ssh access with a centralized config.
 
 
+Plain
+-----
+
+With plain instances you can put infos about servers into the configuration to
+benefit from some mr.awsome features like ssh fingerprint checking and plugins
+like the Fabric integration.
+
+Options
+~~~~~~~
+
+``host``
+  (**required**) The host name or address for the server.
+
+``user``
+  The default user for ssh connections. If it's set to ``*`` then the current
+  local user name is used.
+
+``port``
+  The ssh port number.
+
+``fingerprint``
+  (**required**) The ssh fingerprint of the server.
+
+``password_fallback``
+  If this boolean is true, then using a password as fallback is enabled if the
+  ssh key doesn't work. This is off by default.
+
+``password``
+  Never use this directly! If password_fallback is enabled this password is
+  used. This is mainly meant for Fabric scripts which have other ways to get
+  the password. On use case is bootstrapping `FreeBSD <http://www.freebsd.org/>`_
+  from an `mfsBSD <http://mfsbsd.vx.sk/>`_ distribution where the password is
+  fixed.
+
+
 EC2
 ---
 

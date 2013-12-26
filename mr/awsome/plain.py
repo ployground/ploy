@@ -1,4 +1,5 @@
 from mr.awsome.common import BaseMaster, FabricMixin
+import getpass
 import os
 
 
@@ -56,6 +57,7 @@ class Instance(FabricMixin):
         except KeyError:
             raise paramiko.SSHException("No host set in config.")
         port = self.config.get('port', 22)
+        password = None
         client = paramiko.SSHClient()
         sshconfig = paramiko.SSHConfig()
         sshconfig.parse(open(os.path.expanduser('~/.ssh/config')))
@@ -88,9 +90,17 @@ class Instance(FabricMixin):
                     port=int(port),
                     username=user,
                     key_filename=self.config.get('ssh-key-filename', None),
+                    password=password,
                     sock=sock)
                 client.connect(hostname, **client_args)
                 break
+            except paramiko.PasswordRequiredException:
+                if not self.config.get('password_fallback', False):
+                    raise
+                if 'password' in self.config:
+                    password = self.config['password']
+                else:
+                    password = getpass.getpass('Password for %s@%s:%s: ' % (user, host, port))
             except paramiko.BadHostKeyException:
                 if os.path.exists(known_hosts):
                     os.remove(known_hosts)
@@ -113,11 +123,12 @@ class Master(BaseMaster):
 
 
 def get_massagers():
-    from mr.awsome.config import PathMassager, UserMassager
+    from mr.awsome.config import BooleanMassager, PathMassager, UserMassager
 
     sectiongroupname = 'plain-instance'
     return [
         UserMassager(sectiongroupname, 'user'),
+        BooleanMassager(sectiongroupname, 'password_fallback'),
         PathMassager(sectiongroupname, 'fabfile')]
 
 

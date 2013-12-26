@@ -4,6 +4,8 @@ Changelog
 0.14 - Unreleased
 -----------------
 
+* Allow fallback to password for ssh to plain instances.
+  [fschulze]
 
 
 0.13 - 2013-09-20
