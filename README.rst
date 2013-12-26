@@ -1,4 +1,8 @@
-**Overview**
+.. contents::
+
+
+Overview
+========
 
 mr.awsome is a commandline-tool (aws) to manage and control Amazon
 Webservice's EC2 instances. Once configured with your AWS key, you can
@@ -9,7 +13,9 @@ Examples are adding additional, pre-configured webservers to a cluster
 deployments and creating backups - each with just one call from the
 commandline. Aw(e)some, indeed, if we may say so...
 
-**Installation**
+
+Installation
+============
 
 mr.awsome is best installed with easy_install, pip or with zc.recipe.egg in
 a buildout. It installs two scripts, ``aws`` and ``assh``.
@@ -30,7 +36,16 @@ disable them by adding an initialization option to the aws part like this::
       warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Hash\.SHA", 6)
       warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Util\.randpool", 40)
 
-**Configuration**
+
+Configuration
+=============
+
+All information about server instances is located in ``aws.conf``, which
+by default is looked up in ``etc/aws.conf``.
+
+
+Plugins
+=======
 
 Support for backends is implemented by plugins. Two plugins are included with
 mr.awsome. To use the plugins, you have to configure one or more masters,
@@ -46,6 +61,10 @@ The ``ec2-master`` is for the Amazon cloud. The ``plain-master`` is for
 servers reachable by ssh which you want to included in the config for Fabric
 integration and easy ssh access with a centralized config.
 
+
+EC2
+---
+
 To authorize itself against AWS, mr.awsome uses the following two environment
 variables::
 
@@ -56,14 +75,11 @@ You can find their values at `http://aws.amazon.com`_ under
 *'Your Account'-'Security Credentials'.*
 
 You can also put them into files and point to them in the
-``[ec2-master:default]`` section with the ``access-key-id`` and
-``secret-access-key`` options. It's best to put them in ``~/.aws/`` and make
-sure only your user can read them.
+``[ec2-master:default]`` section of the configuration file with the
+``access-key-id`` and ``secret-access-key`` options. It's good practice to put
+them in ``~/.aws/`` and make sure only your user can read them.
 
-All other information about server instances is located in ``aws.conf``, which
-by default is looked up in ``etc/aws.conf``.
-
-Before you can create a server instance with the ``create`` command described
+Before you can create a server instance with the ``start`` command described
 below, you first have to declare a security group in your ``aws.conf`` like
 this::
 
@@ -89,7 +105,9 @@ Then you can add the info about the server instance itself like this::
   startup_script = startup-demo-server
   fabfile = `fabfile.py`_
 
-**Ephemeral disks**
+
+Ephemeral disks
+~~~~~~~~~~~~~~~
 
 You can setup the use of more than one ephemeral disk like this::
 
@@ -101,7 +119,9 @@ You can setup the use of more than one ephemeral disk like this::
 Consult the AWS documentation to see how many ephemeral disks each instance type
 has.
 
-**Startup scripts**
+
+Startup scripts
+~~~~~~~~~~~~~~~
 
 The startup_script option above allows you to write a script which is run
 right after instance creation to setup your server. This feature is supported
@@ -196,22 +216,29 @@ extracting. The code used looks like this::
 
 Directly after that follows the binary data of the gzipped startup script.
 
-**Controlling instances**
+
+Controlling instances
+~~~~~~~~~~~~~~~~~~~~~
 
  -   start
  -   stop
  -   status
 
-**Snapshots**
+
+Snapshots
+~~~~~~~~~
 
 (Needs description of volumes in "Configuration")
 
-**SSH integration**
+
+SSH integration
+===============
 
 mr.awsome provides an additional tool ``assh`` to easily perform SSH based
-operations against named EC2 instances. Particularly, it encapsulates the
-entire *SSH fingerprint* mechanism, as EC2 instances are often short-lived and
-normally trigger warnings, especially, if you are using elastic IPs.
+operations against named instances. Particularly, it encapsulates the
+entire *SSH fingerprint* mechanism. For example EC2 instances are often
+short-lived and normally trigger warnings, especially, if you are using
+elastic IPs.
 
   Note:: it does so not by simply turning off these checks, but by
   transparently updating its own fingerprint list (it relies on the console
@@ -223,7 +250,7 @@ can either use the ssh subcommand of the aws tool like so::
 
   aws ssh SERVERNAME
 
-Alternatively you can use the assh command direct, like so::
+Alternatively you can use the assh command directly, like so::
 
   assh SERVERNAME
 
@@ -234,9 +261,10 @@ examples, you get the idea::
   rsync -e "bin/assh" some/path fschulze@demo-server:/some/path
 
 
-**Fabric integration**
+Fabric integration
+==================
 
-Since ``Fabric <http://fabfile.org/`_>`_ basically works through ssh, all the
+Since `Fabric <http://fabfile.org/>`_ basically works through ssh, all the
 bits necessary for ssh integration are also needed for Fabric. To make it
 easy to run fabfiles, you specifiy them with the "fabfile" option in your
 aws.conf and use the ``do`` command to run them.
@@ -266,10 +294,11 @@ For more info about fabfiles, read the docs at `http://fabfile.org/`_.
 .. _http://fabfile.org/: http://fabfile.org/
 
 
-**Macro expansion**
+Macro expansion
+===============
 
 In the ``aws.conf`` you can use macro expansion for cleaner configuration
-files. This looks like this::
+files. That looks like this::
 
   [ec2-instance:demo-server2]
   <= demo-server
