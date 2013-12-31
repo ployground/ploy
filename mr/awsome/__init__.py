@@ -381,7 +381,9 @@ class AWS(object):
             log.error(unicode(e))
             log.error("Is the server finished starting up?")
             sys.exit(1)
-        ssh_info['client'].close()
+        client = ssh_info['client']
+        client.get_transport().sock.close()
+        client.close()
         additional_args = []
         for key in ssh_info:
             if key[0].isupper():
