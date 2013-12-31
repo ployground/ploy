@@ -4,6 +4,10 @@ Changelog
 0.14 - Unreleased
 -----------------
 
+* The variable substitution for the ``proxycommand`` option now makes the other
+  instances available in a dict under ``instances``. And adds ``known_hosts``.
+  [fschulze]
+
 * Load plugins via entry points instead of the ``plugin`` section in the config.
   [fschulze]
 

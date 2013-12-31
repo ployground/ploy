@@ -79,9 +79,11 @@ class Instance(FabricMixin):
             proxy_command = sshconfig.lookup(host).get('proxycommand', None)
         else:
             d = dict(
-                (k, InstanceFormattingWrapper(v))
-                for k, v in self.master.instances.items())
+                instances=dict(
+                    (k, InstanceFormattingWrapper(v))
+                    for k, v in self.master.instances.items()))
             d.update(self.config)
+            d['known_hosts'] = self.master.known_hosts
             proxy_command = proxy_command.format(**d)
         if proxy_command:
             sock = paramiko.ProxyCommand(proxy_command)
