@@ -105,7 +105,7 @@ class Instance(FabricMixin):
                 client.connect(hostname, **client_args)
                 break
             except paramiko.PasswordRequiredException:
-                if not self.config.get('password_fallback', False):
+                if not self.config.get('password-fallback', False):
                     raise
                 if 'password' in self.config:
                     password = self.config['password']
@@ -138,7 +138,7 @@ def get_massagers():
     sectiongroupname = 'plain-instance'
     return [
         UserMassager(sectiongroupname, 'user'),
-        BooleanMassager(sectiongroupname, 'password_fallback'),
+        BooleanMassager(sectiongroupname, 'password-fallback'),
         PathMassager(sectiongroupname, 'fabfile')]
 
 

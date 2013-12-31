@@ -81,12 +81,12 @@ Options
   (**required**) The ssh fingerprint of the server. If set to ``none`` or
   ``ask`` then manual interactive verification is enabled.
 
-``password_fallback``
+``password-fallback``
   If this boolean is true, then using a password as fallback is enabled if the
   ssh key doesn't work. This is off by default.
 
 ``password``
-  Never use this directly! If password_fallback is enabled this password is
+  Never use this directly! If password-fallback is enabled this password is
   used. This is mainly meant for Fabric scripts which have other ways to get
   the password. On use case is bootstrapping `FreeBSD <http://www.freebsd.org/>`_
   from an `mfsBSD <http://mfsbsd.vx.sk/>`_ distribution where the password is
