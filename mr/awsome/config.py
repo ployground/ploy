@@ -5,6 +5,13 @@ import pkg_resources
 import warnings
 
 
+def value_asbool(value):
+    if value.lower() in ('true', 'yes', 'on'):
+        return True
+    elif value.lower() in ('false', 'no', 'off'):
+        return False
+
+
 class BaseMassager(object):
     def __init__(self, sectiongroupname, key):
         self.sectiongroupname = sectiongroupname
@@ -16,12 +23,11 @@ class BaseMassager(object):
 
 class BooleanMassager(BaseMassager):
     def __call__(self, main_config, sectionname):
-        value = main_config[self.sectiongroupname][sectionname][self.key]
-        if value.lower() in ('true', 'yes', 'on'):
-            return True
-        elif value.lower() in ('false', 'no', 'off'):
-            return False
-        raise ValueError("Unknown value %s for %s in %s:%s." % (value, self.key, self.sectiongroupname, sectionname))
+        value = value_asbool(
+            main_config[self.sectiongroupname][sectionname][self.key])
+        if value is None:
+            raise ValueError("Unknown value %s for %s in %s:%s." % (value, self.key, self.sectiongroupname, sectionname))
+        return value
 
 
 class IntegerMassager(BaseMassager):
