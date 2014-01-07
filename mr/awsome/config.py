@@ -14,10 +14,6 @@ class BaseMassager(object):
         return main_config[self.sectiongroupname][sectionname][self.key]
 
 
-class BaseMassagerPlugin(BaseMassager):
-    plugin = True
-
-
 class BooleanMassager(BaseMassager):
     def __call__(self, main_config, sectionname):
         value = main_config[self.sectiongroupname][sectionname][self.key]
@@ -99,21 +95,25 @@ class UserMassager(BaseMassager):
 
 
 class Config(dict):
+    plugins = None  # for test injection
+
     def _add_massager(self, massager):
         key = (massager.sectiongroupname, massager.key)
         if key in self.massagers:
-            if not getattr(self.massagers[key], 'plugin', False):
-                raise ValueError("Massager for option '%s' in section group '%s' already registered." % (massager.key, massager.sectiongroupname))
+            raise ValueError("Massager for option '%s' in section group '%s' already registered." % (massager.key, massager.sectiongroupname))
         self.massagers[key] = massager
 
     def _load_plugins(self):
         if 'plugin' in self:
             warnings.warn("The 'plugin' section isn't used anymore.")
-        self['plugin'] = {}
-        group = 'mr.awsome.providerplugins'
-        for entrypoint in pkg_resources.iter_entry_points(group=group):
-            plugin = entrypoint.load()
-            self['plugin'][entrypoint.name] = plugin
+            del self['plugin']
+        if self.plugins is None:
+            self.plugins = {}
+            group = 'mr.awsome.providerplugins'
+            for entrypoint in pkg_resources.iter_entry_points(group=group):
+                plugin = entrypoint.load()
+                self.plugins[entrypoint.name] = plugin
+        for plugin in self.plugins.values():
             for massager in plugin.get('get_massagers', lambda: [])():
                 self._add_massager(massager)
             if 'get_macro_cleaners' in plugin:

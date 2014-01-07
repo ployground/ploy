@@ -1,5 +1,6 @@
 from mock import patch
 from mr.awsome import AWS
+from mr.awsome.config import Config
 from unittest2 import TestCase
 import os
 import tempfile
@@ -55,6 +56,7 @@ class StartCommandTests(TestCase):
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
+        Config.plugins = None
 
     def _write_config(self, content):
         with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
@@ -79,9 +81,9 @@ class StartCommandTests(TestCase):
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]']))
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
@@ -95,9 +97,9 @@ class StartCommandTests(TestCase):
         self.assertEquals(LogMock.info.call_args[0][2]['servers'].keys(), ['foo'])
 
     def testCallWithInvalidOverride(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]']))
         with patch('mr.awsome.log') as LogMock:
             with self.assertRaises(SystemExit):
@@ -105,9 +107,9 @@ class StartCommandTests(TestCase):
         LogMock.error.assert_called_with("Invalid format for override 'ham:egg,spam:1', should be NAME=VALUE.")
 
     def testCallWithOverride(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]']))
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
@@ -124,9 +126,9 @@ class StartCommandTests(TestCase):
         self.assertEquals(LogMock.info.call_args[0][2]['ham'], 'egg')
 
     def testCallWithOverrides(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]']))
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
@@ -142,9 +144,9 @@ class StartCommandTests(TestCase):
         self.assertEquals(LogMock.info.call_args[0][2]['servers'].keys(), ['foo'])
 
     def testCallWithMissingStartupScript(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]',
             'startup_script = %s' % os.path.join(self.directory, 'startup')]))
         with patch('mr.awsome.common.log') as LogMock:
@@ -155,10 +157,10 @@ class StartCommandTests(TestCase):
             os.path.join(self.directory, 'startup'))
 
     def testCallWithTooBigStartupScript(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         startup = os.path.join(self.directory, 'startup')
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]',
             'startup_script = %s' % startup]))
         with open(startup, 'w') as f:
@@ -181,6 +183,7 @@ class StatusCommandTests(TestCase):
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
+        Config.plugins = None
 
     def _write_config(self, content):
         with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
@@ -205,9 +208,9 @@ class StatusCommandTests(TestCase):
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]']))
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
@@ -225,6 +228,7 @@ class StopCommandTests(TestCase):
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
+        Config.plugins = None
 
     def _write_config(self, content):
         with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
@@ -249,9 +253,9 @@ class StopCommandTests(TestCase):
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]']))
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
@@ -269,6 +273,7 @@ class TerminateCommandTests(TestCase):
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
+        Config.plugins = None
 
     def _write_config(self, content):
         with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
@@ -293,9 +298,9 @@ class TerminateCommandTests(TestCase):
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]']))
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
             try:
@@ -313,6 +318,7 @@ class DebugCommandTests(TestCase):
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
+        Config.plugins = None
 
     def _write_config(self, content):
         with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
@@ -337,9 +343,9 @@ class DebugCommandTests(TestCase):
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]']))
         with patch('mr.awsome.log') as LogMock:
             try:
@@ -349,9 +355,9 @@ class DebugCommandTests(TestCase):
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 0, 1024)
 
     def testCallWithMissingStartupScript(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]',
             'startup_script = %s' % os.path.join(self.directory, 'startup')]))
         with patch('mr.awsome.common.log') as LogMock:
@@ -362,10 +368,10 @@ class DebugCommandTests(TestCase):
             os.path.join(self.directory, 'startup'))
 
     def testCallWithTooBigStartupScript(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         startup = os.path.join(self.directory, 'startup')
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]',
             'startup_script = %s' % startup]))
         with open(startup, 'w') as f:
@@ -380,10 +386,10 @@ class DebugCommandTests(TestCase):
         CommonLogMock.error.assert_called_with('Startup script too big (%s > %s).', 1500, 1024)
 
     def testCallWithVerboseOption(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         startup = os.path.join(self.directory, 'startup')
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]',
             'startup_script = %s' % startup]))
         with open(startup, 'w') as f:
@@ -401,10 +407,10 @@ class DebugCommandTests(TestCase):
             [(('Length of startup script: %s/%s', 6, 1024), {}), (('Startup script:',), {})])
 
     def testCallWithTemplateStartupScript(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         startup = os.path.join(self.directory, 'startup')
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]',
             'startup_script = %s' % startup,
             'foo = bar']))
@@ -423,10 +429,10 @@ class DebugCommandTests(TestCase):
             [(('Length of startup script: %s/%s', 3, 1024), {}), (('Startup script:',), {})])
 
     def testCallWithOverride(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         startup = os.path.join(self.directory, 'startup')
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]',
             'startup_script = %s' % startup,
             'foo = bar']))
@@ -453,6 +459,7 @@ class DoCommandTests(TestCase):
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
+        Config.plugins = None
 
     def _write_config(self, content):
         with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
@@ -477,9 +484,9 @@ class DoCommandTests(TestCase):
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstanceButTooViewArguments(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]']))
         with patch('mr.awsome.log') as LogMock:
             with self.assertRaises(SystemExit):
@@ -487,9 +494,9 @@ class DoCommandTests(TestCase):
         LogMock.error.assert_called_with('No fabfile declared.')
 
     def testCallWithMissingFabfileDeclaration(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]']))
         with patch('mr.awsome.log') as LogMock:
             with self.assertRaises(SystemExit):
@@ -497,10 +504,10 @@ class DoCommandTests(TestCase):
         LogMock.error.assert_called_with('No fabfile declared.')
 
     def testCallWithExistingInstance(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         fabfile = os.path.join(self.directory, 'fabfile.py')
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]',
             'host = localhost',
             'fabfile = %s' % fabfile]))
@@ -528,6 +535,7 @@ class SSHCommandTests(TestCase):
         del self.subprocess_call_mock
         shutil.rmtree(self.directory)
         del self.directory
+        Config.plugins = None
 
     def _write_config(self, content):
         with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
@@ -552,9 +560,9 @@ class SSHCommandTests(TestCase):
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
+        import mr.awsome.tests.dummy_plugin
+        Config.plugins = {'dummy': mr.awsome.tests.dummy_plugin.providerplugin}
         self._write_config('\n'.join([
-            '[plugin:null]',
-            'module = mr.awsome.tests.dummy_plugin',
             '[dummy-instance:foo]',
             'host = localhost']))
         with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
@@ -564,7 +572,11 @@ class SSHCommandTests(TestCase):
                 self.fail("SystemExit raised")
         self.assertEquals(
             LogMock.info.call_args_list,
-            [(('init_ssh_key: %s %s', 'foo', None), {}), (('client.close',), {})])
+            [
+                (('init_ssh_key: %s %s', 'foo', None), {}),
+                (('client.get_transport',), {}),
+                (('sock.close',), {}),
+                (('client.close',), {})])
         known_hosts = os.path.join(self.directory, 'known_hosts')
         self.subprocess_call_mock.assert_called_with(
             ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])

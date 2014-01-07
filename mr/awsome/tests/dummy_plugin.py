@@ -6,7 +6,20 @@ import logging
 log = logging.getLogger('mr.awsome.dummy_plugin')
 
 
+class MockSock(object):
+    def close(self):
+        log.info('sock.close')
+
+
+class MockTransport(object):
+    sock = MockSock()
+
+
 class MockClient(object):
+    def get_transport(self):
+        log.info('client.get_transport')
+        return MockTransport()
+
     def close(self):
         log.info('client.close')
 
@@ -62,3 +75,8 @@ def get_masters(main_config):
     masters = main_config.get('dummy-master', {'default': {}})
     for master, master_config in masters.iteritems():
         yield Master(main_config, master, master_config)
+
+
+providerplugin = dict(
+    get_massagers=get_massagers,
+    get_masters=get_masters)

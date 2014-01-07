@@ -3,9 +3,6 @@ from mr.awsome.config import Config
 from unittest2 import TestCase
 
 
-dummyplugin = None
-
-
 class ConfigTests(TestCase):
     def testEmpty(self):
         contents = StringIO("")
@@ -77,19 +74,29 @@ class ConfigTests(TestCase):
                 'global',
                 'section',
                 overrides=None),
-            {'value': '1'})
+            {
+                '__name__': 'section',
+                '__groupname__': 'global',
+                'value': '1'})
         self.assertDictEqual(
             config.get_section_with_overrides(
                 'global',
                 'section',
                 overrides={'value': '2'}),
-            {'value': '2'})
+            {
+                '__name__': 'section',
+                '__groupname__': 'global',
+                'value': '2'})
         self.assertDictEqual(
             config.get_section_with_overrides(
                 'global',
                 'section',
                 overrides={'value2': '2'}),
-            {'value': '1', 'value2': '2'})
+            {
+                '__name__': 'section',
+                '__groupname__': 'global',
+                'value': '1',
+                'value2': '2'})
         # make sure nothing is changed afterwards
         self.assertDictEqual(
             config,
@@ -107,21 +114,21 @@ class DummyPlugin(object):
 class MassagerTests(TestCase):
     def setUp(self):
         TestCase.setUp(self)
-        global dummyplugin
-        dummyplugin = DummyPlugin()
-        self.plugin_config = "[plugin:dummy]\nmodule=mr.awsome.tests.test_config.dummyplugin"
+        self.dummyplugin = DummyPlugin()
+        Config.plugins = dict(
+            dummy=dict(
+                get_massagers=self.dummyplugin.get_massagers))
 
     def tearDown(self):
         TestCase.tearDown(self)
-        global dummyplugin
-        dummyplugin = None
+        del self.dummyplugin
+        Config.plugins = None
 
     def testBaseMassager(self):
         from mr.awsome.config import BaseMassager
 
-        dummyplugin.massagers.append(BaseMassager('section', 'value'))
+        self.dummyplugin.massagers.append(BaseMassager('section', 'value'))
         contents = StringIO("\n".join([
-            self.plugin_config,
             "[section:foo]",
             "value=1"]))
         config = Config(contents).parse()
@@ -130,7 +137,7 @@ class MassagerTests(TestCase):
     def testBooleanMassager(self):
         from mr.awsome.config import BooleanMassager
 
-        dummyplugin.massagers.append(BooleanMassager('section', 'value'))
+        self.dummyplugin.massagers.append(BooleanMassager('section', 'value'))
         test_values = (
             ('true', True),
             ('True', True),
@@ -146,13 +153,11 @@ class MassagerTests(TestCase):
             ('Off', False))
         for value, expected in test_values:
             contents = StringIO("\n".join([
-                self.plugin_config,
                 "[section:foo]",
                 "value=%s" % value]))
             config = Config(contents).parse()
             self.assertDictEqual(config['section'], {'foo': {'value': expected}})
         contents = StringIO("\n".join([
-            self.plugin_config,
             "[section:foo]",
             "value=foo"]))
         with self.assertRaises(ValueError):
@@ -161,15 +166,13 @@ class MassagerTests(TestCase):
     def testIntegerMassager(self):
         from mr.awsome.config import IntegerMassager
 
-        dummyplugin.massagers.append(IntegerMassager('section', 'value'))
+        self.dummyplugin.massagers.append(IntegerMassager('section', 'value'))
         contents = StringIO("\n".join([
-            self.plugin_config,
             "[section:foo]",
             "value=1"]))
         config = Config(contents).parse()
         self.assertDictEqual(config['section'], {'foo': {'value': 1}})
         contents = StringIO("\n".join([
-            self.plugin_config,
             "[section:foo]",
             "value=foo"]))
         with self.assertRaises(ValueError):
@@ -178,10 +181,9 @@ class MassagerTests(TestCase):
     def testPathMassager(self):
         from mr.awsome.config import PathMassager
 
-        dummyplugin.massagers.append(PathMassager('section', 'value1'))
-        dummyplugin.massagers.append(PathMassager('section', 'value2'))
+        self.dummyplugin.massagers.append(PathMassager('section', 'value1'))
+        self.dummyplugin.massagers.append(PathMassager('section', 'value2'))
         contents = StringIO("\n".join([
-            self.plugin_config,
             "[section:foo]",
             "value1=foo",
             "value2=/foo"]))
@@ -193,12 +195,11 @@ class MassagerTests(TestCase):
     def testStartupScriptMassager(self):
         from mr.awsome.config import StartupScriptMassager
 
-        dummyplugin.massagers.append(StartupScriptMassager('section', 'value1'))
-        dummyplugin.massagers.append(StartupScriptMassager('section', 'value2'))
-        dummyplugin.massagers.append(StartupScriptMassager('section', 'value3'))
-        dummyplugin.massagers.append(StartupScriptMassager('section', 'value4'))
+        self.dummyplugin.massagers.append(StartupScriptMassager('section', 'value1'))
+        self.dummyplugin.massagers.append(StartupScriptMassager('section', 'value2'))
+        self.dummyplugin.massagers.append(StartupScriptMassager('section', 'value3'))
+        self.dummyplugin.massagers.append(StartupScriptMassager('section', 'value4'))
         contents = StringIO("\n".join([
-            self.plugin_config,
             "[section:foo]",
             "value1=gzip:foo",
             "value2=foo",
@@ -215,10 +216,9 @@ class MassagerTests(TestCase):
         from mr.awsome.config import UserMassager
         import os, pwd
 
-        dummyplugin.massagers.append(UserMassager('section', 'value1'))
-        dummyplugin.massagers.append(UserMassager('section', 'value2'))
+        self.dummyplugin.massagers.append(UserMassager('section', 'value1'))
+        self.dummyplugin.massagers.append(UserMassager('section', 'value2'))
         contents = StringIO("\n".join([
-            self.plugin_config,
             "[section:foo]",
             "value1=*",
             "value2=foo"]))
@@ -235,9 +235,8 @@ class MassagerTests(TestCase):
                 value = config[self.sectiongroupname][sectionname][self.key]
                 return int(value)
 
-        dummyplugin.massagers.append(DummyMassager('section', 'value'))
+        self.dummyplugin.massagers.append(DummyMassager('section', 'value'))
         contents = StringIO("\n".join([
-            self.plugin_config,
             "[section:foo]",
             "value=1"]))
         config = Config(contents).parse()
@@ -246,10 +245,9 @@ class MassagerTests(TestCase):
     def testMassagedOverrides(self):
         from mr.awsome.config import IntegerMassager
 
-        dummyplugin.massagers.append(IntegerMassager('global', 'value'))
-        dummyplugin.massagers.append(IntegerMassager('global', 'value2'))
+        self.dummyplugin.massagers.append(IntegerMassager('global', 'value'))
+        self.dummyplugin.massagers.append(IntegerMassager('global', 'value2'))
         contents = StringIO("\n".join([
-            self.plugin_config,
             "[section]",
             "value=1"]))
         config = Config(contents).parse()
@@ -261,19 +259,29 @@ class MassagerTests(TestCase):
                 'global',
                 'section',
                 overrides=None),
-            {'value': 1})
+            {
+                '__name__': 'section',
+                '__groupname__': 'global',
+                'value': 1})
         self.assertDictEqual(
             config.get_section_with_overrides(
                 'global',
                 'section',
                 overrides={'value': '2'}),
-            {'value': 2})
+            {
+                '__name__': 'section',
+                '__groupname__': 'global',
+                'value': 2})
         self.assertDictEqual(
             config.get_section_with_overrides(
                 'global',
                 'section',
                 overrides={'value2': '2'}),
-            {'value': 1, 'value2': 2})
+            {
+                '__name__': 'section',
+                '__groupname__': 'global',
+                'value': 1,
+                'value2': 2})
         # make sure nothing is changed afterwards
         self.assertDictEqual(
             config['global'],
