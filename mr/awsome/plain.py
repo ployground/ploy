@@ -1,3 +1,4 @@
+from lazy import lazy
 from mr.awsome.common import BaseMaster, FabricMixin, yesno
 import getpass
 import os
@@ -33,13 +34,38 @@ class Instance(FabricMixin):
             raise SSHException("No fingerprint set in config.")
         return fingerprint
 
-    def init_ssh_key(self, user=None):
+    @lazy
+    def paramiko(self):
         try:  # pragma: no cover - we support both
             import paramiko
             paramiko  # shutup pyflakes
         except ImportError:  # pragma: no cover - we support both
             import ssh as paramiko
+        return paramiko
 
+    @lazy
+    def sshconfig(self):
+        sshconfig = self.paramiko.SSHConfig()
+        sshconfig.parse(open(os.path.expanduser('~/.ssh/config')))
+        return sshconfig
+
+    @lazy
+    def proxy_command(self):
+        proxy_command = self.config.get('proxycommand', None)
+        if proxy_command is None:
+            return self.sshconfig.lookup(self.get_host()).get('proxycommand', None)
+        else:
+            d = dict(
+                instances=dict(
+                    (k, InstanceFormattingWrapper(v))
+                    for k, v in self.master.instances.items()))
+            d.update(self.config)
+            d['known_hosts'] = self.master.known_hosts
+            return proxy_command.format(**d)
+
+    def init_ssh_key(self, user=None):
+        paramiko = self.paramiko
+        sshconfig = self.sshconfig
         class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
             def __init__(self, fingerprint):
                 self.fingerprint = fingerprint
@@ -68,23 +94,11 @@ class Instance(FabricMixin):
         port = self.config.get('port', 22)
         password = None
         client = paramiko.SSHClient()
-        sshconfig = paramiko.SSHConfig()
-        sshconfig.parse(open(os.path.expanduser('~/.ssh/config')))
         fingerprint = self.get_fingerprint()
         client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint))
         known_hosts = self.master.known_hosts
         client.known_hosts = None
-        proxy_command = self.config.get('proxycommand', None)
-        if proxy_command is None:
-            proxy_command = sshconfig.lookup(host).get('proxycommand', None)
-        else:
-            d = dict(
-                instances=dict(
-                    (k, InstanceFormattingWrapper(v))
-                    for k, v in self.master.instances.items()))
-            d.update(self.config)
-            d['known_hosts'] = self.master.known_hosts
-            proxy_command = proxy_command.format(**d)
+        proxy_command = self.proxy_command
         if proxy_command:
             sock = paramiko.ProxyCommand(proxy_command)
         else:
