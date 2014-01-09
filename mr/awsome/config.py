@@ -186,7 +186,11 @@ class Config(dict):
                         self._add_massager(massager)
                 for key in section:
                     massage = self.massagers.get((sectiongroupname, key))
-                    if callable(massage):
+                    if not callable(massage):
+                        massage = self.massagers.get((None, key))
+                        if callable(massage):
+                            section[key] = massage(self, sectiongroupname, sectionname)
+                    else:
                         section[key] = massage(self, sectionname)
         return self
 
