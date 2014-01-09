@@ -76,6 +76,11 @@ class AWS(object):
                     log.error("Instance and server names must be unique, '%s' is already defined." % instance_id)
                     sys.exit(1)
                 instances[instance_id] = master.instances[instance_id]
+        for plugin in self.plugins.values():
+            if 'augment_instance' not in plugin:
+                continue
+            for name, instance in instances.items():
+                plugin['augment_instance'](instance)
         return instances
 
     def get_instances(self, command):
@@ -448,7 +453,10 @@ class AWS(object):
                 for cmd in self.subparsers.keys():
                     print cmd
             else:
-                if args.command in ('do', 'ssh'):
+                if hasattr(self.cmds[args.command], 'get_completion'):
+                    for item in self.cmds[args.command].get_completion():
+                        print item
+                elif args.command in ('do', 'ssh'):
                     for server in self.get_instances(command='init_ssh_key'):
                         print server
                 elif args.command == 'debug':
@@ -464,7 +472,7 @@ class AWS(object):
             if args.command is None:
                 parser.print_help()
             else:
-                cmd = getattr(self, "cmd_%s" % args.command)
+                cmd = self.cmds[args.command]
                 cmd(['-h'], cmd.__doc__)
 
     def __call__(self, argv):
@@ -481,18 +489,27 @@ class AWS(object):
                             version='mr.awsome %s' % version,
                             help="Print version and exit")
 
-        cmds = [x[4:] for x in dir(self) if x.startswith('cmd_')]
+        self.cmds = dict(
+            (x[4:], getattr(self, x))
+            for x in dir(self) if x.startswith('cmd_'))
+        for plugin in self.plugins.values():
+            if 'get_commands' not in plugin:
+                continue
+            for cmd, func in plugin['get_commands'](self):
+                if cmd in self.cmds:
+                    log.error("Command name '%s' of '%s' conflicts with existing command name.", cmd, plugin)
+                    sys.exit(1)
+                self.cmds[cmd] = func
         cmdparsers = parser.add_subparsers(title="commands")
         self.subparsers = {}
-        for cmdname in cmds:
-            cmd = getattr(self, "cmd_%s" % cmdname)
-            subparser = cmdparsers.add_parser(cmdname, help=cmd.__doc__)
-            subparser.set_defaults(func=cmd)
-            self.subparsers[cmdname] = subparser
+        for cmd, func in self.cmds.items():
+            subparser = cmdparsers.add_parser(cmd, help=func.__doc__)
+            subparser.set_defaults(func=func)
+            self.subparsers[cmd] = subparser
         main_argv = []
         for arg in argv:
             main_argv.append(arg)
-            if arg in cmds:
+            if arg in self.cmds:
                 break
         sub_argv = argv[len(main_argv):]
         args = parser.parse_args(main_argv[1:])

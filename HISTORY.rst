@@ -4,6 +4,9 @@ Changelog
 0.14 - Unreleased
 -----------------
 
+* Added command plugin hooks.
+  [fschulze]
+
 * The variable substitution for the ``proxycommand`` option now makes the other
   instances available in a dict under ``instances``. And adds ``known_hosts``.
   [fschulze]
