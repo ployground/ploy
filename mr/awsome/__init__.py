@@ -30,19 +30,28 @@ class AWS(object):
         self.configfile = configpath
 
     @lazy
+    def plugins(self):
+        plugins = {}
+        group = 'mr.awsome.plugins'
+        for entrypoint in pkg_resources.iter_entry_points(group=group):
+            plugin = entrypoint.load()
+            plugins[entrypoint.name] = plugin
+        return plugins
+
+    @lazy
     def config(self):
         configpath = os.path.abspath(self.configfile)
         if not os.path.exists(configpath):
             log.error("Config '%s' doesn't exist." % configpath)
             sys.exit(1)
-        config = Config(configpath)
+        config = Config(configpath, plugins=self.plugins)
         config.parse()
         return config
 
     @lazy
     def masters(self):
         masters = []
-        for plugin in self.config.plugins.values():
+        for plugin in self.plugins.values():
             if 'get_masters' in plugin:
                 masters.extend(plugin['get_masters'](self.config))
         return masters

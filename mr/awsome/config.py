@@ -1,7 +1,6 @@
 from mr.awsome.common import Hooks
 from ConfigParser import RawConfigParser
 import os
-import pkg_resources
 import warnings
 
 
@@ -101,29 +100,11 @@ class UserMassager(BaseMassager):
 
 
 class Config(dict):
-    plugins = None  # for test injection
-
     def _add_massager(self, massager):
         key = (massager.sectiongroupname, massager.key)
         if key in self.massagers:
             raise ValueError("Massager for option '%s' in section group '%s' already registered." % (massager.key, massager.sectiongroupname))
         self.massagers[key] = massager
-
-    def _load_plugins(self):
-        if 'plugin' in self:
-            warnings.warn("The 'plugin' section isn't used anymore.")
-            del self['plugin']
-        if self.plugins is None:
-            self.plugins = {}
-            group = 'mr.awsome.providerplugins'
-            for entrypoint in pkg_resources.iter_entry_points(group=group):
-                plugin = entrypoint.load()
-                self.plugins[entrypoint.name] = plugin
-        for plugin in self.plugins.values():
-            for massager in plugin.get('get_massagers', lambda: [])():
-                self._add_massager(massager)
-            if 'get_macro_cleaners' in plugin:
-                self.macro_cleaners.update(plugin['get_macro_cleaners'](self))
 
     def _expand(self, sectiongroupname, sectionname, section, seen):
         if (sectiongroupname, sectionname) in seen:
@@ -148,11 +129,17 @@ class Config(dict):
         # properly detected
         del section['<']
 
-    def __init__(self, config, path=None, bbb_config=False):
+    def __init__(self, config, path=None, bbb_config=False, plugins=None):
         self.config = config
         self.path = path
         self.massagers = {}
         self.macro_cleaners = {}
+        if plugins is not None:
+            for plugin in plugins.values():
+                for massager in plugin.get('get_massagers', lambda: [])():
+                    self._add_massager(massager)
+                if 'get_macro_cleaners' in plugin:
+                    self.macro_cleaners.update(plugin['get_macro_cleaners'](self))
 
     def parse(self):
         _config = RawConfigParser()
@@ -170,7 +157,9 @@ class Config(dict):
             items = dict(_config.items(section))
             sectiongroup = self.setdefault(sectiongroupname, {})
             sectiongroup.setdefault(sectionname, {}).update(items)
-        self._load_plugins()
+        if 'plugin' in self:
+            warnings.warn("The 'plugin' section isn't used anymore.")
+            del self['plugin']
         seen = set()
         for sectiongroupname in self:
             sectiongroup = self[sectiongroupname]

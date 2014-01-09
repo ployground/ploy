@@ -115,14 +115,14 @@ class MassagerTests(TestCase):
     def setUp(self):
         TestCase.setUp(self)
         self.dummyplugin = DummyPlugin()
-        Config.plugins = dict(
+        self.plugins = dict(
             dummy=dict(
                 get_massagers=self.dummyplugin.get_massagers))
 
     def tearDown(self):
         TestCase.tearDown(self)
+        del self.plugins
         del self.dummyplugin
-        Config.plugins = None
 
     def testBaseMassager(self):
         from mr.awsome.config import BaseMassager
@@ -131,7 +131,7 @@ class MassagerTests(TestCase):
         contents = StringIO("\n".join([
             "[section:foo]",
             "value=1"]))
-        config = Config(contents).parse()
+        config = Config(contents, plugins=self.plugins).parse()
         self.assertDictEqual(config['section'], {'foo': {'value': '1'}})
 
     def testBooleanMassager(self):
@@ -155,13 +155,13 @@ class MassagerTests(TestCase):
             contents = StringIO("\n".join([
                 "[section:foo]",
                 "value=%s" % value]))
-            config = Config(contents).parse()
+            config = Config(contents, plugins=self.plugins).parse()
             self.assertDictEqual(config['section'], {'foo': {'value': expected}})
         contents = StringIO("\n".join([
             "[section:foo]",
             "value=foo"]))
         with self.assertRaises(ValueError):
-            Config(contents).parse()
+            Config(contents, plugins=self.plugins).parse()
 
     def testIntegerMassager(self):
         from mr.awsome.config import IntegerMassager
@@ -170,13 +170,13 @@ class MassagerTests(TestCase):
         contents = StringIO("\n".join([
             "[section:foo]",
             "value=1"]))
-        config = Config(contents).parse()
+        config = Config(contents, plugins=self.plugins).parse()
         self.assertDictEqual(config['section'], {'foo': {'value': 1}})
         contents = StringIO("\n".join([
             "[section:foo]",
             "value=foo"]))
         with self.assertRaises(ValueError):
-            Config(contents).parse()
+            Config(contents, plugins=self.plugins).parse()
 
     def testPathMassager(self):
         from mr.awsome.config import PathMassager
@@ -187,7 +187,7 @@ class MassagerTests(TestCase):
             "[section:foo]",
             "value1=foo",
             "value2=/foo"]))
-        config = Config(contents, path='/config').parse()
+        config = Config(contents, path='/config', plugins=self.plugins).parse()
         self.assertDictEqual(config['section'], {'foo': {
             'value1': '/config/foo',
             'value2': '/foo'}})
@@ -205,7 +205,7 @@ class MassagerTests(TestCase):
             "value2=foo",
             "value3=gzip:/foo",
             "value4=/foo"]))
-        config = Config(contents, path='/config').parse()
+        config = Config(contents, path='/config', plugins=self.plugins).parse()
         self.assertDictEqual(config['section'], {'foo': {
             'value1': {'gzip': True, 'path': '/config/foo'},
             'value2': {'path': '/config/foo'},
@@ -222,7 +222,7 @@ class MassagerTests(TestCase):
             "[section:foo]",
             "value1=*",
             "value2=foo"]))
-        config = Config(contents).parse()
+        config = Config(contents, plugins=self.plugins).parse()
         self.assertDictEqual(config['section'], {'foo': {
             'value1': pwd.getpwuid(os.getuid())[0],
             'value2': 'foo'}})
@@ -239,7 +239,7 @@ class MassagerTests(TestCase):
         contents = StringIO("\n".join([
             "[section:foo]",
             "value=1"]))
-        config = Config(contents).parse()
+        config = Config(contents, plugins=self.plugins).parse()
         self.assertDictEqual(config['section'], {'foo': {'value': 1}})
 
     def testMassagedOverrides(self):
@@ -250,7 +250,7 @@ class MassagerTests(TestCase):
         contents = StringIO("\n".join([
             "[section]",
             "value=1"]))
-        config = Config(contents).parse()
+        config = Config(contents, plugins=self.plugins).parse()
         self.assertDictEqual(
             config['global'],
             {'section': {'value': 1}})

@@ -150,6 +150,6 @@ def get_masters(main_config):
         yield Master(main_config, master, master_config)
 
 
-providerplugin = dict(
+plugin = dict(
     get_massagers=get_massagers,
     get_masters=get_masters)
