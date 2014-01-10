@@ -4,6 +4,10 @@ Changelog
 0.14 - Unreleased
 -----------------
 
+* Use os.execvp instead of subprocess.call. This allows the use of ``assh`` in
+  the ``proxycommand`` option, which greatly simplifies it's use.
+  [fschulze]
+
 * Added command plugin hooks.
   [fschulze]
 

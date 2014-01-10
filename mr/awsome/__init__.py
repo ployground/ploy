@@ -416,8 +416,7 @@ class AWS(object):
             additional_args.append(server.config.get('ssh-key-filename'))
         argv[sid_index:sid_index + 1] = additional_args
         argv[0:0] = ['ssh']
-        import subprocess
-        subprocess.call(argv)
+        os.execvp('ssh', argv)
 
     def cmd_snapshot(self, argv, help):
         """Creates a snapshot of the volumes specified in the configuration"""
