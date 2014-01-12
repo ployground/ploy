@@ -133,12 +133,19 @@ class Instance(FabricMixin, StartupScriptMixin, InitSSHKeyMixin, ConnMixin):
     def get_host(self):
         return self.instance.public_dns_name
 
+    def _status(self):
+        instance = self.instance
+        if instance is None:
+            return 'unavailable'
+        return instance.state
+
     def status(self):
         instance = self.instance
         if instance is None:
             return
-        if instance.state != 'running':
-            log.info("Instance state: %s", instance.state)
+        status = self._status()
+        if status != 'running':
+            log.info("Instance state: %s", status)
             return
         log.info("Instance running.")
         log.info("Instances DNS name %s", instance.dns_name)
