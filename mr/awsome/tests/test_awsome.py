@@ -520,12 +520,12 @@ class SSHCommandTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
         self.aws = AWS(self.directory)
-        self._subprocess_call_mock = patch("subprocess.call")
-        self.subprocess_call_mock = self._subprocess_call_mock.start()
+        self._os_execvp_mock = patch("os.execvp")
+        self.os_execvp_mock = self._os_execvp_mock.start()
 
     def tearDown(self):
-        self.subprocess_call_mock = self._subprocess_call_mock.stop()
-        del self.subprocess_call_mock
+        self.os_execvp_mock = self._os_execvp_mock.stop()
+        del self.os_execvp_mock
         shutil.rmtree(self.directory)
         del self.directory
 
@@ -570,5 +570,6 @@ class SSHCommandTests(TestCase):
                 (('sock.close',), {}),
                 (('client.close',), {})])
         known_hosts = os.path.join(self.directory, 'known_hosts')
-        self.subprocess_call_mock.assert_called_with(
+        self.os_execvp_mock.assert_called_with(
+            'ssh',
             ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
