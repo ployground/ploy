@@ -155,9 +155,11 @@ class FabricMixin(object):
 
 
 class BaseMaster(object):
-    def __init__(self, main_config, id, master_config):
+    def __init__(self, aws, id, master_config):
         self.id = id
-        self.main_config = main_config
+        self.aws = aws
+        assert self.aws.__class__.__name__ == 'AWS'
+        self.main_config = self.aws.config
         self.master_config = master_config
         self.known_hosts = os.path.join(self.main_config.path, 'known_hosts')
         self.instances = {}

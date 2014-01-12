@@ -4,6 +4,10 @@ Changelog
 0.14 - Unreleased
 -----------------
 
+* Make the AWS instance available in masters. This changes the ``get_masters``
+  plugin interface.
+  [fschulze]
+
 * Use os.execvp instead of subprocess.call. This allows the use of ``assh`` in
   the ``proxycommand`` option, which greatly simplifies it's use.
   [fschulze]

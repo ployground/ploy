@@ -158,10 +158,10 @@ def get_massagers():
         PathMassager(sectiongroupname, 'fabfile')]
 
 
-def get_masters(main_config):
-    masters = main_config.get('plain-master', {'default': {}})
+def get_masters(aws):
+    masters = aws.config.get('plain-master', {'default': {}})
     for master, master_config in masters.iteritems():
-        yield Master(main_config, master, master_config)
+        yield Master(aws, master, master_config)
 
 
 plugin = dict(

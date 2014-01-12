@@ -551,10 +551,10 @@ def get_macro_cleaners(main_config):
     return {"ec2-instance": clean_instance}
 
 
-def get_masters(main_config):
-    masters = main_config.get('ec2-master', {})
+def get_masters(aws):
+    masters = aws.config.get('ec2-master', {})
     for master, master_config in masters.iteritems():
-        yield Master(main_config, master, master_config)
+        yield Master(aws, master, master_config)
 
 
 plugin = dict(

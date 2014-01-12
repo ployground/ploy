@@ -53,7 +53,7 @@ class AWS(object):
         masters = []
         for plugin in self.plugins.values():
             if 'get_masters' in plugin:
-                masters.extend(plugin['get_masters'](self.config))
+                masters.extend(plugin['get_masters'](self))
         return masters
 
     @lazy

@@ -71,10 +71,10 @@ def get_massagers():
         StartupScriptMassager('dummy-instance', 'startup_script')]
 
 
-def get_masters(main_config):
-    masters = main_config.get('dummy-master', {'default': {}})
+def get_masters(aws):
+    masters = aws.config.get('dummy-master', {'default': {}})
     for master, master_config in masters.iteritems():
-        yield Master(main_config, master, master_config)
+        yield Master(aws, master, master_config)
 
 
 plugin = dict(
