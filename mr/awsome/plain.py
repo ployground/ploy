@@ -126,7 +126,11 @@ class Instance(FabricMixin):
                 if 'password' in self.config:
                     password = self.config['password']
                 else:
-                    password = getpass.getpass('Password for %s@%s:%s: ' % (user, host, port))
+                    password = getpass.getpass("Password for '%s@%s:%s': " % (user, host, port))
+            except paramiko.AuthenticationException as e:
+                if not 'keyboard-interactive' in e.allowed_types:
+                    raise
+                password = getpass.getpass("Password for '%s@%s:%s': " % (user, host, port))
             except paramiko.BadHostKeyException:
                 if os.path.exists(known_hosts):
                     os.remove(known_hosts)
