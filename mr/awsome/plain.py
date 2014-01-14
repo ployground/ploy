@@ -76,7 +76,7 @@ class Instance(FabricMixin):
                 if self.fingerprint.lower() in ('ask', 'none'):
                     if not self.ask:
                         return
-                    if yesno("WARNING! Automatic fingerprint checking disabled. Got fingerprint %s. Continue?" % fingerprint):
+                    if yesno("WARNING! Automatic fingerprint checking disabled.\nGot fingerprint %s.\nContinue?" % fingerprint):
                         self.ask = False
                         return
                     sys.exit(1)
