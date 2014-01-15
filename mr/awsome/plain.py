@@ -134,6 +134,7 @@ class Instance(FabricMixin):
             except paramiko.BadHostKeyException:
                 if os.path.exists(known_hosts):
                     os.remove(known_hosts)
+                    open(known_hosts, 'w').close()
                 client.get_host_keys().clear()
         client.save_host_keys(known_hosts)
         result = dict(
