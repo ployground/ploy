@@ -15,7 +15,8 @@ class InstanceFormattingWrapper(object):
 
 class Instance(FabricMixin):
     def __init__(self, master, sid, config):
-        self.id = sid
+        validate_id = getattr(self, 'validate_id', lambda x: x)
+        self.id = validate_id(sid)
         self.master = master
         self.config = config
 
