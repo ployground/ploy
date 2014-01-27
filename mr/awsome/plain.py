@@ -62,6 +62,7 @@ class Instance(FabricMixin):
                     for k, v in self.master.instances.items()))
             d.update(self.config)
             d['known_hosts'] = self.master.known_hosts
+            d['path'] = self.master.main_config.path
             return proxy_command.format(**d)
 
     def init_ssh_key(self, user=None):
