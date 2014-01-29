@@ -19,10 +19,13 @@ log = logging.getLogger('mr.awsome')
 
 class AWS(object):
     def __init__(self, configpath=None):
+        plog = logging.getLogger('paramiko.transport')
         log.setLevel(logging.INFO)
+        plog.setLevel(logging.WARN)
         ch = logging.StreamHandler()
         ch.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
         log.addHandler(ch)
+        plog.addHandler(ch)
         if configpath is None:
             configpath = 'etc/aws.conf'
         if os.path.isdir(configpath):
