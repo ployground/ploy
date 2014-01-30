@@ -175,7 +175,6 @@ class Instance(FabricMixin):
         if getattr(self, '_conn', None) is not None:
             if self._conn.get_transport() is not None:
                 return self._conn
-        log.error("Trying to connect to %s." % self.id)
         try:
             from paramiko import SSHException
             SSHException  # shutup pyflakes
