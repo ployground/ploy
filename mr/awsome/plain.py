@@ -98,27 +98,34 @@ class Instance(FabricMixin):
         except KeyError:
             raise paramiko.SSHException("No host set in config.")
         port = self.config.get('port', 22)
+        hostname = sshconfig.lookup(host).get('hostname', host)
+        port = sshconfig.lookup(host).get('port', port)
         password = None
         client = paramiko.SSHClient()
         fingerprint = self.get_fingerprint()
         client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint))
         known_hosts = self.master.known_hosts
         client.known_hosts = None
+        proxy_host = self.config.get('proxyhost', None)
         proxy_command = self.proxy_command
-        if proxy_command:
+        if proxy_command and not proxy_host:
             try:
                 sock = paramiko.ProxyCommand(proxy_command)
             except Exception:
                 log.error("The following ProxyCommand failed:\n%s" % proxy_command)
                 raise
+        elif proxy_host:
+            proxy_instance = self.master.instances[proxy_host]
+            sock = proxy_instance.conn.get_transport().open_channel(
+                'direct-tcpip',
+                (hostname, port),
+                ('127.0.0.1', 0))
         else:
             sock = None
         while 1:
             if os.path.exists(known_hosts):
                 client.load_host_keys(known_hosts)
             try:
-                hostname = sshconfig.lookup(host).get('hostname', host)
-                port = sshconfig.lookup(host).get('port', port)
                 if user is None:
                     user = sshconfig.lookup(host).get('user', 'root')
                     user = self.config.get('user', user)

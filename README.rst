@@ -92,6 +92,30 @@ Options
   from an `mfsBSD <http://mfsbsd.vx.sk/>`_ distribution where the password is
   fixed.
 
+``proxyhost``
+  The id of another instance declared in aws.conf which is used to create a
+  tunnel to the ssh port of this instance.
+
+``proxycommand``
+  The command to use in the ProxyCommand option for ssh when using the ``assh``
+  command. There are some variables which can be used:
+
+    ``path``
+      The directory of the aws.conf file. Useful if you want to use the ``assh``
+      command itself for the proxy.
+
+    ``known_hosts``
+      The absolute path to the known_hosts file managed by mr.awsome.
+
+    ``instances``
+      The variables of other instances. For example: instances.foo.ip
+
+  In addition to these the variables of the instance itself are available.
+
+  A full example for a proxycommand::
+
+    proxycommand = {path}/../bin/assh vm-master -W {ip}:22
+
 
 EC2
 ---
