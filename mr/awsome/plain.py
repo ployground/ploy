@@ -163,6 +163,26 @@ class Instance(FabricMixin):
             result['ProxyCommand'] = proxy_command
         return result
 
+    @property
+    def conn(self):
+        if getattr(self, '_conn', None) is not None:
+            if self._conn.get_transport() is not None:
+                return self._conn
+        log.error("Trying to connect to %s." % self.id)
+        try:
+            from paramiko import SSHException
+            SSHException  # shutup pyflakes
+        except ImportError:
+            from ssh import SSHException
+        try:
+            ssh_info = self.init_ssh_key()
+        except SSHException, e:
+            log.error("Couldn't connect to %s." % self.id)
+            log.error(unicode(e))
+            sys.exit(1)
+        self._conn = ssh_info['client']
+        return self._conn
+
 
 class Master(BaseMaster):
     sectiongroupname = 'plain-instance'
