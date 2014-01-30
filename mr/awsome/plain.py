@@ -1,8 +1,12 @@
 from lazy import lazy
 from mr.awsome.common import BaseMaster, FabricMixin, yesno
 import getpass
+import logging
 import os
 import sys
+
+
+log = logging.getLogger('mr.awsome')
 
 
 class InstanceFormattingWrapper(object):
@@ -102,7 +106,11 @@ class Instance(FabricMixin):
         client.known_hosts = None
         proxy_command = self.proxy_command
         if proxy_command:
-            sock = paramiko.ProxyCommand(proxy_command)
+            try:
+                sock = paramiko.ProxyCommand(proxy_command)
+            except Exception:
+                log.error("The following ProxyCommand failed:\n%s" % proxy_command)
+                raise
         else:
             sock = None
         while 1:
@@ -138,6 +146,12 @@ class Instance(FabricMixin):
                     os.remove(known_hosts)
                     open(known_hosts, 'w').close()
                 client.get_host_keys().clear()
+            except paramiko.SSHException:
+                log.error('Failed to connect to %s (%s)' % (self.id, hostname))
+                for option in ('username', 'password', 'port', 'key_filename', 'sock'):
+                    if client_args[option] is not None:
+                        log.error('%s: %r' % (option, client_args[option]))
+                raise
         client.save_host_keys(known_hosts)
         result = dict(
             user=user,
