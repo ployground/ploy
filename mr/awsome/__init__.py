@@ -293,6 +293,7 @@ class AWS(object):
             fabric.state.env.server = server
             known_hosts = self.known_hosts
             fabric.state.env.known_hosts = known_hosts
+            fabric.state.env.config_base = self.config.path
 
             class StdFilter(object):
                 def __init__(self, org):
