@@ -62,7 +62,9 @@ def normalize(host_string, omit_port=False):
     host = r['host']
     port = r['port'] or '22'
     if host in instances:
-        host = instances[host].get_host()
+        instance = instances[host]
+        host = instance.get_host()
+        port = instance.config.get('port', port)
     if omit_port:
         return user, host
     return user, host, port
