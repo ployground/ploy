@@ -154,15 +154,15 @@ class EC2SetupTests(TestCase):
         region.name = 'eu-west-1'
         self.boto_ec2_regions_mock.return_value = [region]
         with patch('mr.awsome.ec2.log') as LogMock:
-            if 'AWS_ACCESS_KEY_ID' in os.environ: # pragma: no cover
+            if 'AWS_ACCESS_KEY_ID' in os.environ:  # pragma: no cover
                 del os.environ['AWS_ACCESS_KEY_ID']
             os.environ['AWS_ACCESS_KEY_ID'] = 'ham'
-            if 'AWS_SECRET_ACCESS_KEY' in os.environ: # pragma: no cover
+            if 'AWS_SECRET_ACCESS_KEY' in os.environ:  # pragma: no cover
                 del os.environ['AWS_SECRET_ACCESS_KEY']
             os.environ['AWS_SECRET_ACCESS_KEY'] = 'egg'
             try:
                 self.aws(['./bin/aws', 'status', 'foo'])
-            except SystemExit: # pragma: no cover - only if something is wrong
+            except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
             finally:
                 if 'AWS_ACCESS_KEY_ID' in os.environ:
@@ -231,7 +231,7 @@ class EC2Tests(TestCase):
         with patch('mr.awsome.ec2.log') as LogMock:
             try:
                 self.aws(['./bin/aws', 'status', 'foo'])
-            except SystemExit: # pragma: no cover - only if something is wrong
+            except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         self.boto_ec2_regions_mock.assert_called_with(
             aws_access_key_id='ham', aws_secret_access_key='egg')
@@ -257,7 +257,7 @@ class EC2Tests(TestCase):
         with patch('mr.awsome.ec2.log') as LogMock:
             try:
                 self.aws(['./bin/aws', 'status', 'foo'])
-            except SystemExit: # pragma: no cover - only if something is wrong
+            except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         self.boto_ec2_regions_mock.assert_called_with(
             aws_access_key_id='ham', aws_secret_access_key='egg')
@@ -291,7 +291,7 @@ class EC2Tests(TestCase):
     #     import pdb; pdb.set_trace( )
     #     output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
     #     self.assertIn("invalid choice: 'foo'", output)
-    # 
+    #
     # def testInstanceCantBeStarted(self):
     #     self._write_config('\n'.join([
     #         '[ec2-instance:foo]']))
@@ -300,7 +300,7 @@ class EC2Tests(TestCase):
     #             self.aws(['./bin/aws', 'start', 'foo'])
     #     output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
     #     self.assertIn("invalid choice: 'foo'", output)
-    # 
+    #
     # def testInstanceCantBeStopped(self):
     #     self._write_config('\n'.join([
     #         '[ec2-instance:foo]']))
@@ -309,7 +309,7 @@ class EC2Tests(TestCase):
     #             self.aws(['./bin/aws', 'stop', 'foo'])
     #     output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
     #     self.assertIn("invalid choice: 'foo'", output)
-    # 
+    #
     # def testInstanceCantBeTerminated(self):
     #     self._write_config('\n'.join([
     #         '[ec2-instance:foo]']))
@@ -318,7 +318,7 @@ class EC2Tests(TestCase):
     #             self.aws(['./bin/aws', 'stop', 'foo'])
     #     output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
     #     self.assertIn("invalid choice: 'foo'", output)
-    # 
+    #
     # def testSSHWithNoHost(self):
     #     self._write_config('\n'.join([
     #         '[ec2-instance:foo]']))
@@ -330,7 +330,7 @@ class EC2Tests(TestCase):
     #             (("Couldn't validate fingerprint for ssh connection.",), {}),
     #             (("No host set in config.",), {}),
     #             (('Is the server finished starting up?',), {})])
-    # 
+    #
     # def testSSHWithNoFingerprint(self):
     #     self._write_config('\n'.join([
     #         '[ec2-instance:foo]',
@@ -343,7 +343,7 @@ class EC2Tests(TestCase):
     #             (("Couldn't validate fingerprint for ssh connection.",), {}),
     #             (("No fingerprint set in config.",), {}),
     #             (('Is the server finished starting up?',), {})])
-    # 
+    #
     # def testSSH(self):
     #     self._write_config('\n'.join([
     #         '[ec2-instance:foo]',

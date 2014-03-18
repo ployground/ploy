@@ -51,7 +51,7 @@ class StartupScriptTests(TestCase):
             path=self.directory)
         instance.master = MockMaster(config)
         with patch('mr.awsome.common.log') as CommonLogMock:
-            with self.assertRaises(SystemExit) as exc:
+            with self.assertRaises(SystemExit):
                 instance.startup_script()
         CommonLogMock.error.assert_called_with(
             "Startup script '%s' not found.",
@@ -89,8 +89,8 @@ class StartupScriptTests(TestCase):
         payload = result[52:]
         header = payload[:10]
         body = payload[10:]
-        self.assertEqual(header[:4], "\x1f\x8b\x08\x00") # magic + compression + flags
-        self.assertEqual(header[8:], "\x02\xff") # extra flags + os
+        self.assertEqual(header[:4], "\x1f\x8b\x08\x00")  # magic + compression + flags
+        self.assertEqual(header[8:], "\x02\xff")  # extra flags + os
         self.assertEqual(body, "\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00")
 
     def testMaxSizeOk(self):

@@ -78,8 +78,8 @@ class TemplateTests(TestCase):
         payload = result.decode('base64')
         header = payload[:10]
         body = payload[10:]
-        self.assertEqual(header[:4], "\x1f\x8b\x08\x00") # magic + compression + flags
-        self.assertEqual(header[8:], "\x02\xff") # extra flags + os
+        self.assertEqual(header[:4], "\x1f\x8b\x08\x00")  # magic + compression + flags
+        self.assertEqual(header[8:], "\x02\xff")  # extra flags + os
         self.assertEqual(body, "3\x04\x00\xb7\xef\xdc\x83\x01\x00\x00\x00")
 
     def testTemplateOption(self):

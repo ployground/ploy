@@ -209,7 +209,8 @@ class MassagerTests(TestCase):
 
     def testUserMassager(self):
         from mr.awsome.config import UserMassager
-        import os, pwd
+        import os
+        import pwd
 
         self.dummyplugin.massagers.append(UserMassager('section', 'value1'))
         self.dummyplugin.massagers.append(UserMassager('section', 'value2'))

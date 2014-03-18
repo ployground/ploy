@@ -1,7 +1,11 @@
+/.cache/
 /.coverage
+/.installed.cfg
 /.mr.developer.cfg
-/bin
-/coverage
+/.tox/
+/bin/
+/coverage/
 /coverage.ini
-/develop-eggs
+/develop-eggs/
+/htmlcov/
 dist

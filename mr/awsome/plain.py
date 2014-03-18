@@ -72,6 +72,7 @@ class Instance(FabricMixin):
     def init_ssh_key(self, user=None):
         paramiko = self.paramiko
         sshconfig = self.sshconfig
+
         class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
             def __init__(self, fingerprint):
                 self.fingerprint = fingerprint
