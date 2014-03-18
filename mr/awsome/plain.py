@@ -51,7 +51,11 @@ class Instance(FabricMixin):
     @lazy
     def sshconfig(self):
         sshconfig = self.paramiko.SSHConfig()
-        sshconfig.parse(open(os.path.expanduser('~/.ssh/config')))
+        path = os.path.expanduser('~/.ssh/config')
+        if not os.path.exists(path):
+            return sshconfig
+        with open(path) as f:
+            sshconfig.parse(f)
         return sshconfig
 
     @lazy
