@@ -7,24 +7,24 @@ class ConfigTests(TestCase):
     def testEmpty(self):
         contents = StringIO("")
         config = Config(contents).parse()
-        self.assertDictEqual(config, {})
+        assert config == {}
 
     def testPlainSection(self):
         contents = StringIO("[foo]")
         config = Config(contents).parse()
-        self.assertDictEqual(config, {'global': {'foo': {}}})
+        assert config == {'global': {'foo': {}}}
 
     def testGroupSection(self):
         contents = StringIO("[bar:foo]")
         config = Config(contents).parse()
-        self.assertDictEqual(config, {'bar': {'foo': {}}})
+        config == {'bar': {'foo': {}}}
 
     def testMixedSections(self):
         contents = StringIO("[bar:foo]\n[baz]")
         config = Config(contents).parse()
-        self.assertDictEqual(config, {
+        assert config == {
             'bar': {'foo': {}},
-            'global': {'baz': {}}})
+            'global': {'baz': {}}}
 
     def testMacroExpansion(self):
         contents = StringIO("\n".join([
@@ -34,10 +34,10 @@ class ConfigTests(TestCase):
             "<=macro",
             "bazvalue=2"]))
         config = Config(contents).parse()
-        self.assertDictEqual(config, {
+        assert config == {
             'global': {
                 'macro': {'macrovalue': '1'},
-                'baz': {'macrovalue': '1', 'bazvalue': '2'}}})
+                'baz': {'macrovalue': '1', 'bazvalue': '2'}}}
 
     def testGroupMacroExpansion(self):
         contents = StringIO("\n".join([
@@ -47,11 +47,11 @@ class ConfigTests(TestCase):
             "<=group:macro",
             "bazvalue=2"]))
         config = Config(contents).parse()
-        self.assertDictEqual(config, {
+        assert config == {
             'global': {
                 'baz': {'macrovalue': '1', 'bazvalue': '2'}},
             'group': {
-                'macro': {'macrovalue': '1'}}})
+                'macro': {'macrovalue': '1'}}}
 
     def testCircularMacroExpansion(self):
         contents = StringIO("\n".join([
@@ -66,41 +66,34 @@ class ConfigTests(TestCase):
             "[section]",
             "value=1"]))
         config = Config(contents).parse()
-        self.assertDictEqual(
-            config,
-            {'global': {'section': {'value': '1'}}})
-        self.assertDictEqual(
-            config.get_section_with_overrides(
-                'global',
-                'section',
-                overrides=None),
-            {
-                '__name__': 'section',
-                '__groupname__': 'global',
-                'value': '1'})
-        self.assertDictEqual(
-            config.get_section_with_overrides(
-                'global',
-                'section',
-                overrides={'value': '2'}),
-            {
-                '__name__': 'section',
-                '__groupname__': 'global',
-                'value': '2'})
-        self.assertDictEqual(
-            config.get_section_with_overrides(
-                'global',
-                'section',
-                overrides={'value2': '2'}),
-            {
-                '__name__': 'section',
-                '__groupname__': 'global',
-                'value': '1',
-                'value2': '2'})
+        assert config == {'global': {'section': {'value': '1'}}}
+        result = config.get_section_with_overrides(
+            'global',
+            'section',
+            overrides=None)
+        assert result == {
+            '__name__': 'section',
+            '__groupname__': 'global',
+            'value': '1'}
+        result = config.get_section_with_overrides(
+            'global',
+            'section',
+            overrides={'value': '2'})
+        assert result == {
+            '__name__': 'section',
+            '__groupname__': 'global',
+            'value': '2'}
+        result = config.get_section_with_overrides(
+            'global',
+            'section',
+            overrides={'value2': '2'})
+        assert result == {
+            '__name__': 'section',
+            '__groupname__': 'global',
+            'value': '1',
+            'value2': '2'}
         # make sure nothing is changed afterwards
-        self.assertDictEqual(
-            config,
-            {'global': {'section': {'value': '1'}}})
+        assert config == {'global': {'section': {'value': '1'}}}
 
 
 class DummyPlugin(object):
@@ -132,7 +125,7 @@ class MassagerTests(TestCase):
             "[section:foo]",
             "value=1"]))
         config = Config(contents, plugins=self.plugins).parse()
-        self.assertDictEqual(config['section'], {'foo': {'value': '1'}})
+        assert config['section'] == {'foo': {'value': '1'}}
 
     def testBooleanMassager(self):
         from mr.awsome.config import BooleanMassager
@@ -156,7 +149,7 @@ class MassagerTests(TestCase):
                 "[section:foo]",
                 "value=%s" % value]))
             config = Config(contents, plugins=self.plugins).parse()
-            self.assertDictEqual(config['section'], {'foo': {'value': expected}})
+            assert config['section'] == {'foo': {'value': expected}}
         contents = StringIO("\n".join([
             "[section:foo]",
             "value=foo"]))
@@ -171,7 +164,7 @@ class MassagerTests(TestCase):
             "[section:foo]",
             "value=1"]))
         config = Config(contents, plugins=self.plugins).parse()
-        self.assertDictEqual(config['section'], {'foo': {'value': 1}})
+        assert config['section'] == {'foo': {'value': 1}}
         contents = StringIO("\n".join([
             "[section:foo]",
             "value=foo"]))
@@ -188,9 +181,10 @@ class MassagerTests(TestCase):
             "value1=foo",
             "value2=/foo"]))
         config = Config(contents, path='/config', plugins=self.plugins).parse()
-        self.assertDictEqual(config['section'], {'foo': {
-            'value1': '/config/foo',
-            'value2': '/foo'}})
+        assert config['section'] == {
+            'foo': {
+                'value1': '/config/foo',
+                'value2': '/foo'}}
 
     def testStartupScriptMassager(self):
         from mr.awsome.config import StartupScriptMassager
@@ -206,11 +200,12 @@ class MassagerTests(TestCase):
             "value3=gzip:/foo",
             "value4=/foo"]))
         config = Config(contents, path='/config', plugins=self.plugins).parse()
-        self.assertDictEqual(config['section'], {'foo': {
-            'value1': {'gzip': True, 'path': '/config/foo'},
-            'value2': {'path': '/config/foo'},
-            'value3': {'gzip': True, 'path': '/foo'},
-            'value4': {'path': '/foo'}}})
+        assert config['section'] == {
+            'foo': {
+                'value1': {'gzip': True, 'path': '/config/foo'},
+                'value2': {'path': '/config/foo'},
+                'value3': {'gzip': True, 'path': '/foo'},
+                'value4': {'path': '/foo'}}}
 
     def testUserMassager(self):
         from mr.awsome.config import UserMassager
@@ -223,9 +218,10 @@ class MassagerTests(TestCase):
             "value1=*",
             "value2=foo"]))
         config = Config(contents, plugins=self.plugins).parse()
-        self.assertDictEqual(config['section'], {'foo': {
-            'value1': pwd.getpwuid(os.getuid())[0],
-            'value2': 'foo'}})
+        assert config['section'] == {
+            'foo': {
+                'value1': pwd.getpwuid(os.getuid())[0],
+                'value2': 'foo'}}
 
     def testCustomMassager(self):
         from mr.awsome.config import BaseMassager
@@ -240,7 +236,7 @@ class MassagerTests(TestCase):
             "[section:foo]",
             "value=1"]))
         config = Config(contents, plugins=self.plugins).parse()
-        self.assertDictEqual(config['section'], {'foo': {'value': 1}})
+        assert config['section'] == {'foo': {'value': 1}}
 
     def testMassagedOverrides(self):
         from mr.awsome.config import IntegerMassager
@@ -251,38 +247,31 @@ class MassagerTests(TestCase):
             "[section]",
             "value=1"]))
         config = Config(contents, plugins=self.plugins).parse()
-        self.assertDictEqual(
-            config['global'],
-            {'section': {'value': 1}})
-        self.assertDictEqual(
-            config.get_section_with_overrides(
-                'global',
-                'section',
-                overrides=None),
-            {
-                '__name__': 'section',
-                '__groupname__': 'global',
-                'value': 1})
-        self.assertDictEqual(
-            config.get_section_with_overrides(
-                'global',
-                'section',
-                overrides={'value': '2'}),
-            {
-                '__name__': 'section',
-                '__groupname__': 'global',
-                'value': 2})
-        self.assertDictEqual(
-            config.get_section_with_overrides(
-                'global',
-                'section',
-                overrides={'value2': '2'}),
-            {
-                '__name__': 'section',
-                '__groupname__': 'global',
-                'value': 1,
-                'value2': 2})
+        assert config['global'] == {'section': {'value': 1}}
+        result = config.get_section_with_overrides(
+            'global',
+            'section',
+            overrides=None)
+        assert result == {
+            '__name__': 'section',
+            '__groupname__': 'global',
+            'value': 1}
+        result = config.get_section_with_overrides(
+            'global',
+            'section',
+            overrides={'value': '2'})
+        assert result == {
+            '__name__': 'section',
+            '__groupname__': 'global',
+            'value': 2}
+        result = config.get_section_with_overrides(
+            'global',
+            'section',
+            overrides={'value2': '2'})
+        assert result == {
+            '__name__': 'section',
+            '__groupname__': 'global',
+            'value': 1,
+            'value2': 2}
         # make sure nothing is changed afterwards
-        self.assertDictEqual(
-            config['global'],
-            {'section': {'value': 1}})
+        assert config['global'] == {'section': {'value': 1}}
