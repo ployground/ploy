@@ -18,7 +18,7 @@ log = logging.getLogger('mr.awsome')
 
 
 class AWS(object):
-    def __init__(self, configpath=None):
+    def __init__(self, configpath=None, configname=None):
         plog = logging.getLogger('paramiko.transport')
         log.setLevel(logging.INFO)
         plog.setLevel(logging.WARN)
@@ -26,11 +26,11 @@ class AWS(object):
         ch.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
         log.addHandler(ch)
         plog.addHandler(ch)
+        if configname is None:
+            configname = 'aws.conf'
         if configpath is None:
-            configpath = 'etc/aws.conf'
-        if os.path.isdir(configpath):
-            configpath = os.path.join(configpath, 'aws.conf')
-        self.configfile = configpath
+            configpath = 'etc'
+        self.configfile = os.path.join(configpath, configname)
 
     @lazy
     def plugins(self):
@@ -521,14 +521,14 @@ class AWS(object):
         args.func(sub_argv, args.func.__doc__)
 
 
-def aws(configpath=None):  # pragma: no cover
+def aws(configpath=None, configname=None):  # pragma: no cover
     argv = sys.argv[:]
-    aws = AWS(configpath=configpath)
+    aws = AWS(configpath=configpath, configname=configname)
     return aws(argv)
 
 
-def aws_ssh(configpath=None):  # pragma: no cover
+def aws_ssh(configpath=None, configname=None):  # pragma: no cover
     argv = sys.argv[:]
     argv.insert(1, "ssh")
-    aws = AWS(configpath=configpath)
+    aws = AWS(configpath=configpath, configname=configname)
     return aws(argv)
