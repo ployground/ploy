@@ -24,8 +24,8 @@ class AwsomeTests(TestCase):
             aws.configfile,
             os.path.join(self.directory, 'aws.conf'))
 
-    def testFileAsConfig(self):
-        aws = AWS(configpath=os.path.join(self.directory, 'foo.conf'))
+    def testFileConfigName(self):
+        aws = AWS(configpath=self.directory, configname='foo.conf')
         self.assertEqual(
             aws.configfile,
             os.path.join(self.directory, 'foo.conf'))
