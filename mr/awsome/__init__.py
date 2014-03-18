@@ -529,7 +529,7 @@ def aws(configpath=None, configname=None):  # pragma: no cover
     return aws(argv)
 
 
-def aws_ssh(configpath=None, configname=configname):  # pragma: no cover
+def aws_ssh(configpath=None, configname=None):  # pragma: no cover
     argv = sys.argv[:]
     argv.insert(1, "ssh")
     aws = AWS(configpath=configpath, configname=configname)
