@@ -33,10 +33,10 @@ setup(
     namespace_packages=['mr'],
     install_requires=install_requires,
     entry_points="""
-      [console_scripts]
-      aws = mr.awsome:aws
-      assh = mr.awsome:aws_ssh
-      [mr.awsome.plugins]
-      plain = mr.awsome.plain:plugin
-      ec2 = mr.awsome.ec2:plugin
+        [console_scripts]
+        aws = mr.awsome:aws
+        assh = mr.awsome:aws_ssh
+        [mr.awsome.plugins]
+        plain = mr.awsome.plain:plugin
+        ec2 = mr.awsome.ec2:plugin
     """)
