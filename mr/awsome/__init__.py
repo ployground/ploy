@@ -30,9 +30,7 @@ class AWS(object):
             configname = 'aws.conf'
         if configpath is None:
             configpath = 'etc'
-        if os.path.isdir(configpath):
-            configpath = os.path.join(configpath, configname)
-        self.configfile = configpath
+        self.configfile = os.path.join(configpath, configname)
 
     @lazy
     def plugins(self):
