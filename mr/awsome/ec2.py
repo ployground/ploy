@@ -88,6 +88,8 @@ class ConnMixin(object):
 class Instance(BaseInstance, StartupScriptMixin, InitSSHKeyMixin, ConnMixin):
     max_startup_script_size = 16 * 1024
 
+    def get_massagers(self):
+        return get_instance_massagers()
 
     @lazy
     def instance(self):
@@ -515,6 +517,19 @@ class ConnectionsMassager(BaseMassager):
         return tuple(connections)
 
 
+def get_instance_massagers(sectiongroupname='instance'):
+    return [
+        HooksMassager(sectiongroupname, 'hooks'),
+        PathMassager(sectiongroupname, 'fabfile'),
+        PathMassager(sectiongroupname, 'ssh-key-filename'),
+        StartupScriptMassager(sectiongroupname, 'startup_script'),
+        SecuritygroupsMassager(sectiongroupname, 'securitygroups'),
+        VolumesMassager(sectiongroupname, 'volumes'),
+        DevicemapMassager(sectiongroupname, 'device_map'),
+        SnapshotsMassager(sectiongroupname, 'snapshots'),
+        BooleanMassager(sectiongroupname, 'delete-volumes-on-terminate')]
+
+
 def get_massagers():
     massagers = []
 
@@ -524,16 +539,7 @@ def get_massagers():
         PathMassager(sectiongroupname, 'secret-access-key')])
 
     sectiongroupname = 'ec2-instance'
-    massagers.extend([
-        HooksMassager(sectiongroupname, 'hooks'),
-        PathMassager(sectiongroupname, 'fabfile'),
-        PathMassager(sectiongroupname, 'ssh-key-filename'),
-        StartupScriptMassager(sectiongroupname, 'startup_script'),
-        SecuritygroupsMassager(sectiongroupname, 'securitygroups'),
-        VolumesMassager(sectiongroupname, 'volumes'),
-        DevicemapMassager(sectiongroupname, 'device_map'),
-        SnapshotsMassager(sectiongroupname, 'snapshots'),
-        BooleanMassager(sectiongroupname, 'delete-volumes-on-terminate')])
+    massagers.extend(get_instance_massagers(sectiongroupname))
 
     sectiongroupname = 'ec2-connection'
     massagers.extend([

@@ -179,6 +179,9 @@ class BaseInstance(FabricMixin):
         self.id = validate_id(sid)
         self.master = master
         self.config = config
+        get_massagers = getattr(self, 'get_massagers', lambda: [])
+        for massager in get_massagers():
+            self.config.add_massager(massager)
 
 
 class Hooks(object):
