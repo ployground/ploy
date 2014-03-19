@@ -1,6 +1,9 @@
 from StringIO import StringIO
 from mr.awsome.config import Config
 from unittest2 import TestCase
+import os
+import shutil
+import tempfile
 
 
 class ConfigTests(TestCase):
@@ -213,7 +216,6 @@ class MassagerTests(TestCase):
 
     def testUserMassager(self):
         from mr.awsome.config import UserMassager
-        import os
         import pwd
 
         self.dummyplugin.massagers.append(UserMassager('section', 'value1'))
@@ -274,3 +276,88 @@ class MassagerTests(TestCase):
             'value2': 2}
         # make sure nothing is changed afterwards
         assert config['global'] == {'section': {'value': 1}}
+
+
+class ConfigExtendTests(TestCase):
+    def setUp(self):
+        self.directory = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.directory)
+        del self.directory
+
+    def _write_config(self, conf, content):
+        with open(os.path.join(self.directory, conf), 'w') as f:
+            f.write(content)
+
+    def testExtend(self):
+        awsconf = 'aws.conf'
+        self._write_config(
+            awsconf,
+            '\n'.join([
+                '[global]',
+                'extends = foo.conf',
+                'ham = egg']))
+        self._write_config(
+            'foo.conf',
+            '\n'.join([
+                '[global]',
+                'foo = bar',
+                'ham = pork']))
+        config = Config(os.path.join(self.directory, awsconf)).parse()
+        assert config == {
+            'global': {
+                'global': {
+                    'foo': 'bar', 'ham': 'egg'}}}
+
+    def testDoubleExtend(self):
+        awsconf = 'aws.conf'
+        self._write_config(
+            awsconf,
+            '\n'.join([
+                '[global]',
+                'extends = foo.conf',
+                'ham = egg']))
+        self._write_config(
+            'foo.conf',
+            '\n'.join([
+                '[global]',
+                'extends = bar.conf',
+                'foo = blubber',
+                'ham = pork']))
+        self._write_config(
+            'bar.conf',
+            '\n'.join([
+                '[global]',
+                'foo = bar',
+                'ham = pork']))
+        config = Config(os.path.join(self.directory, awsconf)).parse()
+        assert config == {
+            'global': {
+                'global': {
+                    'foo': 'blubber', 'ham': 'egg'}}}
+
+    def testExtendFromDifferentDirectoryWithMassager(self):
+        from mr.awsome.config import PathMassager
+        os.mkdir(os.path.join(self.directory, 'bar'))
+        awsconf = 'aws.conf'
+        self._write_config(
+            awsconf,
+            '\n'.join([
+                '[global]',
+                'extends = bar/foo.conf',
+                'ham = egg']))
+        self._write_config(
+            'bar/foo.conf',
+            '\n'.join([
+                '[global]',
+                'foo = blubber',
+                'ham = pork']))
+        config = Config(os.path.join(self.directory, awsconf)).parse()
+        config.add_massager(PathMassager('global', 'foo'))
+        config.add_massager(PathMassager('global', 'ham'))
+        assert config == {
+            'global': {
+                'global': {
+                    'foo': os.path.join(self.directory, 'bar', 'blubber'),
+                    'ham': os.path.join(self.directory, 'egg')}}}

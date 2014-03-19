@@ -2,8 +2,13 @@ from mr.awsome.common import Hooks
 from ConfigParser import RawConfigParser
 from UserDict import DictMixin
 from weakref import proxy
+import logging
 import os
+import sys
 import warnings
+
+
+log = logging.getLogger('mr.awsome')
 
 
 def value_asbool(value):
@@ -18,8 +23,14 @@ class BaseMassager(object):
         self.sectiongroupname = sectiongroupname
         self.key = key
 
+    def path(self, config, sectionname):
+        return config._dict[self.key].path
+
     def __call__(self, config, sectionname):
-        return config._dict[self.key]
+        value = config._dict[self.key]
+        if isinstance(value, ConfigValue):
+            return value.value
+        return value
 
 
 class BooleanMassager(BaseMassager):
@@ -42,7 +53,7 @@ class PathMassager(BaseMassager):
         value = BaseMassager.__call__(self, config, sectionname)
         value = os.path.expanduser(value)
         if not os.path.isabs(value):
-            value = os.path.join(config._config.path, value)
+            value = os.path.join(self.path(config, sectionname), value)
         return value
 
 
@@ -87,7 +98,7 @@ class StartupScriptMassager(BaseMassager):
             value = value[5:]
             result['gzip'] = True
         if not os.path.isabs(value):
-            value = os.path.join(config._config.path, value)
+            value = os.path.join(self.path(config, sectionname), value)
         result['path'] = value
         return result
 
@@ -99,6 +110,14 @@ class UserMassager(BaseMassager):
             import pwd
             value = pwd.getpwuid(os.getuid())[0]
         return value
+
+
+class ConfigValue(object):
+    __slots__ = ('path', 'value')
+
+    def __init__(self, path, value):
+        self.path = path
+        self.value = value
 
 
 class ConfigSection(DictMixin):
@@ -135,7 +154,10 @@ class ConfigSection(DictMixin):
             massage = self.massagers.get((self.sectiongroupname, key))
             if callable(massage):
                 return massage(self, self.sectionname)
-        return self._dict[key]
+        value = self._dict[key]
+        if isinstance(value, ConfigValue):
+            return value.value
+        return value
 
     def __setitem__(self, key, value):
         self._dict[key] = value
@@ -191,18 +213,46 @@ class Config(ConfigSection):
                 if 'get_macro_cleaners' in plugin:
                     self.macro_cleaners.update(plugin['get_macro_cleaners'](self))
 
+    def read_config(self, config):
+        result = []
+        stack = [config]
+        while 1:
+            config = stack.pop()
+            _config = RawConfigParser()
+            _config.optionxform = lambda s: s
+            if getattr(config, 'read', None) is not None:
+                _config.readfp(config)
+                path = self.path
+            else:
+                if not os.path.exists(config):
+                    log.error("Config file '%s' doesn't exist." % config)
+                    sys.exit(1)
+                _config.read(config)
+                path = os.path.dirname(config)
+            for section in reversed(_config.sections()):
+                for key, value in reversed(_config.items(section)):
+                    result.append((path, section, key, value))
+                result.append((path, section, None, None))
+            if _config.has_option('global', 'extends'):
+                extends = _config.get('global', 'extends').split()
+            elif _config.has_option('global:global', 'extends'):
+                extends = _config.get('global', 'extends').split()
+            else:
+                break
+            stack[0:0] = [
+                os.path.abspath(os.path.join(path, x))
+                for x in reversed(extends)]
+        return reversed(result)
+
     def parse(self):
-        _config = RawConfigParser()
-        _config.optionxform = lambda s: s
-        if getattr(self.config, 'read', None) is not None:
-            _config.readfp(self.config)
-        else:
-            _config.read(self.config)
-        for configsection in _config.sections():
+        _config = self.read_config(self.config)
+        for path, configsection, key, value in _config:
             if ':' in configsection:
                 sectiongroupname, sectionname = configsection.split(':')
             else:
                 sectiongroupname, sectionname = 'global', configsection
+            if sectiongroupname == 'global' and sectionname == 'global' and key == 'extends':
+                continue
             sectiongroup = self.setdefault(sectiongroupname, ConfigSection())
             if sectionname not in sectiongroup:
                 section = ConfigSection()
@@ -210,7 +260,8 @@ class Config(ConfigSection):
                 section.sectionname = sectionname
                 section._config = proxy(self)
                 sectiongroup[sectionname] = section
-            sectiongroup[sectionname].update(_config.items(configsection))
+            if key is not None:
+                sectiongroup[sectionname][key] = ConfigValue(path, value)
         if 'plugin' in self:
             warnings.warn("The 'plugin' section isn't used anymore.")
             del self['plugin']
