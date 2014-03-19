@@ -459,8 +459,8 @@ class Master(BaseMaster):
 
 
 class SecuritygroupsMassager(BaseMassager):
-    def __call__(self, main_config, sectionname):
-        value = main_config[self.sectiongroupname][sectionname][self.key]
+    def __call__(self, config, sectionname):
+        value = BaseMassager.__call__(self, config, sectionname)
         securitygroups = []
         for securitygroup in value.split(','):
             securitygroups.append(securitygroup.strip())
@@ -468,11 +468,11 @@ class SecuritygroupsMassager(BaseMassager):
 
 
 class DevicemapMassager(BaseMassager):
-    def __call__(self, main_config, sectionname):
+    def __call__(self, config, sectionname):
         from boto.ec2.blockdevicemapping import BlockDeviceMapping
         from boto.ec2.blockdevicemapping import BlockDeviceType
 
-        value = main_config[self.sectiongroupname][sectionname][self.key]
+        value = BaseMassager.__call__(self, config, sectionname)
         device_map = BlockDeviceMapping()
         for mapping in value.split():
             device_path, ephemeral_name = mapping.split(':')
@@ -483,8 +483,8 @@ class DevicemapMassager(BaseMassager):
 
 
 class VolumesMassager(BaseMassager):
-    def __call__(self, main_config, sectionname):
-        value = main_config[self.sectiongroupname][sectionname][self.key]
+    def __call__(self, config, sectionname):
+        value = BaseMassager.__call__(self, config, sectionname)
         volumes = []
         for line in value.split('\n'):
             volume = line.split()
@@ -495,8 +495,8 @@ class VolumesMassager(BaseMassager):
 
 
 class SnapshotsMassager(BaseMassager):
-    def __call__(self, main_config, sectionname):
-        value = main_config[self.sectiongroupname][sectionname][self.key]
+    def __call__(self, config, sectionname):
+        value = BaseMassager.__call__(self, config, sectionname)
         snapshots = []
         for line in value.split('\n'):
             snapshot = line.split()
@@ -507,8 +507,8 @@ class SnapshotsMassager(BaseMassager):
 
 
 class ConnectionsMassager(BaseMassager):
-    def __call__(self, main_config, sectionname):
-        value = main_config[self.sectiongroupname][sectionname][self.key]
+    def __call__(self, config, sectionname):
+        value = BaseMassager.__call__(self, config, sectionname)
         connections = []
         for line in value.split('\n'):
             connection = line.split()

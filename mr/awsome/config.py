@@ -21,9 +21,9 @@ class BaseMassager(object):
 
 
 class BooleanMassager(BaseMassager):
-    def __call__(self, main_config, sectionname):
-        value = value_asbool(
-            main_config[self.sectiongroupname][sectionname][self.key])
+    def __call__(self, config, sectionname):
+        value = BaseMassager.__call__(self, config, sectionname)
+        value = value_asbool(value)
         if value is None:
             raise ValueError("Unknown value %s for %s in %s:%s." % (value, self.key, self.sectiongroupname, sectionname))
         return value
@@ -31,16 +31,16 @@ class BooleanMassager(BaseMassager):
 
 class IntegerMassager(BaseMassager):
     def __call__(self, config, sectionname):
-        value = config[self.sectiongroupname][sectionname][self.key]
+        value = BaseMassager.__call__(self, config, sectionname)
         return int(value)
 
 
 class PathMassager(BaseMassager):
-    def __call__(self, main_config, sectionname):
-        value = main_config[self.sectiongroupname][sectionname][self.key]
+    def __call__(self, config, sectionname):
+        value = BaseMassager.__call__(self, config, sectionname)
         value = os.path.expanduser(value)
         if not os.path.isabs(value):
-            value = os.path.join(main_config.path, value)
+            value = os.path.join(config.path, value)
         return value
 
 
@@ -54,8 +54,8 @@ def resolve_dotted_name(value):
 
 
 class HooksMassager(BaseMassager):
-    def __call__(self, main_config, sectionname):
-        value = main_config[self.sectiongroupname][sectionname][self.key]
+    def __call__(self, config, sectionname):
+        value = BaseMassager.__call__(self, config, sectionname)
         hooks = Hooks()
         for hook_spec in value.split():
             hooks.add(resolve_dotted_name(hook_spec)())
@@ -63,8 +63,8 @@ class HooksMassager(BaseMassager):
 
 
 class MassagersMassager(BaseMassager):
-    def __call__(self, main_config, sectionname):
-        value = main_config[self.sectiongroupname][sectionname][self.key]
+    def __call__(self, config, sectionname):
+        value = BaseMassager.__call__(self, config, sectionname)
         massagers = []
         for spec in value.split('\n'):
             spec = spec.strip()
@@ -78,21 +78,21 @@ class MassagersMassager(BaseMassager):
 
 
 class StartupScriptMassager(BaseMassager):
-    def __call__(self, main_config, sectionname):
-        value = main_config[self.sectiongroupname][sectionname][self.key]
+    def __call__(self, config, sectionname):
+        value = BaseMassager.__call__(self, config, sectionname)
         result = dict()
         if value.startswith('gzip:'):
             value = value[5:]
             result['gzip'] = True
         if not os.path.isabs(value):
-            value = os.path.join(main_config.path, value)
+            value = os.path.join(config.path, value)
         result['path'] = value
         return result
 
 
 class UserMassager(BaseMassager):
-    def __call__(self, main_config, sectionname):
-        value = main_config[self.sectiongroupname][sectionname][self.key]
+    def __call__(self, config, sectionname):
+        value = BaseMassager.__call__(self, config, sectionname)
         if value == "*":
             import pwd
             value = pwd.getpwuid(os.getuid())[0]
