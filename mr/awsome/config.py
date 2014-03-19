@@ -107,6 +107,13 @@ class ConfigSection(DictMixin):
         self.sectionname = None
         self.sectiongroupname = None
         self._config = None
+        self.massagers = {}
+
+    def add_massager(self, massager):
+        key = (massager.sectiongroupname, massager.key)
+        if key in self.massagers:
+            raise ValueError("Massager for option '%s' in section group '%s' already registered." % (massager.key, massager.sectiongroupname))
+        self.massagers[key] = massager
 
     def __delitem__(self, key):
         del self._dict[key]
@@ -116,13 +123,17 @@ class ConfigSection(DictMixin):
             return self.sectiongroupname
         if key == '__name__':
             return self.sectionname
-        if key in self._dict and self._config is not None:
-            massage = self._config.massagers.get((self.sectiongroupname, key))
-            if not callable(massage):
-                massage = self._config.massagers.get((None, key))
-                if callable(massage):
-                    return massage(self, self.sectiongroupname, self.sectionname)
-            else:
+        if key in self._dict:
+            if self._config is not None:
+                massage = self._config.massagers.get((self.sectiongroupname, key))
+                if not callable(massage):
+                    massage = self._config.massagers.get((None, key))
+                    if callable(massage):
+                        return massage(self, self.sectiongroupname, self.sectionname)
+                else:
+                    return massage(self, self.sectionname)
+            massage = self.massagers.get((self.sectiongroupname, key))
+            if callable(massage):
                 return massage(self, self.sectionname)
         return self._dict[key]
 
@@ -142,12 +153,6 @@ class ConfigSection(DictMixin):
 
 
 class Config(ConfigSection):
-    def _add_massager(self, massager):
-        key = (massager.sectiongroupname, massager.key)
-        if key in self.massagers:
-            raise ValueError("Massager for option '%s' in section group '%s' already registered." % (massager.key, massager.sectiongroupname))
-        self.massagers[key] = massager
-
     def _expand(self, sectiongroupname, sectionname, section, seen):
         if (sectiongroupname, sectionname) in seen:
             raise ValueError("Circular macro expansion.")
@@ -175,12 +180,11 @@ class Config(ConfigSection):
         ConfigSection.__init__(self)
         self.config = config
         self.path = path
-        self.massagers = {}
         self.macro_cleaners = {}
         if plugins is not None:
             for plugin in plugins.values():
                 for massager in plugin.get('get_massagers', lambda: [])():
-                    self._add_massager(massager)
+                    self.add_massager(massager)
                 if 'get_macro_cleaners' in plugin:
                     self.macro_cleaners.update(plugin['get_macro_cleaners'](self))
 
@@ -220,7 +224,7 @@ class Config(ConfigSection):
                         sectiongroupname,
                         'massagers')(self, sectionname)
                     for massager in massagers:
-                        self._add_massager(massager)
+                        self.add_massager(massager)
         return self
 
     def get_section_with_overrides(self, sectiongroupname, sectionname, overrides):
