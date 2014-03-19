@@ -201,7 +201,7 @@ def get_massagers():
 
 
 def get_masters(aws):
-    masters = aws.config.get('plain-master', {'default': {}})
+    masters = aws.config.get('plain-master', {'plain-master': {}})
     for master, master_config in masters.iteritems():
         yield Master(aws, master, master_config)
 

@@ -53,11 +53,15 @@ class AWS(object):
 
     @lazy
     def masters(self):
-        masters = []
+        result = {}
         for plugin in self.plugins.values():
             if 'get_masters' in plugin:
-                masters.extend(plugin['get_masters'](self))
-        return masters
+                for master in plugin['get_masters'](self):
+                    if master.id in result:
+                        log.error("Master id '%s' already in use." % master.id)
+                        sys.exit(1)
+                    result[master.id] = master
+        return result
 
     @lazy
     def known_hosts(self):
@@ -74,11 +78,11 @@ class AWS(object):
     def instances(self):
         instances = {}
         instance_name_count = dict()
-        for master in self.masters:
+        for master in self.masters.values():
             for instance_id in master.instances:
                 count = instance_name_count.get(instance_id, 0)
                 instance_name_count[instance_id] = count + 1
-        for master in self.masters:
+        for master in self.masters.values():
             for instance_id in master.instances:
                 if instance_name_count[instance_id] > 1:
                     name = '%s-%s' % (master.id, instance_id)
