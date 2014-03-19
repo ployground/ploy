@@ -31,7 +31,7 @@ class StartupScriptTests(TestCase):
     def _create_config(self, contents, path=None):
         contents = StringIO(contents)
         config = Config(contents, path=path)
-        config._add_massager(
+        config.add_massager(
             StartupScriptMassager('instance', 'startup_script'))
         return config.parse()
 
