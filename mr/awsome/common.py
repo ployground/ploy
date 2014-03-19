@@ -173,6 +173,14 @@ class BaseMaster(object):
                 self.instances[sid].sectiongroupname = sectiongroupname
 
 
+class BaseInstance(FabricMixin):
+    def __init__(self, master, sid, config):
+        validate_id = getattr(self, 'validate_id', lambda x: x)
+        self.id = validate_id(sid)
+        self.master = master
+        self.config = config
+
+
 class Hooks(object):
     def __init__(self):
         self.hooks = []
