@@ -184,7 +184,7 @@ class Instance(FabricMixin):
         try:
             ssh_info = self.init_ssh_key()
         except SSHException, e:
-            log.error("Couldn't connect to %s." % self.id)
+            log.error("Couldn't connect to %s:%s." % (self.sectiongroupname, self.id))
             log.error(unicode(e))
             sys.exit(1)
         self._conn = ssh_info['client']
