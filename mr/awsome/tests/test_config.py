@@ -72,28 +72,30 @@ class ConfigTests(TestCase):
             'section',
             overrides=None)
         assert result == {
-            '__name__': 'section',
-            '__groupname__': 'global',
             'value': '1'}
         result = config.get_section_with_overrides(
             'global',
             'section',
             overrides={'value': '2'})
         assert result == {
-            '__name__': 'section',
-            '__groupname__': 'global',
             'value': '2'}
         result = config.get_section_with_overrides(
             'global',
             'section',
             overrides={'value2': '2'})
         assert result == {
-            '__name__': 'section',
-            '__groupname__': 'global',
             'value': '1',
             'value2': '2'}
         # make sure nothing is changed afterwards
         assert config == {'global': {'section': {'value': '1'}}}
+
+    def testSpecialKeys(self):
+        contents = StringIO("\n".join([
+            "[section]",
+            "value=1"]))
+        config = Config(contents).parse()
+        assert config['global']['section']['__name__'] == 'section'
+        assert config['global']['section']['__groupname__'] == 'global'
 
 
 class DummyPlugin(object):
@@ -153,8 +155,9 @@ class MassagerTests(TestCase):
         contents = StringIO("\n".join([
             "[section:foo]",
             "value=foo"]))
+        config = Config(contents, plugins=self.plugins).parse()
         with self.assertRaises(ValueError):
-            Config(contents, plugins=self.plugins).parse()
+            config['section']['foo']['value']
 
     def testIntegerMassager(self):
         from mr.awsome.config import IntegerMassager
@@ -168,8 +171,9 @@ class MassagerTests(TestCase):
         contents = StringIO("\n".join([
             "[section:foo]",
             "value=foo"]))
+        config = Config(contents, plugins=self.plugins).parse()
         with self.assertRaises(ValueError):
-            Config(contents, plugins=self.plugins).parse()
+            config['section']['foo']['value']
 
     def testPathMassager(self):
         from mr.awsome.config import PathMassager
@@ -254,24 +258,18 @@ class MassagerTests(TestCase):
             'section',
             overrides=None)
         assert result == {
-            '__name__': 'section',
-            '__groupname__': 'global',
             'value': 1}
         result = config.get_section_with_overrides(
             'global',
             'section',
             overrides={'value': '2'})
         assert result == {
-            '__name__': 'section',
-            '__groupname__': 'global',
             'value': 2}
         result = config.get_section_with_overrides(
             'global',
             'section',
             overrides={'value2': '2'})
         assert result == {
-            '__name__': 'section',
-            '__groupname__': 'global',
             'value': 1,
             'value2': 2}
         # make sure nothing is changed afterwards
