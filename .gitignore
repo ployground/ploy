@@ -9,3 +9,4 @@
 /develop-eggs/
 /htmlcov/
 dist
+/setuptools_git-*.egg
