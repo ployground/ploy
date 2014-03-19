@@ -1,5 +1,5 @@
 from lazy import lazy
-from mr.awsome.common import BaseMaster, FabricMixin, yesno
+from mr.awsome.common import BaseMaster, BaseInstance, yesno
 import getpass
 import logging
 import os
@@ -17,13 +17,7 @@ class InstanceFormattingWrapper(object):
         return self.instance.config[name]
 
 
-class Instance(FabricMixin):
-    def __init__(self, master, sid, config):
-        validate_id = getattr(self, 'validate_id', lambda x: x)
-        self.id = validate_id(sid)
-        self.master = master
-        self.config = config
-
+class Instance(BaseInstance):
     def get_host(self):
         return self.config['host']
 
