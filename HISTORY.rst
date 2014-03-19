@@ -4,6 +4,16 @@ Changelog
 0.14 - Unreleased
 -----------------
 
+* You can now have instances with the same name if the belong to different
+  masters, they will then get the name of the master as a prefix to their name.
+  [fschulze]
+
+* Add possibility to overwrite the default config name.
+  [tomster]
+
+* Improved ``proxycommand`` and documented it.
+  [fschulze]
+
 * Make the AWS instance available in masters. This changes the ``get_masters``
   plugin interface.
   [fschulze]
@@ -178,7 +188,7 @@ Changelog
   [fschulze]
 
 * Added ``-v``/``--version`` option.
-  [tomster, fschulze]
+  [tomster (Tom Lazar), fschulze]
 
 * Comment lines in the startup script are now removed before any variables
   in it are expanded, not afterwards.
@@ -230,7 +240,7 @@ Changelog
   [fschulze]
 
 * Fixed indentation in documentation.
-  [natea, fschulze]
+  [natea (Nate Aune), fschulze]
 
 0.3 - 2010-02-08
 ----------------
