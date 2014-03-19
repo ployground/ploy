@@ -73,12 +73,18 @@ class AWS(object):
     @lazy
     def instances(self):
         instances = {}
+        instance_name_count = dict()
         for master in self.masters:
             for instance_id in master.instances:
-                if instance_id in instances:
-                    log.error("Instance and server names must be unique, '%s' is already defined." % instance_id)
-                    sys.exit(1)
-                instances[instance_id] = master.instances[instance_id]
+                count = instance_name_count.get(instance_id, 0)
+                instance_name_count[instance_id] = count + 1
+        for master in self.masters:
+            for instance_id in master.instances:
+                if instance_name_count[instance_id] > 1:
+                    name = '%s-%s' % (master.id, instance_id)
+                else:
+                    name = instance_id
+                instances[name] = master.instances[instance_id]
         for plugin in self.plugins.values():
             if 'augment_instance' not in plugin:
                 continue
