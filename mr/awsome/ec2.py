@@ -397,6 +397,7 @@ class Securitygroups(object):
 
 class Master(BaseMaster):
     section_info = {
+        None: Instance,
         'ec2-instance': Instance,
         'ec2-connection': Connection}
 

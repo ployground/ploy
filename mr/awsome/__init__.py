@@ -76,25 +76,41 @@ class AWS(object):
 
     @lazy
     def instances(self):
-        instances = {}
+        result = {}
+        instances = []
+        instances.extend((None, i) for i in self.config.get('instance', {}))
+        for master in self.masters.values():
+            instances.extend((master, i) for i in master.instances)
         instance_name_count = dict()
-        for master in self.masters.values():
-            for instance_id in master.instances:
-                count = instance_name_count.get(instance_id, 0)
-                instance_name_count[instance_id] = count + 1
-        for master in self.masters.values():
-            for instance_id in master.instances:
-                if instance_name_count[instance_id] > 1:
-                    name = '%s-%s' % (master.id, instance_id)
-                else:
-                    name = instance_id
-                instances[name] = master.instances[instance_id]
+        for master, instance_id in instances:
+            count = instance_name_count.get(instance_id, 0)
+            instance_name_count[instance_id] = count + 1
+        for master, instance_id in instances:
+            if master is None:
+                iconfig = self.config['instance'][instance_id]
+                if 'master' not in iconfig:
+                    log.error("Instance 'instance:%s' has no master set." % instance_id)
+                    sys.exit(1)
+                master = self.masters[iconfig['master']]
+                if instance_id in master.instances:
+                    log.error("Instance 'instance:%s' conflicts with another instance with id '%s' in master '%s'." % (instance_id, instance_id, master.id))
+                    sys.exit(1)
+                instance_class = master.section_info.get(None)
+                if instance_class is None:
+                    log.error("Master '%s' has no default instance class." % (master.id))
+                    sys.exit(1)
+                master.instances[instance_id] = instance_class(master, instance_id, iconfig)
+            if instance_name_count[instance_id] > 1:
+                name = '%s-%s' % (master.id, instance_id)
+            else:
+                name = instance_id
+            result[name] = master.instances[instance_id]
         for plugin in self.plugins.values():
             if 'augment_instance' not in plugin:
                 continue
-            for name, instance in instances.items():
+            for name, instance in result.items():
                 plugin['augment_instance'](instance)
-        return instances
+        return result
 
     def get_instances(self, command):
         instances = {}

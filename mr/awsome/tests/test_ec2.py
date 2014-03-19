@@ -356,3 +356,35 @@ class EC2Tests(TestCase):
     #     known_hosts = os.path.join(self.directory, 'known_hosts')
     #     self.os_execvp_mock.assert_called_with(
     #         ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', 'localhost'])
+
+
+def _write_config(directory, content):
+    key = os.path.join(directory, 'key')
+    with open(key, 'w') as f:
+        f.write('ham')
+    secret = os.path.join(directory, 'secret')
+    with open(secret, 'w') as f:
+        f.write('egg')
+    with open(os.path.join(directory, 'aws.conf'), 'w') as f:
+        f.write('\n'.join([
+            '[ec2-master:default]',
+            'region = eu-west-1',
+            'access-key-id = %s' % key,
+            'secret-access-key = %s' % secret]))
+        f.write('\n')
+        f.write(content)
+
+
+def test_instance_massagers():
+    directory = tempfile.mkdtemp()
+    aws = AWS(directory)
+    _write_config(directory, '\n'.join([
+        '[instance:bar]',
+        'master = default',
+        'fabfile = fabfile.py',
+        '[ec2-instance:ham]']))
+    massagers = aws.instances['bar'].config.massagers
+    assert massagers != {}
+    assert aws.instances['bar'].config == {
+        'fabfile': os.path.join(directory, 'fabfile.py'),
+        'master': 'default'}
