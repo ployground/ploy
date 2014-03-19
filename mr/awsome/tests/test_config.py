@@ -229,7 +229,7 @@ class MassagerTests(TestCase):
 
         class DummyMassager(BaseMassager):
             def __call__(self, config, sectionname):
-                value = config[self.sectiongroupname][sectionname][self.key]
+                value = BaseMassager.__call__(self, config, sectionname)
                 return int(value)
 
         self.dummyplugin.massagers.append(DummyMassager('section', 'value'))
