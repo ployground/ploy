@@ -179,6 +179,9 @@ class Config(ConfigSection):
     def __init__(self, config, path=None, bbb_config=False, plugins=None):
         ConfigSection.__init__(self)
         self.config = config
+        if path is None:
+            if getattr(config, 'read', None) is None:
+                path = os.path.dirname(config)
         self.path = path
         self.macro_cleaners = {}
         if plugins is not None:
@@ -195,7 +198,6 @@ class Config(ConfigSection):
             _config.readfp(self.config)
         else:
             _config.read(self.config)
-            self.path = os.path.dirname(self.config)
         for configsection in _config.sections():
             if ':' in configsection:
                 sectiongroupname, sectionname = configsection.split(':')
