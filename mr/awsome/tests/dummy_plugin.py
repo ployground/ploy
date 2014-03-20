@@ -35,6 +35,9 @@ class Instance(StartupScriptMixin):
     def get_host(self):
         return self.config['host']
 
+    def snapshot(self):
+        log.info('snapshot: %s', self.id)
+
     def start(self, overrides=None):
         log.info('start: %s %s', self.id, overrides)
 

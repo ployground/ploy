@@ -5,7 +5,6 @@ except ImportError:  # pragma: no cover
     from StringIO import StringIO
 import gzip
 import logging
-import os
 import sys
 
 
@@ -123,7 +122,7 @@ class BaseMaster(object):
         assert self.aws.__class__.__name__ == 'AWS'
         self.main_config = self.aws.config
         self.master_config = master_config
-        self.known_hosts = os.path.join(self.main_config.path, 'known_hosts')
+        self.known_hosts = self.aws.known_hosts
         self.instances = {}
         if getattr(self, 'section_info', None) is None:
             self.section_info = {self.sectiongroupname: self.instance_class}

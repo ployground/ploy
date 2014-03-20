@@ -365,7 +365,7 @@ class AWS(object):
     def cmd_snapshot(self, argv, help):
         """Creates a snapshot of the volumes specified in the configuration"""
         parser = argparse.ArgumentParser(
-            prog="aws status",
+            prog="aws snapshot",
             description=help,
         )
         instances = self.get_instances(command='snapshot')
@@ -435,12 +435,12 @@ class AWS(object):
         self.cmds = dict(
             (x[4:], getattr(self, x))
             for x in dir(self) if x.startswith('cmd_'))
-        for plugin in self.plugins.values():
+        for pluginname, plugin in self.plugins.items():
             if 'get_commands' not in plugin:
                 continue
             for cmd, func in plugin['get_commands'](self):
                 if cmd in self.cmds:
-                    log.error("Command name '%s' of '%s' conflicts with existing command name.", cmd, plugin)
+                    log.error("Command name '%s' of '%s' conflicts with existing command name.", cmd, pluginname)
                     sys.exit(1)
                 self.cmds[cmd] = func
         cmdparsers = parser.add_subparsers(title="commands")

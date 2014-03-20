@@ -2,6 +2,7 @@ from mock import patch
 from mr.awsome import AWS
 from unittest2 import TestCase
 import os
+import pytest
 import tempfile
 import shutil
 
@@ -45,6 +46,28 @@ class AwsomeTests(TestCase):
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         self.assertIn('usage:', output)
         self.assertIn('too few arguments', output)
+
+    def testKnownHostsWithNoConfigErrors(self):
+        aws = AWS(configpath=self.directory)
+        with pytest.raises(SystemExit):
+            aws.known_hosts
+
+    def testKnownHosts(self):
+        open(os.path.join(self.directory, 'aws.conf'), 'w')
+        aws = AWS(configpath=self.directory)
+        self.assertEqual(
+            aws.known_hosts,
+            os.path.join(self.directory, 'known_hosts'))
+
+    def testConflictingPluginCommandName(self):
+        aws = AWS(configpath=self.directory)
+        aws.plugins = dict(dummy=dict(
+            get_commands=lambda x: [
+                ('ssh', None)]))
+        with patch('mr.awsome.log') as LogMock:
+            with pytest.raises(SystemExit):
+                aws([])
+        LogMock.error.assert_called_with("Command name '%s' of '%s' conflicts with existing command name.", 'ssh', 'dummy')
 
 
 class StartCommandTests(TestCase):
@@ -502,3 +525,51 @@ class SSHCommandTests(TestCase):
         self.os_execvp_mock.assert_called_with(
             'ssh',
             ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
+
+
+class SnapshotCommandTests(TestCase):
+    def setUp(self):
+        self.directory = tempfile.mkdtemp()
+        self.aws = AWS(self.directory)
+
+    def tearDown(self):
+        shutil.rmtree(self.directory)
+        del self.directory
+
+    def _write_config(self, content):
+        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+            f.write(content)
+
+    def testCallWithNoArguments(self):
+        self._write_config('')
+        with patch('sys.stderr') as StdErrMock:
+            with self.assertRaises(SystemExit):
+                self.aws(['./bin/aws', 'snapshot'])
+        output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
+        self.assertIn('usage: aws snapshot', output)
+        self.assertIn('too few arguments', output)
+
+    def testCallWithNonExistingInstance(self):
+        self._write_config('')
+        with patch('sys.stderr') as StdErrMock:
+            with self.assertRaises(SystemExit):
+                self.aws(['./bin/aws', 'snapshot', 'foo'])
+        output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
+        self.assertIn('usage: aws snapshot', output)
+        self.assertIn("argument instance: invalid choice: 'foo'", output)
+
+    def testCallWithExistingInstance(self):
+        import mr.awsome.tests.dummy_plugin
+        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        self._write_config('\n'.join([
+            '[dummy-instance:foo]',
+            'host = localhost']))
+        with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
+            try:
+                self.aws(['./bin/aws', 'snapshot', 'foo'])
+            except SystemExit:  # pragma: no cover - only if something is wrong
+                self.fail("SystemExit raised")
+        self.assertEquals(
+            LogMock.info.call_args_list,
+            [
+                (('snapshot: %s', 'foo'), {})])
