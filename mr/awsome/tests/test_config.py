@@ -32,6 +32,7 @@ class ConfigTests(TestCase):
             'global': {'baz': {}}}
 
     def testMacroExpansion(self):
+        from mr.awsome.config import ConfigValue
         contents = StringIO("\n".join([
             "[macro]",
             "macrovalue=1",
@@ -43,6 +44,8 @@ class ConfigTests(TestCase):
             'global': {
                 'macro': {'macrovalue': '1'},
                 'baz': {'macrovalue': '1', 'bazvalue': '2'}}}
+        assert isinstance(config['global']['baz']._dict['macrovalue'], ConfigValue)
+        assert isinstance(config['global']['baz']._dict['bazvalue'], ConfigValue)
 
     def testGroupMacroExpansion(self):
         contents = StringIO("\n".join([

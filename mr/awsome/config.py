@@ -180,11 +180,11 @@ class Config(ConfigSection):
             if '<' in macro:
                 self._expand(macrogroupname, macroname, macro, seen)
             if sectiongroupname in self.macro_cleaners:
-                macro = dict(macro)
+                macro = macro.copy()
                 self.macro_cleaners[sectiongroupname](macro)
             for key in macro:
                 if key not in section:
-                    section[key] = macro[key]
+                    section._dict[key] = macro._dict[key]
         # this needs to be after the recursive _expand call, so circles are
         # properly detected
         del section['<']
