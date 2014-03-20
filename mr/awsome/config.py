@@ -2,6 +2,7 @@ from mr.awsome.common import Hooks
 from ConfigParser import RawConfigParser
 from UserDict import DictMixin
 from weakref import proxy
+import inspect
 import logging
 import os
 import sys
@@ -77,21 +78,6 @@ class HooksMassager(BaseMassager):
         return hooks
 
 
-class MassagersMassager(BaseMassager):
-    def __call__(self, config, sectionname):
-        value = BaseMassager.__call__(self, config, sectionname)
-        massagers = []
-        for spec in value.split('\n'):
-            spec = spec.strip()
-            if not spec:
-                continue
-            key, massager = spec.split('=')
-            sectiongroupname, key = tuple(x.strip() for x in key.split(':'))
-            massager = resolve_dotted_name(massager.strip())
-            massagers.append(massager(sectiongroupname, key))
-        return massagers
-
-
 class StartupScriptMassager(BaseMassager):
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
@@ -150,7 +136,10 @@ class ConfigSection(DictMixin):
                 if not callable(massage):
                     massage = self._config.massagers.get((None, key))
                     if callable(massage):
-                        return massage(self, self.sectiongroupname, self.sectionname)
+                        if len(inspect.getargspec(massage.__call__).args) == 3:
+                            return massage(self, self.sectionname)
+                        else:
+                            return massage(self, self.sectiongroupname, self.sectionname)
                 else:
                     return massage(self, self.sectionname)
             massage = self.massagers.get((self.sectiongroupname, key))
@@ -227,7 +216,7 @@ class Config(ConfigSection):
                 path = self.path
             else:
                 if not os.path.exists(config):
-                    log.error("Config file '%s' doesn't exist." % config)
+                    log.error("Config file '%s' doesn't exist.", config)
                     sys.exit(1)
                 _config.read(config)
                 path = os.path.dirname(config)
@@ -238,13 +227,23 @@ class Config(ConfigSection):
             if _config.has_option('global', 'extends'):
                 extends = _config.get('global', 'extends').split()
             elif _config.has_option('global:global', 'extends'):
-                extends = _config.get('global', 'extends').split()
+                extends = _config.get('global:global', 'extends').split()
             else:
                 break
             stack[0:0] = [
                 os.path.abspath(os.path.join(path, x))
                 for x in reversed(extends)]
         return reversed(result)
+
+    def get_section(self, sectiongroupname, sectionname):
+        sectiongroup = self[sectiongroupname]
+        if sectionname not in sectiongroup:
+            section = ConfigSection()
+            section.sectiongroupname = sectiongroupname
+            section.sectionname = sectionname
+            section._config = proxy(self)
+            sectiongroup[sectionname] = section
+        return sectiongroup[sectionname]
 
     def parse(self):
         _config = self.read_config(self.config)
@@ -256,15 +255,56 @@ class Config(ConfigSection):
             if sectiongroupname == 'global' and sectionname == 'global' and key == 'extends':
                 continue
             sectiongroup = self.setdefault(sectiongroupname, ConfigSection())
-            if sectionname not in sectiongroup:
-                section = ConfigSection()
-                section.sectiongroupname = sectiongroupname
-                section.sectionname = sectionname
-                section._config = proxy(self)
-                sectiongroup[sectionname] = section
+            self.get_section(sectiongroupname, sectionname)
             if key is not None:
-                sectiongroup[sectionname][key] = ConfigValue(path, value)
-        if 'plugin' in self:
+                if key == 'massagers':
+                    for spec in value.split('\n'):
+                        spec = spec.strip()
+                        if not spec:
+                            continue
+                        if '=' not in spec:
+                            log.error("Invalid massager spec '%s' in section '%s:%s'.", spec, sectiongroupname, sectionname)
+                            sys.exit(1)
+                        massager_key, massager = spec.split('=')
+                        massager_key = massager_key.strip()
+                        massager = massager.strip()
+                        if ':' in massager_key:
+                            parts = tuple(x.strip() for x in massager_key.split(':'))
+                            if len(parts) == 2:
+                                massager_sectiongroupname, massager_key = parts
+                                massager_sectionname = None
+                            elif len(parts) == 3:
+                                massager_sectiongroupname, massager_sectionname, massager_key = parts
+                            else:
+                                log.error("Invalid massager spec '%s' in section '%s:%s'.", spec, sectiongroupname, sectionname)
+                                sys.exit(1)
+                            if massager_sectiongroupname == '':
+                                massager_sectiongroupname = sectiongroupname
+                            if massager_sectiongroupname == '*':
+                                massager_sectiongroupname = None
+                            if massager_sectionname == '':
+                                massager_sectionname = sectionname
+                        else:
+                            massager_sectiongroupname = sectiongroupname
+                            massager_sectionname = sectionname
+                        try:
+                            massager = resolve_dotted_name(massager)
+                        except ImportError as e:
+                            log.error("Can't import massager from '%s'.\n%s", massager, e.message)
+                            sys.exit(1)
+                        except AttributeError as e:
+                            log.error("Can't import massager from '%s'.\n%s", massager, e.message)
+                            sys.exit(1)
+                        massager = massager(massager_sectiongroupname, massager_key)
+                        if massager_sectionname is None:
+                            self.add_massager(massager)
+                        else:
+                            massager_section = self.get_section(
+                                sectiongroupname, massager_sectionname)
+                            massager_section.add_massager(massager)
+                else:
+                    sectiongroup[sectionname][key] = ConfigValue(path, value)
+        if 'plugin' in self:  # pragma: no cover
             warnings.warn("The 'plugin' section isn't used anymore.")
             del self['plugin']
         seen = set()
@@ -274,12 +314,6 @@ class Config(ConfigSection):
                 section = sectiongroup[sectionname]
                 if '<' in section:
                     self._expand(sectiongroupname, sectionname, section, seen)
-                if 'massagers' in section:
-                    massagers = MassagersMassager(
-                        sectiongroupname,
-                        'massagers')(self, sectionname)
-                    for massager in massagers:
-                        self.add_massager(massager)
         return self
 
     def get_section_with_overrides(self, sectiongroupname, sectionname, overrides):

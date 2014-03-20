@@ -1,4 +1,5 @@
 from StringIO import StringIO
+from mock import patch
 from mr.awsome.config import Config
 from unittest2 import TestCase
 import os
@@ -261,6 +262,36 @@ class MassagerTests(TestCase):
         config = Config(contents, plugins=self.plugins).parse()
         assert config['section'] == {'foo': {'value': 1}}
 
+    def testCustomMassagerForAnyGroup(self):
+        from mr.awsome.config import BaseMassager
+
+        class DummyMassager(BaseMassager):
+            def __call__(self, config, sectiongroupname, sectionname):
+                value = BaseMassager.__call__(self, config, sectionname)
+                return (sectiongroupname, value)
+
+        self.dummyplugin.massagers.append(DummyMassager(None, 'value'))
+        contents = StringIO("\n".join([
+            "[section1:foo]",
+            "value=1",
+            "[section2:bar]",
+            "value=2"]))
+        config = Config(contents, plugins=self.plugins).parse()
+        assert config == {
+            'section1': {
+                'foo': {'value': ('section1', '1')}},
+            'section2': {
+                'bar': {'value': ('section2', '2')}}}
+
+    def testConflictingMassagerRegistration(self):
+        from mr.awsome.config import BaseMassager
+
+        config = Config(StringIO('')).parse()
+        config.add_massager(BaseMassager('section', 'value'))
+        with pytest.raises(ValueError) as e:
+            config.add_massager(BaseMassager('section', 'value'))
+        assert e.value.message == "Massager for option 'value' in section group 'section' already registered."
+
     def testMassagedOverrides(self):
         from mr.awsome.config import IntegerMassager
 
@@ -292,6 +323,116 @@ class MassagerTests(TestCase):
             'value2': 2}
         # make sure nothing is changed afterwards
         assert config['global'] == {'section': {'value': 1}}
+
+
+def _make_config(massagers):
+    return Config(StringIO("\n".join([
+        "[section1]",
+        "massagers = %s" % massagers,
+        "value = 1",
+        "[section2]",
+        "value = 2",
+        "[foo:bar]",
+        "value = 3"]))).parse()
+
+
+def _expected(first, second, third):
+    return {
+        'global': {
+            'section1': {
+                'value': first('1')},
+            'section2': {
+                'value': second('2')}},
+        'foo': {
+            'bar': {
+                'value': third('3')}}}
+
+
+@pytest.mark.parametrize("description, massagers, expected", [
+    (
+        'empty',
+        '', (str, str, str)),
+    (
+        'current section',
+        'value=mr.awsome.config.IntegerMassager', (int, str, str)),
+    (
+        'current section alternate',
+        '::value=mr.awsome.config.IntegerMassager', (int, str, str)),
+    (
+        'different section',
+        ':section2:value = mr.awsome.config.IntegerMassager', (str, int, str)),
+    (
+        'different section alternate',
+        'global:section2:value = mr.awsome.config.IntegerMassager', (str, int, str)),
+    (
+        'multiple massagers',
+        'value = mr.awsome.config.IntegerMassager\n    :section2:value = mr.awsome.config.IntegerMassager', (int, int, str)),
+    (
+        'for section group',
+        'global:value = mr.awsome.config.IntegerMassager', (int, int, str)),
+    (
+        'for everything',
+        '*:value = mr.awsome.config.IntegerMassager', (int, int, int))])
+def test_valid_massagers_specs_in_config(description, massagers, expected):
+    config = _make_config(massagers)
+    expected = _expected(*expected)
+    print "Description of failed test:\n   ", description
+    print
+    assert dict(config) == expected
+
+
+class MassagersFromConfigTests(TestCase):
+    def testInvalid(self):
+        contents = StringIO("\n".join([
+            "[section]",
+            "massagers = foo",
+            "value = 1"]))
+        with patch('mr.awsome.config.log') as LogMock:
+            with pytest.raises(SystemExit):
+                Config(contents).parse()
+        self.assertEquals(
+            LogMock.error.call_args_list,
+            [
+                (("Invalid massager spec '%s' in section '%s:%s'.", 'foo', 'global', 'section'), {})])
+
+    def testTooManyColonsInSpec(self):
+        contents = StringIO("\n".join([
+            "[section]",
+            "massagers = :::foo=mr.awsome.config.IntegerMassager",
+            "value = 1"]))
+        with patch('mr.awsome.config.log') as LogMock:
+            with pytest.raises(SystemExit):
+                Config(contents).parse()
+        self.assertEquals(
+            LogMock.error.call_args_list,
+            [
+                (("Invalid massager spec '%s' in section '%s:%s'.", ':::foo=mr.awsome.config.IntegerMassager', 'global', 'section'), {})])
+
+    def testUnknownModuleFor(self):
+        contents = StringIO("\n".join([
+            "[section]",
+            "massagers = foo=bar",
+            "value = 1"]))
+        with patch('mr.awsome.config.log') as LogMock:
+            with pytest.raises(SystemExit):
+                Config(contents).parse()
+        self.assertEquals(
+            LogMock.error.call_args_list,
+            [
+                (("Can't import massager from '%s'.\n%s", 'bar', 'No module named bar'), {})])
+
+    def testUnknownAttributeFor(self):
+        contents = StringIO("\n".join([
+            "[section]",
+            "massagers = foo=mr.awsome.foobar",
+            "value = 1"]))
+        with patch('mr.awsome.config.log') as LogMock:
+            with pytest.raises(SystemExit):
+                Config(contents).parse()
+        self.assertEquals(
+            LogMock.error.call_args_list,
+            [
+                (("Can't import massager from '%s'.\n%s", 'mr.awsome.foobar', "'module' object has no attribute 'foobar'"), {})])
 
 
 class ConfigExtendTests(TestCase):
@@ -377,3 +518,19 @@ class ConfigExtendTests(TestCase):
                 'global': {
                     'foo': os.path.join(self.directory, 'bar', 'blubber'),
                     'ham': os.path.join(self.directory, 'egg')}}}
+
+    def testExtendFromMissingFile(self):
+        awsconf = 'aws.conf'
+        self._write_config(
+            awsconf,
+            '\n'.join([
+                '[global:global]',
+                'extends = foo.conf',
+                'ham = egg']))
+        with patch('mr.awsome.config.log') as LogMock:
+            with pytest.raises(SystemExit):
+                Config(os.path.join(self.directory, awsconf)).parse()
+        self.assertEquals(
+            LogMock.error.call_args_list,
+            [
+                (("Config file '%s' doesn't exist.", os.path.join(self.directory, 'foo.conf')), {})])

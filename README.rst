@@ -160,3 +160,44 @@ like this::
   [ec2-instance:server]
   <= macro:base-instance
   ...
+
+
+Massaging of config values
+==========================
+
+Plugins and mr.awsome massage certain string values from the config to convert them to other types and do formatting or expansion.
+
+You can use that yourself, which is useful for the Fabric integration and other things.
+
+Here is a simple example::
+
+  [section]
+  massagers =
+    intvalue=mr.awsome.config.IntegerMassager
+    boolvalue=mr.awsome.config.BooleanMassager
+  intvalue = 1
+  boolvalue = yes
+
+If you now access those values from for example a fabric task, you get the correct type instead of strings.
+
+The above syntax registers the massagers only for that section.
+You can register massagers for other sections or even section groups with this syntax::
+
+  massagers =
+    [option]=[sectiongroup]:import.path.to.massager
+    [option]=[sectiongroup]:[section]:import.path.to.massager
+
+The parts have the following meaning:
+
+  ``[option]``
+    This is the name of the option which should be massaged
+
+  ``[sectiongroup]``
+    The name of the section group.
+    That's the part before the optional colon in a section.
+    To match sections without a colon, use ``global``.
+    To match every section, use ``*``.
+
+  ``[section]``
+    The name of the section to which this massager is applied.
+    If empty, the current section is used.

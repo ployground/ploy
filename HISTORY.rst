@@ -4,6 +4,9 @@ Changelog
 0.14 - Unreleased
 -----------------
 
+* Test, enhance and document adding massagers via config.
+  [fschulze]
+
 * Moved ec2 and fabric integration into separate plugins.
   [fschulze]
 
