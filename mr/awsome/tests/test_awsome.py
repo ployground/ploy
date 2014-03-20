@@ -614,3 +614,59 @@ class SnapshotCommandTests(TestCase):
             LogMock.info.call_args_list,
             [
                 (('snapshot: %s', 'foo'), {})])
+
+
+class HelpCommandTests(TestCase):
+    def setUp(self):
+        self.directory = tempfile.mkdtemp()
+        self.aws = AWS(self.directory)
+
+    def tearDown(self):
+        shutil.rmtree(self.directory)
+        del self.directory
+
+    def _write_config(self, content):
+        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+            f.write(content)
+
+    def testCallWithNoArguments(self):
+        with patch('sys.stdout') as StdOutMock:
+            self.aws(['./bin/aws', 'help'])
+        output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
+        self.assertIn('usage: aws help', output)
+        self.assertIn('Name of the command you want help for.', output)
+
+    def testCallWithNonExistingCommand(self):
+        with patch('sys.stderr') as StdErrMock:
+            with self.assertRaises(SystemExit):
+                self.aws(['./bin/aws', 'help', 'foo'])
+        output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
+        self.assertIn('usage: aws help', output)
+        self.assertIn("argument command: invalid choice: 'foo'", output)
+
+    def testCallWithExistingCommand(self):
+        self._write_config('')
+        with patch('sys.stdout') as StdOutMock:
+            with self.assertRaises(SystemExit):
+                self.aws(['./bin/aws', 'help', 'start'])
+        output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
+        self.assertIn('usage: aws start', output)
+        self.assertIn('Starts the instance', output)
+
+    def testZSHHelperCommands(self):
+        self._write_config('')
+        with patch('sys.stdout') as StdOutMock:
+            self.aws(['./bin/aws', 'help', '-z'])
+        output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
+        self.assertIn('\nstart\n', output)
+
+    def testZSHHelperCommand(self):
+        import mr.awsome.tests.dummy_plugin
+        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        self._write_config('\n'.join([
+            '[dummy-instance:foo]',
+            'host = localhost']))
+        with patch('sys.stdout') as StdOutMock:
+            self.aws(['./bin/aws', 'help', '-z', 'start'])
+        output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
+        assert output == 'foo\n'

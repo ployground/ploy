@@ -395,7 +395,7 @@ class AWS(object):
             if args.command is None:
                 for cmd in self.subparsers.keys():
                     print cmd
-            else:
+            else:  # pragma: no cover
                 if hasattr(self.cmds[args.command], 'get_completion'):
                     for item in self.cmds[args.command].get_completion():
                         print item
