@@ -69,7 +69,7 @@ class AWS(object):
 
     def get_masters(self, command):
         masters = []
-        for master in self.masters:
+        for master in self.masters.values():
             if getattr(master, command, None) is not None:
                 masters.append(master)
         return masters
@@ -270,7 +270,7 @@ class AWS(object):
     def cmd_list(self, argv, help):
         """Return a list of various AWS things"""
         parser = argparse.ArgumentParser(
-            prog="aws ssh",
+            prog="aws list",
             description=help,
         )
         parser.add_argument("list", nargs=1,

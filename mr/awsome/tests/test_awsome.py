@@ -509,6 +509,98 @@ class DebugCommandTests(TestCase):
             [(('Length of startup script: %s/%s', 7, 1024), {}), (('Startup script:',), {})])
 
 
+class ListCommandTests(TestCase):
+    def setUp(self):
+        self.directory = tempfile.mkdtemp()
+        self.aws = AWS(self.directory)
+
+    def tearDown(self):
+        shutil.rmtree(self.directory)
+        del self.directory
+
+    def _write_config(self, content):
+        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+            f.write(content)
+
+    def testCallWithNoArguments(self):
+        self._write_config('')
+        with patch('sys.stderr') as StdErrMock:
+            with self.assertRaises(SystemExit):
+                self.aws(['./bin/aws', 'list'])
+        output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
+        self.assertIn('usage: aws list', output)
+        self.assertIn('too few arguments', output)
+
+    def testCallWithNonExistingList(self):
+        self._write_config('')
+        with patch('sys.stderr') as StdErrMock:
+            with self.assertRaises(SystemExit):
+                self.aws(['./bin/aws', 'list', 'foo'])
+        output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
+        self.assertIn('usage: aws list', output)
+        self.assertIn("argument list: invalid choice: 'foo'", output)
+
+    def testCallWithExistingListButNoMastersWithSnapshots(self):
+        import mr.awsome.tests.dummy_plugin
+        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        self._write_config('\n'.join([
+            '[dummy-instance:foo]',
+            'host = localhost']))
+        with patch('sys.stdout') as StdOutMock:
+            try:
+                self.aws(['./bin/aws', 'list', 'snapshots'])
+            except SystemExit:  # pragma: no cover - only if something is wrong
+                self.fail("SystemExit raised")
+        output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
+        output = filter(None, output.split('\n'))
+        assert len(output) == 1
+
+    def testCallWithExistingListAndDummySnapshots(self):
+        import mr.awsome.tests.dummy_plugin
+        snapshots = {}
+
+        def get_masters(aws):
+            master = mr.awsome.tests.dummy_plugin.Master(
+                aws, 'dummy-master', {})
+            print "get_masters called"
+            master.snapshots = snapshots
+            return [master]
+
+        self.aws.plugins = {'dummy': {'get_masters': get_masters}}
+        self._write_config('\n'.join([
+            '[dummy-instance:foo]',
+            'host = localhost']))
+        with patch('sys.stdout') as StdOutMock:
+            try:
+                self.aws(['./bin/aws', 'list', 'snapshots'])
+            except SystemExit:  # pragma: no cover - only if something is wrong
+                self.fail("SystemExit raised")
+        output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
+        output = filter(None, output.split('\n'))
+        assert len(output) == 2
+        assert output[0] == 'get_masters called'
+
+        # now with data
+        class Snapshot(object):
+            def __init__(self, **kw):
+                self.__dict__.update(kw)
+        snapshots['foo'] = Snapshot(
+            id='foo', start_time='20:00',
+            volume_size='100', volume_id='0sht80sht',
+            progress=80, description='bar')
+        with patch('sys.stdout') as StdOutMock:
+            try:
+                self.aws(['./bin/aws', 'list', 'snapshots'])
+            except SystemExit:  # pragma: no cover - only if something is wrong
+                self.fail("SystemExit raised")
+        output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
+        output = filter(None, output.split('\n'))
+        assert len(output) == 2
+        assert 'description' in output[0]
+        assert output[1].split() == [
+            'foo', '20:00', '100', 'GB', '0sht80sht', '80', 'bar']
+
+
 class SSHCommandTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
