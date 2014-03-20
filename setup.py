@@ -8,8 +8,9 @@ README = open(os.path.join(here, 'README.rst')).read()
 HISTORY = open(os.path.join(here, 'HISTORY.rst')).read()
 
 install_requires = [
-    'setuptools',
-    'lazy']
+    'lazy',
+    'paramiko',
+    'setuptools']
 
 try:
     import argparse
