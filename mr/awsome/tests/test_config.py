@@ -2,6 +2,7 @@ from StringIO import StringIO
 from mr.awsome.config import Config
 from unittest2 import TestCase
 import os
+import pytest
 import shutil
 import tempfile
 
@@ -107,6 +108,21 @@ class DummyPlugin(object):
 
     def get_massagers(self):
         return self.massagers
+
+
+@pytest.mark.parametrize("value, expected", [
+    (True, True),
+    (False, False),
+    ("true", True),
+    ("yes", True),
+    ("on", True),
+    ("false", False),
+    ("no", False),
+    ("off", False),
+    ("foo", None)])
+def test_value_asbool(value, expected):
+    from mr.awsome.config import value_asbool
+    assert value_asbool(value) == expected
 
 
 class MassagerTests(TestCase):

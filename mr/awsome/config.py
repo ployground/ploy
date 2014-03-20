@@ -12,6 +12,8 @@ log = logging.getLogger('mr.awsome')
 
 
 def value_asbool(value):
+    if isinstance(value, bool):
+        return value
     if value.lower() in ('true', 'yes', 'on'):
         return True
     elif value.lower() in ('false', 'no', 'off'):
