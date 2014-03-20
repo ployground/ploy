@@ -69,6 +69,31 @@ class ConfigTests(TestCase):
         with self.assertRaises(ValueError):
             Config(contents).parse()
 
+    def testMacroCleaners(self):
+        dummyplugin = DummyPlugin()
+        plugins = dict(
+            dummy=dict(
+                get_macro_cleaners=dummyplugin.get_macro_cleaners))
+
+        def cleaner(macro):
+            if 'cleanvalue' in macro:
+                del macro['cleanvalue']
+
+        dummyplugin.macro_cleaners = {'global': cleaner}
+        contents = StringIO("\n".join([
+            "[group:macro]",
+            "macrovalue=1",
+            "cleanvalue=3",
+            "[baz]",
+            "<=group:macro",
+            "bazvalue=2"]))
+        config = Config(contents, plugins=plugins).parse()
+        assert config == {
+            'global': {
+                'baz': {'macrovalue': '1', 'bazvalue': '2'}},
+            'group': {
+                'macro': {'macrovalue': '1', 'cleanvalue': '3'}}}
+
     def testOverrides(self):
         contents = StringIO("\n".join([
             "[section]",
@@ -108,7 +133,11 @@ class ConfigTests(TestCase):
 
 class DummyPlugin(object):
     def __init__(self):
+        self.macro_cleaners = {}
         self.massagers = []
+
+    def get_macro_cleaners(self, main_config):
+        return self.macro_cleaners
 
     def get_massagers(self):
         return self.massagers
