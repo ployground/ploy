@@ -1,4 +1,5 @@
 from mr.awsome.common import BaseMaster, StartupScriptMixin
+from mr.awsome.config import HooksMassager
 from mr.awsome.config import StartupScriptMassager
 import logging
 
@@ -39,6 +40,7 @@ class Instance(StartupScriptMixin):
         log.info('snapshot: %s', self.id)
 
     def start(self, overrides=None):
+        self.startup_script(overrides=overrides)
         log.info('start: %s %s', self.id, overrides)
 
     def status(self):
@@ -71,6 +73,7 @@ class Master(BaseMaster):
 
 def get_massagers():
     return [
+        HooksMassager('dummy-instance', 'hooks'),
         StartupScriptMassager('dummy-instance', 'startup_script')]
 
 

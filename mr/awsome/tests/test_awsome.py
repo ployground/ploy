@@ -1,10 +1,25 @@
 from mock import patch
 from mr.awsome import AWS
 from unittest2 import TestCase
+import logging
 import os
 import pytest
 import tempfile
 import shutil
+
+
+log = logging.getLogger('test')
+
+
+class DummyHooks(object):
+    def after_terminate(self, server):
+        log.info('after_terminate')
+
+    def before_start(self, server):
+        log.info('before_start')
+
+    def startup_script_options(self, options):
+        log.info('startup_script_options')
 
 
 class AwsomeTests(TestCase):
@@ -195,6 +210,22 @@ class StartCommandTests(TestCase):
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 1500, 1024)
         CommonLogMock.error.assert_called_with('Startup script too big (%s > %s).', 1500, 1024)
 
+    def testHook(self):
+        import mr.awsome.tests.dummy_plugin
+        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        startup = os.path.join(self.directory, 'startup')
+        with open(startup, 'w') as f:
+            f.write(';;;;;;;;;;')
+        self._write_config('\n'.join([
+            '[dummy-instance:foo]',
+            'startup_script = %s' % startup,
+            'hooks = mr.awsome.tests.test_awsome.DummyHooks']))
+        with patch('mr.awsome.tests.test_awsome.log') as LogMock:
+            self.aws(['./bin/aws', 'start', 'foo'])
+        assert LogMock.info.call_args_list == [
+            (('before_start',), {}),
+            (('startup_script_options',), {})]
+
 
 class StatusCommandTests(TestCase):
     def setUp(self):
@@ -326,6 +357,16 @@ class TerminateCommandTests(TestCase):
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         LogMock.info.assert_called_with('terminate: %s', 'foo')
+
+    def testHook(self):
+        import mr.awsome.tests.dummy_plugin
+        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        self._write_config('\n'.join([
+            '[dummy-instance:foo]',
+            'hooks = mr.awsome.tests.test_awsome.DummyHooks']))
+        with patch('mr.awsome.tests.test_awsome.log') as LogMock:
+            self.aws(['./bin/aws', 'terminate', 'foo'])
+        assert LogMock.info.call_args_list == [(('after_terminate',), {})]
 
 
 class DebugCommandTests(TestCase):
