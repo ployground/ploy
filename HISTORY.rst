@@ -4,6 +4,9 @@ Changelog
 0.14 - Unreleased
 -----------------
 
+* Moved ec2 and fabric integration into separate plugins.
+  [fschulze]
+
 * You can now have instances with the same name if the belong to different
   masters, they will then get the name of the master as a prefix to their name.
   [fschulze]

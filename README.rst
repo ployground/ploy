@@ -4,21 +4,16 @@
 Overview
 ========
 
-mr.awsome is a commandline-tool (aws) to manage and control Amazon
-Webservice's EC2 instances. Once configured with your AWS key, you can
-create, delete, monitor and ssh into instances, as well as perform scripted
-tasks on them (via fabfiles).
-Examples are adding additional, pre-configured webservers to a cluster
-(including updating the load balancer), performing automated software
-deployments and creating backups - each with just one call from the
-commandline. Aw(e)some, indeed, if we may say so...
-
+mr.awsome is a commandline-tool (aws) to provision, manage and control server instances.
+What kind of server instances these are depends on the used plugins.
+There are plugins for EC2 (mr.awsome.ec2), FreeBSD Jails (mr.awsome.ezjail) and more.
+You can create, delete, monitor and ssh into instances while mr.awsome handles the details like ssh fingerprint checking.
+Additional plugins provide advanced functionality like integrating Fabric (mr.awsome.fabric) and Ansible (mr.awsome.ansible).
 
 Installation
 ============
 
-mr.awsome is best installed with easy_install, pip or with zc.recipe.egg in
-a buildout. It installs two scripts, ``aws`` and ``assh``.
+mr.awsome is best installed with easy_install, pip or with zc.recipe.egg in a buildout. It installs two scripts, ``aws`` and ``assh``.
 
 With zc.recipe.egg you can set a custom configfile location like this::
 
@@ -27,8 +22,7 @@ With zc.recipe.egg you can set a custom configfile location like this::
   eggs = mr.awsome
   arguments = configpath="${buildout:directory}/etc/servers.cfg"
 
-The pycrypto package is throwing some deprecation warnings, you might want to
-disable them by adding an initialization option to the aws part like this::
+As of this writing the pycrypto package is throwing some deprecation warnings, you might want to disable them by adding an initialization option to the aws part like this::
 
   initialization =
       import warnings
@@ -40,29 +34,22 @@ disable them by adding an initialization option to the aws part like this::
 Configuration
 =============
 
-All information about server instances is located in ``aws.conf``, which
-by default is looked up in ``etc/aws.conf``.
+All information about server instances is located in ``aws.conf``, which by default is looked up in ``etc/aws.conf``.
 
 
 Plugins
 =======
 
-Support for backends is implemented by plugins. Two plugins are included with
-mr.awsome.
+Support for backends and further functionality is implemented by plugins. One plugin is included with mr.awsome.
 
 ``plain``
-  For regular servers not otherwise supported by mr.awsome.
-
-``ec2``
-  This plugin is for Amazon Elastic Cloud Computing (EC2).
+  For regular servers accessible via ssh.
 
 
 Plain
 -----
 
-With plain instances you can put infos about servers into the configuration to
-benefit from some mr.awsome features like ssh fingerprint checking and plugins
-like the Fabric integration.
+With plain instances you can put infos about servers into the configuration to benefit from some mr.awsome features like ssh fingerprint checking and plugins like the Fabric integration.
 
 Options
 ~~~~~~~
@@ -117,175 +104,6 @@ Options
     proxycommand = {path}/../bin/assh vm-master -W {ip}:22
 
 
-EC2
----
-
-To authorize itself against AWS, mr.awsome uses the following two environment
-variables::
-
-  AWS_ACCESS_KEY_ID
-  AWS_SECRET_ACCESS_KEY
-
-You can find their values at `http://aws.amazon.com`_ under
-*'Your Account'-'Security Credentials'.*
-
-You can also put them into files and point to them in the
-``[ec2-master:default]`` section of the configuration file with the
-``access-key-id`` and ``secret-access-key`` options. It's good practice to put
-them in ``~/.aws/`` and make sure only your user can read them.
-
-Before you can create a server instance with the ``start`` command described
-below, you first have to declare a security group in your ``aws.conf`` like
-this::
-
-  [ec2-securitygroup:demo-server]
-  description = Our Demo-Server
-  connections =
-    tcp 22 22 0.0.0.0/0
-    tcp 80 80 0.0.0.0/0
-
-The security group is used for both the firewall settings, as documented in
-the AWS docs, and to find the server instance associated with it.
-
-Then you can add the info about the server instance itself like this::
-
-  [ec2-instance:demo-server]
-  keypair = default
-  securitygroups = demo-server
-  region = eu-west-1
-  placement = eu-west-1a
-  # we use images from `http://alestic.com/`_
-  # Ubuntu 9.10 Karmic server 32-bit Europe
-  image = ami-a62a01d2
-  startup_script = startup-demo-server
-  fabfile = `fabfile.py`_
-
-
-Ephemeral disks
-~~~~~~~~~~~~~~~
-
-You can setup the use of more than one ephemeral disk like this::
-
-  [ec2-instance:demo-server]
-  ...
-  instance_type = m1.large
-  device_map = /dev/sdb:ephemeral0 /dev/sdc:ephemeral1
-
-Consult the AWS documentation to see how many ephemeral disks each instance type
-has.
-
-
-Startup scripts
-~~~~~~~~~~~~~~~
-
-The startup_script option above allows you to write a script which is run
-right after instance creation to setup your server. This feature is supported
-by many AMI images and was made popular by `http://alestic.com/`_ (See
-`http://alestic.com/2009/06/ec2-user-data-scripts`_).
-
-Most of the time these are bash scripts like this (for Ubuntu in this case)::
-
-  #!/bin/bash
-  set -e -x
-  export DEBIAN_FRONTEND=noninteractive
-  apt-get update && apt-get upgrade -y
-
-The ``set -e -x`` is for debugging. You can see the commands which ran and
-their output in ``/var/log/syslog`` once you are logged into the server.
-
-The startup scripts have a maximum size of 16kb. You can check the size with
-the ``debug`` command of the ``aws`` script.
-
-The startup script is basically a template for the Python string format
-method (See `http://docs.python.org/library/string.html#formatstrings`_). So
-anything inside curly brackets is expanded. To get normal curly brackets,
-when you write bash functions etc, just double them like this::
-
-  function LOG() {{ echo "$*"; }}
-
-If you want to include any files for something like ssh ``authorized_keys``,
-you do something the following::
-
-  authorized_keys: file,escape_eol ssh-authorized_keys
-
-  #!/bin/bash
-  ...
-  /bin/bash -c "echo -e \"{authorized_keys}\" >> /root/.ssh/authorized_keys"
-
-
-So the startup script basically has rfc822 syntax (internally the e-mail
-parser is used). The ``file,escape_eol`` tells the script that the ``ssh-
-authorized_keys`` string should be used as a filename for a file which is then
-read and the ``\n`` characters are escaped so the resulting string can be used
-in the ``echo -e`` command.
-
-You have the following possibilities (brain dump, needs fleshing out):
- -   file
- -   base64
- -   format
- -   template
- -   gzip
- -   escape_eol
-
-In addition to that, you have access to some more variables. For example full
-access to the server config in the aws.conf. With servers[demo-
-server].instance.dns_name for example, you can get the current DNS name of
-the server (this only works with other servers already started, not the one
-for which the startup script is for, since the DNS isn't set at the time the
-script is created).
-
-You can modify the options for the startup script by declaring a hook like this
-in your config::
-
-  hooks = mymodule.Hooks
-
-Where ``Hooks`` is a class with a ``startup_script_options`` method. Here is an
-example which adds an ``addresses`` option containing the IP address of
-available EC2 instances::
-
-  class _IPProxy(object):
-      def __init__(self, servers):
-          self.servers = servers
-
-      def __getitem__(self, value):
-          result = self.servers[value]
-          instance = result.instance
-          if instance is None:
-              # return a dummy address
-              return u'192.168.0.1'
-          return result.instance.private_ip_address
-
-
-  class Hooks(object):
-      def startup_script_options(self, options):
-          addresses = options.get('addresses')
-          if addresses is None:
-              options['addresses'] = _IPProxy(options['servers'])
-
-You can add a ``gzip:`` prefix before the filename to let the script be self
-extracting. The code used looks like this::
-
-  #!/bin/bash
-  tail -n+4 $0 | gunzip -c | bash
-  exit $?
-
-Directly after that follows the binary data of the gzipped startup script.
-
-
-Controlling instances
-~~~~~~~~~~~~~~~~~~~~~
-
- -   start
- -   stop
- -   status
-
-
-Snapshots
-~~~~~~~~~
-
-(Needs description of volumes in "Configuration")
-
-
 SSH integration
 ===============
 
@@ -295,10 +113,7 @@ entire *SSH fingerprint* mechanism. For example EC2 instances are often
 short-lived and normally trigger warnings, especially, if you are using
 elastic IPs.
 
-  Note:: it does so not by simply turning off these checks, but by
-  transparently updating its own fingerprint list (it relies on the console
-  output of the instance to provide the fingerprint via the AWS API, some
-  images may not be configured to do so) when adding new instances.
+  Note:: it does so not by simply turning off these checks, but by transparently updating its own fingerprint list using mechanisms provided by the backend plugins.
 
 The easiest scenario is simply to create an SSH session with an instance. You
 can either use the ssh subcommand of the aws tool like so::
@@ -316,39 +131,6 @@ examples, you get the idea::
   rsync -e "bin/assh" some/path fschulze@demo-server:/some/path
 
 
-Fabric integration
-==================
-
-Since `Fabric <http://fabfile.org/>`_ basically works through ssh, all the
-bits necessary for ssh integration are also needed for Fabric. To make it
-easy to run fabfiles, you specifiy them with the "fabfile" option in your
-aws.conf and use the ``do`` command to run them.
-
-Take the following `fabfile.py`_ as an example::
-
-  from fabric.api import env, run
-
-  env.reject_unknown_hosts = True
-  env.disable_known_hosts = True
-
-  def get_syslog():
-    run("echo /var/log/syslog")
-
-If you have that fabfile for the demo-server above, you can then run the
-command with "bin/aws demo-server do get_syslog".
-
-For more info about fabfiles, read the docs at `http://fabfile.org/`_.
-
-.. _http://aws.amazon.com: http://aws.amazon.com/
-.. _http://alestic.com/: http://alestic.com/
-.. _fabfile.py: http://fabfile.py/
-.. _http://alestic.com/2009/06/ec2-user-data-scripts:
-    http://alestic.com/2009/06/ec2-user-data-scripts
-.. _http://docs.python.org/library/string.html#formatstrings:
-    http://docs.python.org/library/string.html#formatstrings
-.. _http://fabfile.org/: http://fabfile.org/
-
-
 Macro expansion
 ===============
 
@@ -362,7 +144,7 @@ files. That looks like this::
   [ec2-securitygroup:demo-server2]
   <= demo-server
 
-All the options from the specified macro are copied with some important exceptions:
+All the options from the specified macro are copied with some important exceptions depending on the backend:
 
   * For instances the ``ip`` and ``volumes`` options aren't copied.
 

@@ -116,44 +116,6 @@ class StartupScriptMixin(object):
             return result['raw']
 
 
-class FabricMixin(object):
-    def do(self, task, *args, **kwargs):
-        from mr.awsome import fabric_integration
-        # this needs to be done before any other fabric module import
-        fabric_integration.patch()
-        orig_instances = fabric_integration.instances
-        orig_log = fabric_integration.log
-        fabric_integration.instances = self.master.instances
-        fabric_integration.log = log
-
-        from fabric.main import extract_tasks
-        from fabric.state import env
-        env.reject_unknown_hosts = True
-        env.disable_known_hosts = True
-        env.known_hosts = self.master.known_hosts
-
-        fabfile = self.config['fabfile']
-        with open(fabfile) as f:
-            source = f.read()
-        code = compile(source, fabfile, 'exec')
-        g = {
-            '__file__': fabfile}
-        exec code in g, g
-        new_style, classic, default = extract_tasks(g.items())
-        callables = new_style if env.new_style_tasks else classic
-        orig_host_string = env.host_string
-        env.host_string = "{}@{}".format(
-            self.config.get('user', 'root'),
-            self.id)
-        result = callables[task](*args, **kwargs)
-        fabric_integration.instances = orig_instances
-        fabric_integration.log = orig_log
-        del env['reject_unknown_hosts']
-        del env['disable_known_hosts']
-        env.host_string = orig_host_string
-        return result
-
-
 class BaseMaster(object):
     def __init__(self, aws, id, master_config):
         self.id = id
@@ -173,7 +135,7 @@ class BaseMaster(object):
                 self.instances[sid].sectiongroupname = sectiongroupname
 
 
-class BaseInstance(FabricMixin):
+class BaseInstance(object):
     def __init__(self, master, sid, config):
         validate_id = getattr(self, 'validate_id', lambda x: x)
         self.id = validate_id(sid)

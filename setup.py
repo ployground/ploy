@@ -9,8 +9,6 @@ HISTORY = open(os.path.join(here, 'HISTORY.rst')).read()
 
 install_requires = [
     'setuptools',
-    'boto >= 2.0',
-    'Fabric >= 1.3.0',
     'lazy']
 
 try:
@@ -40,5 +38,4 @@ setup(
         assh = mr.awsome:aws_ssh
         [mr.awsome.plugins]
         plain = mr.awsome.plain:plugin
-        ec2 = mr.awsome.ec2:plugin
     """)
