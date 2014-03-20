@@ -126,11 +126,12 @@ class StartCommandTests(TestCase):
                 self.aws(['./bin/aws', 'start', 'foo'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
-        self.assertTrue(LogMock.info.called)
-        self.assertEquals(LogMock.info.call_args[0][0], 'start: %s %s')
-        self.assertEquals(LogMock.info.call_args[0][1], 'foo')
-        self.assertEquals(LogMock.info.call_args[0][2].keys(), ['servers'])
-        self.assertEquals(LogMock.info.call_args[0][2]['servers'].keys(), ['foo'])
+        assert len(LogMock.info.call_args_list) == 1
+        call_args = LogMock.info.call_args_list[0][0]
+        assert call_args[0] == 'start: %s %s'
+        assert call_args[1] == 'foo'
+        assert call_args[2].keys() == ['servers']
+        assert call_args[2]['servers'].keys() == ['foo']
 
     def testCallWithInvalidOverride(self):
         import mr.awsome.tests.dummy_plugin
@@ -152,14 +153,13 @@ class StartCommandTests(TestCase):
                 self.aws(['./bin/aws', 'start', 'foo', '-o', 'ham=egg'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
-        self.assertTrue(LogMock.info.called)
-        self.assertEquals(LogMock.info.call_args[0][0], 'start: %s %s')
-        self.assertEquals(LogMock.info.call_args[0][1], 'foo')
-        self.assertEquals(
-            sorted(LogMock.info.call_args[0][2].keys()),
-            sorted(['servers', 'ham']))
-        self.assertEquals(LogMock.info.call_args[0][2]['servers'].keys(), ['foo'])
-        self.assertEquals(LogMock.info.call_args[0][2]['ham'], 'egg')
+        assert len(LogMock.info.call_args_list) == 2
+        call_args = LogMock.info.call_args_list[0][0]
+        assert call_args[0] == 'start: %s %s'
+        assert call_args[1] == 'foo'
+        assert sorted(call_args[2].keys()) == ['ham', 'servers']
+        assert call_args[2]['servers'].keys() == ['foo']
+        assert LogMock.info.call_args_list[1] == (('status: %s', 'foo'), {})
 
     def testCallWithOverrides(self):
         import mr.awsome.tests.dummy_plugin
@@ -171,13 +171,13 @@ class StartCommandTests(TestCase):
                 self.aws(['./bin/aws', 'start', 'foo', '-o', 'ham=egg', 'spam=1'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
-        self.assertTrue(LogMock.info.called)
-        self.assertEquals(LogMock.info.call_args[0][0], 'start: %s %s')
-        self.assertEquals(LogMock.info.call_args[0][1], 'foo')
-        self.assertEquals(
-            sorted(LogMock.info.call_args[0][2].keys()),
-            sorted(['servers', 'ham', 'spam']))
-        self.assertEquals(LogMock.info.call_args[0][2]['servers'].keys(), ['foo'])
+        assert len(LogMock.info.call_args_list) == 2
+        call_args = LogMock.info.call_args_list[0][0]
+        assert call_args[0] == 'start: %s %s'
+        assert call_args[1] == 'foo'
+        assert sorted(call_args[2].keys()) == ['ham', 'servers', 'spam']
+        assert call_args[2]['servers'].keys() == ['foo']
+        assert LogMock.info.call_args_list[1] == (('status: %s', 'foo'), {})
 
     def testCallWithMissingStartupScript(self):
         import mr.awsome.tests.dummy_plugin

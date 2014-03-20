@@ -42,6 +42,9 @@ class Instance(StartupScriptMixin):
     def start(self, overrides=None):
         self.startup_script(overrides=overrides)
         log.info('start: %s %s', self.id, overrides)
+        # this is here to get full coverage of the cmd_start method in common.py
+        if overrides.keys() != ['servers']:
+            return overrides
 
     def status(self):
         log.info('status: %s', self.id)
