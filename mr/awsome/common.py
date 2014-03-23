@@ -11,6 +11,14 @@ import sys
 log = logging.getLogger('mr.awsome')
 
 
+def import_paramiko():  # pragma: no cover - we support both
+    try:
+        import paramiko
+    except ImportError:
+        import ssh as paramiko
+    return paramiko
+
+
 def gzip_string(value):
     s = StringIO()
     gz = gzip.GzipFile(mode='wb', fileobj=s)

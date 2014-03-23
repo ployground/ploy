@@ -8,17 +8,13 @@ import shutil
 
 class PlainTests(TestCase):
     def setUp(self):
+        from mr.awsome.common import import_paramiko
         self.directory = tempfile.mkdtemp()
         self.aws = AWS(self.directory)
-        try:  # pragma: no cover - we support both
-            self._ssh_client_mock = patch("paramiko.SSHClient")
-        except ImportError:  # pragma: no cover - we support both
-            self._ssh_client_mock = patch("ssh.SSHClient")
+        paramiko = import_paramiko()
+        self._ssh_client_mock = patch("%s.SSHClient" % paramiko.__name__)
         self.ssh_client_mock = self._ssh_client_mock.start()
-        try:  # pragma: no cover - we support both
-            self._ssh_config_mock = patch("paramiko.SSHConfig")
-        except ImportError:  # pragma: no cover - we support both
-            self._ssh_config_mock = patch("ssh.SSHConfig")
+        self._ssh_config_mock = patch("%s.SSHConfig" % paramiko.__name__)
         self.ssh_config_mock = self._ssh_config_mock.start()
         self.ssh_config_mock().lookup.return_value = {}
         self._os_execvp_mock = patch("os.execvp")

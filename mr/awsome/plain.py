@@ -1,5 +1,5 @@
 from lazy import lazy
-from mr.awsome.common import BaseMaster, BaseInstance, yesno
+from mr.awsome.common import BaseMaster, BaseInstance, import_paramiko, yesno
 import getpass
 import logging
 import os
@@ -7,6 +7,33 @@ import sys
 
 
 log = logging.getLogger('mr.awsome')
+
+
+def ServerHostKeyPolicy(*args, **kwarks):
+    paramiko = import_paramiko()
+
+    class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
+        def __init__(self, fingerprint):
+            self.fingerprint = fingerprint
+            self.ask = True
+
+        def missing_host_key(self, client, hostname, key):
+            fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
+            if self.fingerprint.lower() in ('ask', 'none'):
+                if not self.ask:
+                    return
+                if yesno("WARNING! Automatic fingerprint checking disabled.\nGot fingerprint %s.\nContinue?" % fingerprint):
+                    self.ask = False
+                    return
+                sys.exit(1)
+            elif fingerprint == self.fingerprint:
+                client._host_keys.add(hostname, key.get_name(), key)
+                if client._host_keys_filename is not None:
+                    client.save_host_keys(client._host_keys_filename)
+                return
+            raise paramiko.SSHException("Fingerprint doesn't match for %s (got %s, expected %s)" % (hostname, fingerprint, self.fingerprint))
+
+    return ServerHostKeyPolicy(*args, **kwarks)
 
 
 class InstanceFormattingWrapper(object):
@@ -22,25 +49,14 @@ class Instance(BaseInstance):
         return self.config['host']
 
     def get_fingerprint(self):
-        try:  # pragma: no cover - we support both
-            from paramiko import SSHException
-            SSHException  # shutup pyflakes
-        except ImportError:  # pragma: no cover - we support both
-            from ssh import SSHException
-
         fingerprint = self.config.get('fingerprint')
         if fingerprint is None:
-            raise SSHException("No fingerprint set in config.")
+            raise self.paramiko.SSHException("No fingerprint set in config.")
         return fingerprint
 
     @lazy
     def paramiko(self):
-        try:  # pragma: no cover - we support both
-            import paramiko
-            paramiko  # shutup pyflakes
-        except ImportError:  # pragma: no cover - we support both
-            import ssh as paramiko
-        return paramiko
+        return import_paramiko()
 
     @lazy
     def sshconfig(self):
@@ -70,28 +86,6 @@ class Instance(BaseInstance):
     def init_ssh_key(self, user=None):
         paramiko = self.paramiko
         sshconfig = self.sshconfig
-
-        class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
-            def __init__(self, fingerprint):
-                self.fingerprint = fingerprint
-                self.ask = True
-
-            def missing_host_key(self, client, hostname, key):
-                fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
-                if self.fingerprint.lower() in ('ask', 'none'):
-                    if not self.ask:
-                        return
-                    if yesno("WARNING! Automatic fingerprint checking disabled.\nGot fingerprint %s.\nContinue?" % fingerprint):
-                        self.ask = False
-                        return
-                    sys.exit(1)
-                elif fingerprint == self.fingerprint:
-                    client._host_keys.add(hostname, key.get_name(), key)
-                    if client._host_keys_filename is not None:
-                        client.save_host_keys(client._host_keys_filename)
-                    return
-                raise paramiko.SSHException("Fingerprint doesn't match for %s (got %s, expected %s)" % (hostname, fingerprint, self.fingerprint))
-
         try:
             host = self.get_host()
         except KeyError:
@@ -171,13 +165,8 @@ class Instance(BaseInstance):
             if self._conn.get_transport() is not None:
                 return self._conn
         try:
-            from paramiko import SSHException
-            SSHException  # shutup pyflakes
-        except ImportError:
-            from ssh import SSHException
-        try:
             ssh_info = self.init_ssh_key()
-        except SSHException, e:
+        except self.paramiko.SSHException as e:
             log.error("Couldn't connect to %s:%s." % (self.sectiongroupname, self.id))
             log.error(unicode(e))
             sys.exit(1)
