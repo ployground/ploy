@@ -12,10 +12,9 @@ class Template(object):
 
     def __call__(self, **kwargs):
         options = {}
+        body = self.template.get_payload()
         if callable(self.pre_filter):
-            body = self.pre_filter(self.template.get_payload())
-        else:
-            body = self.template.get_payload()
+            body = self.pre_filter(body)
         for key, value in self.template.items():
             commands, value = value.rsplit(None, 1)
             for cmd in commands.split(','):

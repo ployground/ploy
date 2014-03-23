@@ -93,6 +93,27 @@ class StartupScriptTests(TestCase):
         self.assertEqual(header[8:], "\x02\xff")  # extra flags + os
         self.assertEqual(body, "\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00")
 
+    def test_strip_hashcomments(self):
+        with open(os.path.join(self.directory, 'foo'), 'w') as f:
+            f.write("\n".join([
+                "#!/bin/bash",
+                "some command",
+                "#some comment",
+                "    # an indented comment",
+                "and another command"]))
+        instance = MockInstance()
+        config = self._create_config(
+            "\n".join([
+                "[instance:foo]",
+                "startup_script = foo"]),
+            path=self.directory)
+        instance.master = MockMaster(config)
+        result = instance.startup_script()
+        assert result == "\n".join([
+            "#!/bin/bash",
+            "some command",
+            "and another command"])
+
     def testMaxSizeOk(self):
         with open(os.path.join(self.directory, 'foo'), 'w') as f:
             f.write("")
