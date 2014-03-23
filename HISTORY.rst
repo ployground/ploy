@@ -1,8 +1,8 @@
 Changelog
 =========
 
-0.14 - Unreleased
------------------
+1.0rc1 - 2014-03-23
+-------------------
 
 * Test, enhance and document adding massagers via config.
   [fschulze]
