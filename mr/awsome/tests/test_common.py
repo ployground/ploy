@@ -81,12 +81,12 @@ class StartupScriptTests(TestCase):
             path=self.directory)
         instance.master = MockMaster(config)
         result = instance.startup_script()
-        self.assertMultiLineEqual(result[:52], "\n".join([
-            "#!/bin/bash",
-            "tail -n+4 $0 | gunzip -c | bash",
+        assert result[:48] == "\n".join([
+            "#!/bin/sh",
+            "tail -n+4 $0 | gunzip -c | sh",
             "exit $?",
-            ""]))
-        payload = result[52:]
+            ""])
+        payload = result[48:]
         header = payload[:10]
         body = payload[10:]
         self.assertEqual(header[:4], "\x1f\x8b\x08\x00")  # magic + compression + flags

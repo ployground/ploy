@@ -97,8 +97,8 @@ class StartupScriptMixin(object):
         result = dict(original=startup_script(**config))
         if startup_script_path.get('gzip', False):
             result['raw'] = "\n".join([
-                "#!/bin/bash",
-                "tail -n+4 $0 | gunzip -c | bash",
+                "#!/bin/sh",
+                "tail -n+4 $0 | gunzip -c | sh",
                 "exit $?",
                 gzip_string(result['original'])
             ])
