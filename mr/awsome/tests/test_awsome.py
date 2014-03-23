@@ -750,7 +750,7 @@ class HelpCommandTests(TestCase):
         with patch('sys.stdout') as StdOutMock:
             self.aws(['./bin/aws', 'help', '-z'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
-        self.assertIn('\nstart\n', output)
+        self.assertIn('start', output.split('\n'))
 
     def testZSHHelperCommand(self):
         import mr.awsome.tests.dummy_plugin
