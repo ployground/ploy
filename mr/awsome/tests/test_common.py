@@ -4,6 +4,7 @@ from mr.awsome.common import StartupScriptMixin
 from mr.awsome.config import Config, StartupScriptMassager
 from unittest2 import TestCase
 import os
+import pytest
 import shutil
 import tempfile
 
@@ -158,3 +159,40 @@ class StartupScriptTests(TestCase):
         with patch('mr.awsome.common.log') as LogMock:
             instance.startup_script(debug=True)
             LogMock.error.assert_called_with('Startup script too big (%s > %s).', 15, 10)
+
+
+@pytest.mark.parametrize("default, all, question, answer, expected", [
+    (None, False, 'Foo [yes/no] ', ['y'], True),
+    (None, False, 'Foo [yes/no] ', ['yes'], True),
+    (None, False, 'Foo [yes/no] ', ['Yes'], True),
+    (None, False, 'Foo [yes/no] ', ['YES'], True),
+    (None, False, 'Foo [yes/no] ', ['n'], False),
+    (None, False, 'Foo [yes/no] ', ['no'], False),
+    (None, False, 'Foo [yes/no] ', ['No'], False),
+    (None, False, 'Foo [yes/no] ', ['NO'], False),
+    (None, True, 'Foo [yes/no/all] ', ['a'], 'all'),
+    (None, True, 'Foo [yes/no/all] ', ['all'], 'all'),
+    (None, True, 'Foo [yes/no/all] ', ['All'], 'all'),
+    (None, True, 'Foo [yes/no/all] ', ['ALL'], 'all'),
+    (None, False, 'Foo [yes/no] ', ['YEbUS'], IndexError),
+    (None, False, 'Foo [yes/no] ', ['NarNJa'], IndexError),
+    (None, True, 'Foo [yes/no/all] ', ['ALfred'], IndexError),
+    (True, False, 'Foo [Yes/no] ', [''], True),
+    (False, False, 'Foo [yes/No] ', [''], False),
+    ('all', True, 'Foo [yes/no/All] ', [''], 'all')])
+def test_yesno(default, all, question, answer, expected):
+    from mr.awsome.common import yesno
+    raw_input_values = answer
+
+    def raw_input_result(q):
+        assert q == question
+        a = raw_input_values.pop()
+        print q, repr(a)
+        return a
+
+    with patch('__builtin__.raw_input') as RawInput:
+        RawInput.side_effect = raw_input_result
+        try:
+            assert yesno('Foo', default, all) == expected
+        except Exception as e:
+            assert type(e) == expected

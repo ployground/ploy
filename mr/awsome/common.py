@@ -40,10 +40,10 @@ def yesno(question, default=None, all=False):
             True: ('', 'y', 'yes'),
         }
     elif default is False:
-        question = "%s [Yes/no" % question
+        question = "%s [yes/No" % question
         answers = {
-            False: ('n', 'no'),
-            True: ('', 'y', 'yes'),
+            False: ('', 'n', 'no'),
+            True: ('y', 'yes'),
         }
     else:
         question = "%s [yes/no" % question
@@ -52,10 +52,13 @@ def yesno(question, default=None, all=False):
             True: ('y', 'yes'),
         }
     if all:
-        answers['all'] = ('a', 'all')
-        question = "%s/all] " % question
-    else:
-        question = "%s] " % question
+        if default is 'all':
+            answers['all'] = ('', 'a', 'all')
+            question = "%s/All" % question
+        else:
+            answers['all'] = ('a', 'all')
+            question = "%s/all" % question
+    question = "%s] " % question
     while 1:
         answer = raw_input(question).lower()
         for option in answers:
