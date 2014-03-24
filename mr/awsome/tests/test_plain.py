@@ -1,7 +1,8 @@
-from mock import patch
+from mock import MagicMock, call, patch
 from mr.awsome import AWS
 from unittest2 import TestCase
 import os
+import pytest
 import tempfile
 import shutil
 
@@ -124,3 +125,135 @@ class PlainTests(TestCase):
         self.os_execvp_mock.assert_called_with(
             'ssh',
             ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
+
+
+@pytest.yield_fixture
+def tempdir():
+    directory = tempfile.mkdtemp()
+    yield directory
+    shutil.rmtree(directory)
+
+
+@pytest.fixture
+def paramiko():
+    from mr.awsome.common import import_paramiko
+    return import_paramiko()
+
+
+@pytest.yield_fixture
+def sshconfig(paramiko):
+    with patch("%s.SSHConfig" % paramiko.__name__) as ssh_config_mock:
+        ssh_config_mock().lookup.return_value = {}
+        yield ssh_config_mock
+
+
+@pytest.yield_fixture
+def sshclient(paramiko):
+    with patch("%s.SSHClient" % paramiko.__name__) as ssh_client_mock:
+        yield ssh_client_mock
+
+
+@pytest.fixture
+def instance(tempdir, sshconfig):
+    with open(os.path.join(tempdir, 'aws.conf'), 'w') as f:
+        f.write('[plain-instance:foo]')
+    aws = AWS(tempdir)
+    return aws.instances['foo']
+
+
+def test_conn_no_host(instance):
+    with patch('mr.awsome.plain.log') as LogMock:
+        with pytest.raises(SystemExit):
+            instance.conn
+    assert LogMock.error.call_args_list == [
+        (("Couldn't connect to plain-instance:foo.",), {}),
+        (("No host set in config.",), {})]
+
+
+def test_conn_no_fingerprint(instance):
+    instance.config['host'] = 'localhost'
+    with patch('mr.awsome.plain.log') as LogMock:
+        with pytest.raises(SystemExit):
+            instance.conn
+    assert LogMock.error.call_args_list == [
+        (("Couldn't connect to plain-instance:foo.",), {}),
+        (("No fingerprint set in config.",), {})]
+
+
+def test_conn_fingerprint_mismatch(instance, paramiko, sshclient):
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'foo'
+    sshclient().connect.side_effect = paramiko.SSHException(
+        "Fingerprint doesn't match for localhost (got bar, expected foo)")
+    with patch('mr.awsome.plain.log') as LogMock:
+        with pytest.raises(SystemExit):
+            instance.conn
+    assert LogMock.error.call_args_list == [
+        (("Failed to connect to foo (localhost)",), {}),
+        (("username: 'root'",), {}),
+        (("port: 22",), {}),
+        (("Couldn't connect to plain-instance:foo.",), {}),
+        (("Fingerprint doesn't match for localhost (got bar, expected foo)",), {})]
+
+
+def test_conn(instance, sshclient):
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'foo'
+    conn = instance.conn
+    assert len(conn.method_calls) == 3
+    assert conn.method_calls[0][0] == 'set_missing_host_key_policy'
+    assert conn.method_calls[1] == call.connect('localhost', username='root', key_filename=None, password=None, sock=None, port=22)
+    assert conn.method_calls[2] == call.save_host_keys(instance.master.known_hosts)
+
+
+def test_conn_cached(instance, sshclient):
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'foo'
+    first_client = MagicMock()
+    second_client = MagicMock()
+    sshclient.side_effect = [first_client, second_client]
+    conn = instance.conn
+    assert len(first_client.method_calls) == 3
+    assert [x[0] for x in first_client.method_calls] == [
+        'set_missing_host_key_policy',
+        'connect',
+        'save_host_keys']
+    conn1 = instance.conn
+    assert conn1 is conn
+    assert conn1 is first_client
+    assert conn1 is not second_client
+    assert len(first_client.method_calls) == 4
+    assert [x[0] for x in first_client.method_calls] == [
+        'set_missing_host_key_policy',
+        'connect',
+        'save_host_keys',
+        'get_transport']
+
+
+def test_conn_cached_closed(instance, sshclient):
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'foo'
+    first_client = MagicMock()
+    first_client.get_transport.return_value = None
+    second_client = MagicMock()
+    sshclient.side_effect = [first_client, second_client]
+    conn = instance.conn
+    assert len(first_client.method_calls) == 3
+    assert [x[0] for x in first_client.method_calls] == [
+        'set_missing_host_key_policy',
+        'connect',
+        'save_host_keys']
+    conn1 = instance.conn
+    assert conn1 is not conn
+    assert conn1 is not first_client
+    assert conn1 is second_client
+    assert len(first_client.method_calls) == 4
+    assert [x[0] for x in first_client.method_calls] == [
+        'set_missing_host_key_policy',
+        'connect',
+        'save_host_keys',
+        'get_transport']
+    assert len(second_client.method_calls) == 3
+    assert second_client.method_calls[0][0] == 'set_missing_host_key_policy'
+    assert second_client.method_calls[1] == call.connect('localhost', username='root', key_filename=None, password=None, sock=None, port=22)
+    assert second_client.method_calls[2] == call.save_host_keys(instance.master.known_hosts)
