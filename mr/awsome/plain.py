@@ -84,7 +84,6 @@ class Instance(BaseInstance):
             return proxy_command.format(**d)
 
     def init_ssh_key(self, user=None):
-        print 'init_ssh_key', self.id, user
         paramiko = self.paramiko
         sshconfig = self.sshconfig
         try:
