@@ -274,6 +274,19 @@ def test_bad_hostkey(instance, paramiko):
         assert f.read() == ''
 
 
+def test_proxycommand(instance, paramiko, sshclient, tempdir):
+    with open(instance.master.known_hosts, 'w') as f:
+        f.write('foo')
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'foo'
+    instance.config['proxycommand'] = 'nohup {path}/../bin/assh {instances[foo].host} -o UserKnownHostsFile={known_hosts}'
+    with patch("%s.ProxyCommand" % paramiko.__name__) as ProxyCommandMock:
+        info = instance.init_ssh_key()
+    proxycommand = 'nohup %s/../bin/assh localhost -o UserKnownHostsFile=%s' % (tempdir, instance.master.known_hosts)
+    assert info['ProxyCommand'] == proxycommand
+    assert ProxyCommandMock.call_args_list == [call(proxycommand)]
+
+
 def test_missing_host_key_mismatch(paramiko, sshclient):
     from mr.awsome.plain import ServerHostKeyPolicy
     shkp = ServerHostKeyPolicy('66:6f:6f')  # that's 'foo' as hex
