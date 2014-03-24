@@ -257,3 +257,18 @@ def test_conn_cached_closed(instance, sshclient):
     assert second_client.method_calls[0][0] == 'set_missing_host_key_policy'
     assert second_client.method_calls[1] == call.connect('localhost', username='root', key_filename=None, password=None, sock=None, port=22)
     assert second_client.method_calls[2] == call.save_host_keys(instance.master.known_hosts)
+
+
+def test_bad_hostkey(instance, paramiko):
+    with open(instance.master.known_hosts, 'w') as f:
+        f.write('foo')
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'foo'
+    with patch("%s.SSHClient.connect" % paramiko.__name__) as connect_mock:
+        connect_mock.side_effect = [
+            paramiko.BadHostKeyException('localhost', 'bar', 'foo'),
+            None]
+        instance.init_ssh_key()
+    assert os.path.exists(instance.master.known_hosts)
+    with open(instance.master.known_hosts) as f:
+        assert f.read() == ''
