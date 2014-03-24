@@ -272,3 +272,71 @@ def test_bad_hostkey(instance, paramiko):
     assert os.path.exists(instance.master.known_hosts)
     with open(instance.master.known_hosts) as f:
         assert f.read() == ''
+
+
+def test_missing_host_key_mismatch(paramiko, sshclient):
+    from mr.awsome.plain import ServerHostKeyPolicy
+    shkp = ServerHostKeyPolicy('66:6f:6f')  # that's 'foo' as hex
+    key = MagicMock()
+    key.get_fingerprint.return_value = 'bar'
+    with pytest.raises(paramiko.SSHException) as e:
+        shkp.missing_host_key(sshclient, 'localhost', key)
+    assert e.value.message == "Fingerprint doesn't match for localhost (got 62:61:72, expected 66:6f:6f)"
+
+
+def test_missing_host_key(tempdir, sshclient):
+    from mr.awsome.plain import ServerHostKeyPolicy
+    known_hosts = os.path.join(tempdir, 'known_hosts')
+    sshclient._host_keys_filename = known_hosts
+    shkp = ServerHostKeyPolicy('66:6f:6f')  # that's 'foo' as hex
+    key = MagicMock()
+    key.get_fingerprint.return_value = 'foo'
+    key.get_name.return_value = 'ssh-rsa'
+    shkp.missing_host_key(sshclient, 'localhost', key)
+    assert sshclient.method_calls == [
+        call._host_keys.add('localhost', 'ssh-rsa', key),
+        call.save_host_keys(known_hosts)]
+
+
+def test_missing_host_key_ask_answer_no(tempdir, sshclient):
+    from mr.awsome.plain import ServerHostKeyPolicy
+    known_hosts = os.path.join(tempdir, 'known_hosts')
+    sshclient._host_keys_filename = known_hosts
+    shkp = ServerHostKeyPolicy('ask')
+    key = MagicMock()
+    key.get_fingerprint.return_value = 'foo'
+    key.get_name.return_value = 'ssh-rsa'
+    with patch("mr.awsome.plain.yesno") as yesno_mock:
+        yesno_mock.return_value = False
+        with pytest.raises(SystemExit):
+            shkp.missing_host_key(sshclient, 'localhost', key)
+
+
+def test_missing_host_key_ask_answer_yes(tempdir, sshclient):
+    from mr.awsome.plain import ServerHostKeyPolicy
+    known_hosts = os.path.join(tempdir, 'known_hosts')
+    sshclient._host_keys_filename = known_hosts
+    shkp = ServerHostKeyPolicy('ask')
+    key = MagicMock()
+    key.get_fingerprint.return_value = 'foo'
+    key.get_name.return_value = 'ssh-rsa'
+    with patch("mr.awsome.plain.yesno") as yesno_mock:
+        yesno_mock.return_value = True
+        shkp.missing_host_key(sshclient, 'localhost', key)
+    assert sshclient.method_calls == []
+
+
+def test_missing_host_key_ask_answer_yes_and_try_again(tempdir, sshclient):
+    from mr.awsome.plain import ServerHostKeyPolicy
+    known_hosts = os.path.join(tempdir, 'known_hosts')
+    sshclient._host_keys_filename = known_hosts
+    shkp = ServerHostKeyPolicy('ask')
+    key = MagicMock()
+    key.get_fingerprint.return_value = 'foo'
+    key.get_name.return_value = 'ssh-rsa'
+    with patch("mr.awsome.plain.yesno") as yesno_mock:
+        # if yesno is called twice, it throws an error
+        yesno_mock.side_effect = [True, RuntimeError]
+        shkp.missing_host_key(sshclient, 'localhost', key)
+        shkp.missing_host_key(sshclient, 'localhost', key)
+    assert sshclient.method_calls == []
