@@ -1,6 +1,13 @@
 Changelog
 =========
 
+1.0rc2 - Unreleased
+-------------------
+
+* More tests.
+  [fschulze]
+
+
 1.0rc1 - 2014-03-23
 -------------------
 
