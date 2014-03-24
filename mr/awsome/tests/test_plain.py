@@ -11,10 +11,10 @@ class PlainTests(TestCase):
         from mr.awsome.common import import_paramiko
         self.directory = tempfile.mkdtemp()
         self.aws = AWS(self.directory)
-        paramiko = import_paramiko()
-        self._ssh_client_mock = patch("%s.SSHClient" % paramiko.__name__)
+        self.paramiko = import_paramiko()
+        self._ssh_client_mock = patch("%s.SSHClient" % self.paramiko.__name__)
         self.ssh_client_mock = self._ssh_client_mock.start()
-        self._ssh_config_mock = patch("%s.SSHConfig" % paramiko.__name__)
+        self._ssh_config_mock = patch("%s.SSHConfig" % self.paramiko.__name__)
         self.ssh_config_mock = self._ssh_config_mock.start()
         self.ssh_config_mock().lookup.return_value = {}
         self._os_execvp_mock = patch("os.execvp")
@@ -93,6 +93,22 @@ class PlainTests(TestCase):
             LogMock.error.call_args_list, [
                 (("Couldn't validate fingerprint for ssh connection.",), {}),
                 (("No fingerprint set in config.",), {}),
+                (('Is the server finished starting up?',), {})])
+
+    def testSSHWithFingerprintMismatch(self):
+        self._write_config('\n'.join([
+            '[plain-instance:foo]',
+            'host = localhost',
+            'fingerprint = foo']))
+        self.ssh_client_mock().connect.side_effect = self.paramiko.SSHException(
+            "Fingerprint doesn't match for localhost (got bar, expected foo)")
+        with patch('mr.awsome.log') as LogMock:
+            with self.assertRaises(SystemExit):
+                self.aws(['./bin/aws', 'ssh', 'foo'])
+        self.assertEquals(
+            LogMock.error.call_args_list, [
+                (("Couldn't validate fingerprint for ssh connection.",), {}),
+                (("Fingerprint doesn't match for localhost (got bar, expected foo)",), {}),
                 (('Is the server finished starting up?',), {})])
 
     def testSSH(self):
