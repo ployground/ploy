@@ -4,6 +4,7 @@ env:
   - TOX_ENV=py26
   - TOX_ENV=py27
 install:
+  - pip install setuptools-git
   - pip install tox
 script:
   - tox -e $TOX_ENV

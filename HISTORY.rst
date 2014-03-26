@@ -4,8 +4,8 @@ Changelog
 1.0rc2 - Unreleased
 -------------------
 
-* Moved setuptools-git from setup.py to tox.ini, it's only needed for releases
-  and testing.
+* Moved setuptools-git from setup.py to .travis.yml, it's only needed for
+  releases and testing.
   [fschulze]
 
 * More tests.
