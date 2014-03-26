@@ -31,8 +31,6 @@ setup(
     packages=['mr'],
     namespace_packages=['mr'],
     install_requires=install_requires,
-    setup_requires=[
-        'setuptools-git'],
     entry_points="""
         [console_scripts]
         aws = mr.awsome:aws
