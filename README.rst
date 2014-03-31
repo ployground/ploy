@@ -20,7 +20,7 @@ With zc.recipe.egg you can set a custom configfile location like this::
   [aws]
   recipe = zc.recipe.egg
   eggs = mr.awsome
-  arguments = configpath="${buildout:directory}/etc/servers.cfg"
+  arguments = configpath="${buildout:directory}/etc/", configname="servers.cfg"
 
 As of this writing the pycrypto package is throwing some deprecation warnings, you might want to disable them by adding an initialization option to the aws part like this::
 
