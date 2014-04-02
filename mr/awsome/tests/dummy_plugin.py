@@ -1,4 +1,4 @@
-from mr.awsome.common import BaseMaster, StartupScriptMixin
+from mr.awsome.common import BaseMaster, InstanceHooks, StartupScriptMixin
 from mr.awsome.config import HooksMassager
 from mr.awsome.config import StartupScriptMassager
 import logging
@@ -32,6 +32,7 @@ class Instance(StartupScriptMixin):
         self.id = sid
         self.master = master
         self.config = config
+        self.hooks = InstanceHooks(self)
 
     def get_host(self):
         return self.config['host']

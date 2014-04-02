@@ -103,8 +103,7 @@ class StartupScriptMixin(object):
                 log.error("Startup script '%s' not found.", startup_script_path['path'])
                 sys.exit(1)
             raise
-        if 'hooks' in config:
-            config['hooks'].startup_script_options(config)
+        self.hooks.startup_script_options(config)
         result = dict(original=startup_script(**config))
         if startup_script_path.get('gzip', False):
             result['raw'] = "\n".join([
@@ -145,26 +144,19 @@ class BaseMaster(object):
                 self.instances[sid].sectiongroupname = sectiongroupname
 
 
-class BaseInstance(object):
-    def __init__(self, master, sid, config):
-        validate_id = getattr(self, 'validate_id', lambda x: x)
-        self.id = validate_id(sid)
-        self.master = master
-        self.config = config
-        get_massagers = getattr(self, 'get_massagers', lambda: [])
-        for massager in get_massagers():
-            self.config.add_massager(massager)
-
-
-class Hooks(object):
-    def __init__(self):
-        self.hooks = []
-
-    def add(self, hook):
-        self.hooks.append(hook)
+class InstanceHooks(object):
+    def __init__(self, instance):
+        self.instance = instance
 
     def _iter_funcs(self, func_name):
-        for hook in self.hooks:
+        hooks = []
+        for plugin in self.instance.master.aws.plugins.values():
+            if 'get_hooks' not in plugin:
+                continue
+            hooks.extend(plugin['get_hooks']())
+        if 'hooks' in self.instance.config:
+            hooks.extend(self.instance.config['hooks'].hooks)
+        for hook in hooks:
             func = getattr(hook, func_name, None)
             if func is not None:
                 yield func
@@ -180,3 +172,23 @@ class Hooks(object):
     def startup_script_options(self, options):
         for func in self._iter_funcs('startup_script_options'):
             func(options)
+
+
+class BaseInstance(object):
+    def __init__(self, master, sid, config):
+        validate_id = getattr(self, 'validate_id', lambda x: x)
+        self.id = validate_id(sid)
+        self.master = master
+        self.config = config
+        self.hooks = InstanceHooks(self)
+        get_massagers = getattr(self, 'get_massagers', lambda: [])
+        for massager in get_massagers():
+            self.config.add_massager(massager)
+
+
+class Hooks(object):
+    def __init__(self):
+        self.hooks = []
+
+    def add(self, hook):
+        self.hooks.append(hook)

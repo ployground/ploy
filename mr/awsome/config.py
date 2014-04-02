@@ -151,6 +151,8 @@ class ConfigSection(DictMixin):
         return value
 
     def __setitem__(self, key, value):
+        if not isinstance(value, ConfigValue):
+            value = ConfigValue(None, value)
         self._dict[key] = value
 
     def keys(self):

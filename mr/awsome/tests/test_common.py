@@ -1,6 +1,6 @@
 from StringIO import StringIO
 from mock import patch
-from mr.awsome.common import StartupScriptMixin
+from mr.awsome.common import InstanceHooks, StartupScriptMixin
 from mr.awsome.config import Config, StartupScriptMassager
 from unittest2 import TestCase
 import os
@@ -9,8 +9,13 @@ import shutil
 import tempfile
 
 
+class MockAWS(object):
+    plugins = {}
+
+
 class MockMaster(object):
     def __init__(self, main_config):
+        self.aws = MockAWS()
         self.main_config = main_config
 
 
@@ -18,7 +23,9 @@ class MockInstance(StartupScriptMixin):
     sectiongroupname = "instance"
 
     def __init__(self):
+        self.config = {}
         self.id = "foo"
+        self.hooks = InstanceHooks(self)
 
 
 class StartupScriptTests(TestCase):

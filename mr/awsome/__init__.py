@@ -162,8 +162,7 @@ class AWS(object):
         args = parser.parse_args(argv)
         server = instances[args.server[0]]
         server.terminate()
-        if 'hooks' in server.config:
-            server.config['hooks'].after_terminate(server)
+        server.hooks.after_terminate(server)
 
     def _parse_overrides(self, options):
         overrides = dict()
@@ -199,8 +198,7 @@ class AWS(object):
         overrides = self._parse_overrides(args)
         overrides['servers'] = self.instances
         server = instances[args.server[0]]
-        if 'hooks' in server.config:
-            server.config['hooks'].before_start(server)
+        server.hooks.before_start(server)
         instance = server.start(overrides)
         if instance is None:
             return
