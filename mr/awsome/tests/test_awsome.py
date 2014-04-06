@@ -25,6 +25,7 @@ class DummyHooks(object):
 class AwsomeTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
+        open(os.path.join(self.directory, 'aws.conf'), 'w')
 
     def tearDown(self):
         shutil.rmtree(self.directory)
@@ -47,6 +48,7 @@ class AwsomeTests(TestCase):
             os.path.join(self.directory, 'foo.conf'))
 
     def testMissingConfig(self):
+        os.remove(os.path.join(self.directory, 'aws.conf'))
         aws = AWS(configpath=self.directory)
         with patch('mr.awsome.log') as LogMock:
             with self.assertRaises(SystemExit):
@@ -54,7 +56,7 @@ class AwsomeTests(TestCase):
             LogMock.error.assert_called_with("Config '%s' doesn't exist." % aws.configfile)
 
     def testCallWithNoArguments(self):
-        aws = AWS()
+        aws = AWS(configpath=self.directory)
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
                 aws(['./bin/aws'])
@@ -63,12 +65,12 @@ class AwsomeTests(TestCase):
         self.assertIn('too few arguments', output)
 
     def testKnownHostsWithNoConfigErrors(self):
+        os.remove(os.path.join(self.directory, 'aws.conf'))
         aws = AWS(configpath=self.directory)
         with pytest.raises(SystemExit):
             aws.known_hosts
 
     def testKnownHosts(self):
-        open(os.path.join(self.directory, 'aws.conf'), 'w')
         aws = AWS(configpath=self.directory)
         self.assertEqual(
             aws.known_hosts,
@@ -712,6 +714,7 @@ class HelpCommandTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
         self.aws = AWS(self.directory)
+        self._write_config('')
 
     def tearDown(self):
         shutil.rmtree(self.directory)
@@ -737,7 +740,6 @@ class HelpCommandTests(TestCase):
         self.assertIn("argument command: invalid choice: 'foo'", output)
 
     def testCallWithExistingCommand(self):
-        self._write_config('')
         with patch('sys.stdout') as StdOutMock:
             with self.assertRaises(SystemExit):
                 self.aws(['./bin/aws', 'help', 'start'])
@@ -746,7 +748,6 @@ class HelpCommandTests(TestCase):
         self.assertIn('Starts the instance', output)
 
     def testZSHHelperCommands(self):
-        self._write_config('')
         with patch('sys.stdout') as StdOutMock:
             self.aws(['./bin/aws', 'help', '-z'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
