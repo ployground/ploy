@@ -15,6 +15,22 @@ __all__ = [template.__name__]
 log = logging.getLogger('mr.awsome')
 
 
+class LazyInstanceDict(dict):
+    def __getitem__(self, key):
+        cache = getattr(self, '_cache', None)
+        if cache is None:
+            cache = self._cache = {}
+        if key in self._cache:
+            return self._cache[key]
+        instance = dict.__getitem__(self, key)
+        for plugin in self.plugins.values():
+            if 'augment_instance' not in plugin:
+                continue
+            plugin['augment_instance'](instance)
+        self._cache[key] = instance
+        return instance
+
+
 class AWS(object):
     def __init__(self, configpath=None, configname=None):
         plog = logging.getLogger('paramiko.transport')
@@ -74,7 +90,7 @@ class AWS(object):
 
     @lazy
     def instances(self):
-        result = {}
+        result = LazyInstanceDict()
         instances = []
         instances.extend((None, i) for i in self.config.get('instance', {}))
         for master in self.masters.values():
@@ -103,11 +119,7 @@ class AWS(object):
             else:
                 name = instance_id
             result[name] = master.instances[instance_id]
-        for plugin in self.plugins.values():
-            if 'augment_instance' not in plugin:
-                continue
-            for name, instance in result.items():
-                plugin['augment_instance'](instance)
+        result.plugins = self.plugins
         return result
 
     def get_instances(self, command):
