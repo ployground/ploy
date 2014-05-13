@@ -108,7 +108,7 @@ class Instance(BaseInstance):
                 log.error("The following ProxyCommand failed:\n%s" % proxy_command)
                 raise
         elif proxy_host:
-            proxy_instance = self.master.instances[proxy_host]
+            proxy_instance = self.master.aws.instances[proxy_host]
             sock = proxy_instance.conn.get_transport().open_channel(
                 'direct-tcpip',
                 (hostname, port),
