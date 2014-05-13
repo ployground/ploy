@@ -159,20 +159,6 @@ class Instance(BaseInstance):
             result['ProxyCommand'] = proxy_command
         return result
 
-    @property
-    def conn(self):
-        if getattr(self, '_conn', None) is not None:
-            if self._conn.get_transport() is not None:
-                return self._conn
-        try:
-            ssh_info = self.init_ssh_key()
-        except self.paramiko.SSHException as e:
-            log.error("Couldn't connect to %s:%s." % (self.sectiongroupname, self.id))
-            log.error(unicode(e))
-            sys.exit(1)
-        self._conn = ssh_info['client']
-        return self._conn
-
 
 class Master(BaseMaster):
     sectiongroupname = 'plain-instance'

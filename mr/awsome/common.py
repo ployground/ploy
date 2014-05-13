@@ -185,6 +185,20 @@ class BaseInstance(object):
         for massager in get_massagers():
             self.config.add_massager(massager)
 
+    @property
+    def conn(self):
+        if getattr(self, '_conn', None) is not None:
+            if self._conn.get_transport() is not None:
+                return self._conn
+        try:
+            ssh_info = self.init_ssh_key()
+        except self.paramiko.SSHException as e:
+            log.error("Couldn't connect to %s:%s." % (self.sectiongroupname, self.id))
+            log.error(unicode(e))
+            sys.exit(1)
+        self._conn = ssh_info['client']
+        return self._conn
+
 
 class Hooks(object):
     def __init__(self):

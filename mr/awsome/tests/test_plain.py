@@ -166,7 +166,7 @@ def instance(tempdir, sshconfig):
 
 
 def test_conn_no_host(instance):
-    with patch('mr.awsome.plain.log') as LogMock:
+    with patch('mr.awsome.common.log') as LogMock:
         with pytest.raises(SystemExit):
             instance.conn
     assert LogMock.error.call_args_list == [
@@ -176,7 +176,7 @@ def test_conn_no_host(instance):
 
 def test_conn_no_fingerprint(instance):
     instance.config['host'] = 'localhost'
-    with patch('mr.awsome.plain.log') as LogMock:
+    with patch('mr.awsome.common.log') as LogMock:
         with pytest.raises(SystemExit):
             instance.conn
     assert LogMock.error.call_args_list == [
@@ -189,15 +189,17 @@ def test_conn_fingerprint_mismatch(instance, paramiko, sshclient):
     instance.config['fingerprint'] = 'foo'
     sshclient().connect.side_effect = paramiko.SSHException(
         "Fingerprint doesn't match for localhost (got bar, expected foo)")
-    with patch('mr.awsome.plain.log') as LogMock:
-        with pytest.raises(SystemExit):
-            instance.conn
-    assert LogMock.error.call_args_list == [
-        (("Failed to connect to foo (localhost)",), {}),
-        (("username: 'root'",), {}),
-        (("port: 22",), {}),
+    with patch('mr.awsome.common.log') as CommonLogMock:
+        with patch('mr.awsome.plain.log') as PlainLogMock:
+            with pytest.raises(SystemExit):
+                instance.conn
+    assert CommonLogMock.error.call_args_list == [
         (("Couldn't connect to plain-instance:foo.",), {}),
         (("Fingerprint doesn't match for localhost (got bar, expected foo)",), {})]
+    assert PlainLogMock.error.call_args_list == [
+        (("Failed to connect to foo (localhost)",), {}),
+        (("username: 'root'",), {}),
+        (("port: 22",), {})]
 
 
 def test_conn(instance, sshclient):
