@@ -19,8 +19,12 @@ def ServerHostKeyPolicy(*args, **kwarks):
 
         def missing_host_key(self, client, hostname, key):
             fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
-            if self.fingerprint.lower() in ('ask', 'none'):
+            if self.fingerprint.lower() in ('ask', 'ignore'):
                 if not self.ask:
+                    return
+                if self.fingerprint.lower() == 'ignore':
+                    self.ask = False
+                    log.warn("Fingerprint verification disabled!")
                     return
                 if yesno("WARNING! Automatic fingerprint checking disabled.\nGot fingerprint %s.\nContinue?" % fingerprint):
                     self.ask = False

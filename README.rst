@@ -65,8 +65,9 @@ Options
   The ssh port number.
 
 ``fingerprint``
-  (**required**) The ssh fingerprint of the server. If set to ``none`` or
-  ``ask`` then manual interactive verification is enabled.
+  (**required**) The ssh fingerprint of the server.
+  If set to ``ask`` then manual interactive verification is enabled.
+  If set to ``ignore`` then no verification is performed at all!
 
 ``password-fallback``
   If this boolean is true, then using a password as fallback is enabled if the

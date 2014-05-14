@@ -347,6 +347,21 @@ def test_missing_host_key(tempdir, sshclient):
         call.save_host_keys(known_hosts)]
 
 
+def test_missing_host_key_none(tempdir, sshclient):
+    from mr.awsome.plain import ServerHostKeyPolicy
+    known_hosts = os.path.join(tempdir, 'known_hosts')
+    sshclient._host_keys_filename = known_hosts
+    shkp = ServerHostKeyPolicy('ignore')
+    key = MagicMock()
+    key.get_fingerprint.return_value = 'foo'
+    key.get_name.return_value = 'ssh-rsa'
+    with patch('mr.awsome.plain.log') as LogMock:
+        shkp.missing_host_key(sshclient, 'localhost', key)
+    assert sshclient.method_calls == []
+    assert LogMock.method_calls == [
+        call.warn('Fingerprint verification disabled!')]
+
+
 def test_missing_host_key_ask_answer_no(tempdir, sshclient):
     from mr.awsome.plain import ServerHostKeyPolicy
     known_hosts = os.path.join(tempdir, 'known_hosts')
