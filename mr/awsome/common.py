@@ -135,7 +135,9 @@ class BaseMaster(object):
         self.known_hosts = self.aws.known_hosts
         self.instances = {}
         if getattr(self, 'section_info', None) is None:
-            self.section_info = {self.sectiongroupname: self.instance_class}
+            self.section_info = {
+                None: self.instance_class,
+                self.sectiongroupname: self.instance_class}
         for sectiongroupname, instance_class in self.section_info.items():
             for sid, config in self.main_config.get(sectiongroupname, {}).iteritems():
                 if self.id != config.get('master', self.id):
