@@ -50,6 +50,8 @@ class InstanceFormattingWrapper(object):
 
 class Instance(BaseInstance):
     def get_host(self):
+        if 'host' not in self.config:
+            return self.config['ip']
         return self.config['host']
 
     def get_fingerprint(self):
@@ -93,7 +95,7 @@ class Instance(BaseInstance):
         try:
             host = self.get_host()
         except KeyError:
-            raise paramiko.SSHException("No host set in config.")
+            raise paramiko.SSHException("No host or ip set in config.")
         port = self.config.get('port', 22)
         hostname = sshconfig.lookup(host).get('hostname', host)
         port = sshconfig.lookup(host).get('port', port)

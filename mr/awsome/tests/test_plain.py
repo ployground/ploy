@@ -80,7 +80,7 @@ class PlainTests(TestCase):
         self.assertEquals(
             LogMock.error.call_args_list, [
                 (("Couldn't validate fingerprint for ssh connection.",), {}),
-                (("No host set in config.",), {}),
+                (("No host or ip set in config.",), {}),
                 (('Is the server finished starting up?',), {})])
 
     def testSSHWithNoFingerprint(self):
@@ -171,7 +171,7 @@ def test_conn_no_host(instance):
             instance.conn
     assert LogMock.error.call_args_list == [
         (("Couldn't connect to plain-instance:foo.",), {}),
-        (("No host set in config.",), {})]
+        (("No host or ip set in config.",), {})]
 
 
 def test_conn_no_fingerprint(instance):

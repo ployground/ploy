@@ -54,7 +54,7 @@ With plain instances you can put infos about servers into the configuration to b
 Options
 ~~~~~~~
 
-``host``
+``host`` or ``ip``
   (**required**) The host name or address for the server.
 
 ``user``
