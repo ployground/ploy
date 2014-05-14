@@ -172,13 +172,12 @@ class Master(BaseMaster):
 
 
 def get_massagers():
-    from mr.awsome.config import BooleanMassager, PathMassager, UserMassager
+    from mr.awsome.config import BooleanMassager, UserMassager
 
     sectiongroupname = 'plain-instance'
     return [
         UserMassager(sectiongroupname, 'user'),
-        BooleanMassager(sectiongroupname, 'password-fallback'),
-        PathMassager(sectiongroupname, 'fabfile')]
+        BooleanMassager(sectiongroupname, 'password-fallback')]
 
 
 def get_masters(aws):
