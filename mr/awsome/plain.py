@@ -57,6 +57,8 @@ class Instance(BaseInstance):
     def get_fingerprint(self):
         fingerprint = self.config.get('fingerprint')
         if fingerprint is None:
+            fingerprint = self.master.master_config.get('fingerprint')
+        if fingerprint is None:
             raise self.paramiko.SSHException("No fingerprint set in config.")
         return fingerprint
 
