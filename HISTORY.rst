@@ -1,7 +1,11 @@
 Changelog
 =========
 
-1.0rc2 - Unreleased
+1.0rc3 - unreleased
+-------------------
+
+
+1.0rc2 - 2014-05-14
 -------------------
 
 * Moved setuptools-git from setup.py to .travis.yml, it's only needed for
