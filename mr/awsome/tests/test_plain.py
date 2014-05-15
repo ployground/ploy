@@ -83,19 +83,6 @@ class PlainTests(TestCase):
                 (("No host or ip set in config.",), {}),
                 (('Is the server finished starting up?',), {})])
 
-    def testSSHWithNoFingerprint(self):
-        self._write_config('\n'.join([
-            '[plain-instance:foo]',
-            'host = localhost']))
-        with patch('mr.awsome.log') as LogMock:
-            with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'ssh', 'foo'])
-        self.assertEquals(
-            LogMock.error.call_args_list, [
-                (("Couldn't validate fingerprint for ssh connection.",), {}),
-                (("No fingerprint set in config.",), {}),
-                (('Is the server finished starting up?',), {})])
-
     def testSSHWithFingerprintMismatch(self):
         self._write_config('\n'.join([
             '[plain-instance:foo]',
@@ -325,7 +312,7 @@ def test_proxyhost(instance, paramiko, sshclient, tempdir):
 
 def test_missing_host_key_mismatch(paramiko, sshclient):
     from mr.awsome.plain import ServerHostKeyPolicy
-    shkp = ServerHostKeyPolicy('66:6f:6f')  # that's 'foo' as hex
+    shkp = ServerHostKeyPolicy(lambda: '66:6f:6f')  # that's 'foo' as hex
     key = MagicMock()
     key.get_fingerprint.return_value = 'bar'
     with pytest.raises(paramiko.SSHException) as e:
@@ -337,7 +324,7 @@ def test_missing_host_key(tempdir, sshclient):
     from mr.awsome.plain import ServerHostKeyPolicy
     known_hosts = os.path.join(tempdir, 'known_hosts')
     sshclient._host_keys_filename = known_hosts
-    shkp = ServerHostKeyPolicy('66:6f:6f')  # that's 'foo' as hex
+    shkp = ServerHostKeyPolicy(lambda: '66:6f:6f')  # that's 'foo' as hex
     key = MagicMock()
     key.get_fingerprint.return_value = 'foo'
     key.get_name.return_value = 'ssh-rsa'
@@ -351,7 +338,7 @@ def test_missing_host_key_ignore(tempdir, sshclient):
     from mr.awsome.plain import ServerHostKeyPolicy
     known_hosts = os.path.join(tempdir, 'known_hosts')
     sshclient._host_keys_filename = known_hosts
-    shkp = ServerHostKeyPolicy('ignore')
+    shkp = ServerHostKeyPolicy(lambda: 'ignore')
     key = MagicMock()
     key.get_fingerprint.return_value = 'foo'
     key.get_name.return_value = 'ssh-rsa'
@@ -368,7 +355,7 @@ def test_missing_host_key_ask_answer_no(tempdir, sshclient):
     from mr.awsome.plain import ServerHostKeyPolicy
     known_hosts = os.path.join(tempdir, 'known_hosts')
     sshclient._host_keys_filename = known_hosts
-    shkp = ServerHostKeyPolicy('ask')
+    shkp = ServerHostKeyPolicy(lambda: 'ask')
     key = MagicMock()
     key.get_fingerprint.return_value = 'foo'
     key.get_name.return_value = 'ssh-rsa'
@@ -382,7 +369,7 @@ def test_missing_host_key_ask_answer_yes(tempdir, sshclient):
     from mr.awsome.plain import ServerHostKeyPolicy
     known_hosts = os.path.join(tempdir, 'known_hosts')
     sshclient._host_keys_filename = known_hosts
-    shkp = ServerHostKeyPolicy('ask')
+    shkp = ServerHostKeyPolicy(lambda: 'ask')
     key = MagicMock()
     key.get_fingerprint.return_value = 'foo'
     key.get_name.return_value = 'ssh-rsa'
@@ -396,7 +383,7 @@ def test_missing_host_key_ask_answer_yes_and_try_again(tempdir, sshclient):
     from mr.awsome.plain import ServerHostKeyPolicy
     known_hosts = os.path.join(tempdir, 'known_hosts')
     sshclient._host_keys_filename = known_hosts
-    shkp = ServerHostKeyPolicy('ask')
+    shkp = ServerHostKeyPolicy(lambda: 'ask')
     key = MagicMock()
     key.get_fingerprint.return_value = 'foo'
     key.get_name.return_value = 'ssh-rsa'

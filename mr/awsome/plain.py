@@ -13,9 +13,13 @@ def ServerHostKeyPolicy(*args, **kwarks):
     paramiko = import_paramiko()
 
     class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
-        def __init__(self, fingerprint):
-            self.fingerprint = fingerprint
+        def __init__(self, fingerprint_func):
+            self.fingerprint_func = fingerprint_func
             self.ask = True
+
+        @lazy
+        def fingerprint(self):
+            return self.fingerprint_func()
 
         def missing_host_key(self, client, hostname, key):
             fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
@@ -101,8 +105,8 @@ class Instance(BaseInstance):
         port = sshconfig.lookup(host).get('port', port)
         password = None
         client = paramiko.SSHClient()
-        fingerprint = self.get_fingerprint()
-        client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint))
+        fingerprint_func = self.get_fingerprint
+        client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint_func))
         known_hosts = self.master.known_hosts
         client.known_hosts = None
         proxy_host = self.config.get('proxyhost', None)
