@@ -1,8 +1,12 @@
 Changelog
 =========
 
-1.0rc3 - unreleased
+1.0rc3 - 2014-05-15
 -------------------
+
+* Fetch fingerprints only when necessary. This speeds up connections when the
+  fingerprint in known_hosts is still valid.
+  [fschulze]
 
 
 1.0rc2 - 2014-05-14
