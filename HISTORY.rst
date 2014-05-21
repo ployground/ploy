@@ -4,6 +4,9 @@ Changelog
 1.0rc4 - unreleased
 -------------------
 
+* Fix massagers for ``[instance:...]`` sections.
+  [fschulze]
+
 * Copy massagers in ConfigSection.copy, so overrides in startup script work
   correctly.
   [fschulze]

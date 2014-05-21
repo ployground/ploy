@@ -763,3 +763,30 @@ class HelpCommandTests(TestCase):
             self.aws(['./bin/aws', 'help', '-z', 'start'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         assert output == 'foo\n'
+
+
+class InstanceTests(TestCase):
+    def setUp(self):
+        import mr.awsome.tests.dummy_plugin
+        self.directory = tempfile.mkdtemp()
+        self.aws = AWS(self.directory)
+        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        self._write_file('\n'.join([
+            '[dummy-master:master]',
+            '[instance:foo]',
+            'master = master',
+            'startup_script = startup']))
+        self._write_file('startup', name='startup')
+
+    def tearDown(self):
+        shutil.rmtree(self.directory)
+        del self.directory
+
+    def _write_file(self, content, name='aws.conf'):
+        with open(os.path.join(self.directory, name), 'w') as f:
+            f.write(content)
+
+    def testStartupScript(self):
+        instance = self.aws.instances['foo']
+        startup = instance.startup_script()
+        assert startup == 'startup'

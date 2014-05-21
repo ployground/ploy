@@ -113,7 +113,9 @@ class AWS(object):
                 if instance_class is None:
                     log.error("Master '%s' has no default instance class." % (master.id))
                     sys.exit(1)
-                master.instances[instance_id] = instance_class(master, instance_id, iconfig)
+                instance = instance_class(master, instance_id, iconfig)
+                instance.sectiongroupname = 'instance'
+                master.instances[instance_id] = instance
             if instance_name_count[instance_id] > 1:
                 name = '%s-%s' % (master.id, instance_id)
             else:

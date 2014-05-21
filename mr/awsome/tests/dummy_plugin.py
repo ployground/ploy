@@ -1,4 +1,4 @@
-from mr.awsome.common import BaseMaster, InstanceHooks, StartupScriptMixin
+from mr.awsome.common import BaseInstance, BaseMaster, StartupScriptMixin
 from mr.awsome.config import HooksMassager
 from mr.awsome.config import StartupScriptMassager
 import logging
@@ -25,17 +25,15 @@ class MockClient(object):
         log.info('client.close')
 
 
-class Instance(StartupScriptMixin):
+class Instance(BaseInstance, StartupScriptMixin):
+    sectiongroupname = 'dummy-instance'
     max_startup_script_size = 1024
-
-    def __init__(self, master, sid, config):
-        self.id = sid
-        self.master = master
-        self.config = config
-        self.hooks = InstanceHooks(self)
 
     def get_host(self):
         return self.config['host']
+
+    def get_massagers(self):
+        return get_instance_massagers()
 
     def snapshot(self):
         log.info('snapshot: %s', self.id)
@@ -75,10 +73,14 @@ class Master(BaseMaster):
     instance_class = Instance
 
 
-def get_massagers():
+def get_instance_massagers(sectiongroupname='instance'):
     return [
-        HooksMassager('dummy-instance', 'hooks'),
-        StartupScriptMassager('dummy-instance', 'startup_script')]
+        HooksMassager(sectiongroupname, 'hooks'),
+        StartupScriptMassager(sectiongroupname, 'startup_script')]
+
+
+def get_massagers():
+    return get_instance_massagers('dummy-instance')
 
 
 def get_masters(aws):
