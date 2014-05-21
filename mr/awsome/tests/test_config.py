@@ -356,6 +356,38 @@ class MassagerTests(TestCase):
         # make sure nothing is changed afterwards
         assert config['global'] == {'section': {'value': 1}}
 
+    def testSectionMassagedOverrides(self):
+        from mr.awsome.config import IntegerMassager
+
+        contents = StringIO("\n".join([
+            "[section]",
+            "value=1"]))
+        config = Config(contents, plugins=self.plugins).parse()
+        config['global']['section'].add_massager(IntegerMassager('global', 'value'))
+        config['global']['section'].add_massager(IntegerMassager('global', 'value2'))
+        assert config['global'] == {'section': {'value': 1}}
+        result = config.get_section_with_overrides(
+            'global',
+            'section',
+            overrides=None)
+        assert result == {
+            'value': 1}
+        result = config.get_section_with_overrides(
+            'global',
+            'section',
+            overrides={'value': '2'})
+        assert result == {
+            'value': 2}
+        result = config.get_section_with_overrides(
+            'global',
+            'section',
+            overrides={'value2': '2'})
+        assert result == {
+            'value': 1,
+            'value2': 2}
+        # make sure nothing is changed afterwards
+        assert config['global'] == {'section': {'value': 1}}
+
 
 def _make_config(massagers):
     return Config(StringIO("\n".join([

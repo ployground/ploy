@@ -4,6 +4,9 @@ Changelog
 1.0rc4 - unreleased
 -------------------
 
+* Copy massagers in ConfigSection.copy, so overrides in startup script work
+  correctly.
+  [fschulze]
 
 
 1.0rc3 - 2014-05-15

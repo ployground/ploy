@@ -163,6 +163,7 @@ class ConfigSection(DictMixin):
         new._dict = self._dict.copy()
         new.sectionname = self.sectionname
         new.sectiongroupname = self.sectiongroupname
+        new.massagers = self.massagers.copy()
         new._config = self._config
         return new
 
