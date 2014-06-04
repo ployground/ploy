@@ -4,6 +4,9 @@ Changelog
 1.0rc5 - unreleased
 -------------------
 
+* Delay setting of config file path to expose too early use of config in
+  plugins. Refs #29
+  [fschulze]
 
 
 1.0rc4 - 2014-05-21

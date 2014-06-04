@@ -25,7 +25,8 @@ class DummyHooks(object):
 class AwsomeTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
-        open(os.path.join(self.directory, 'aws.conf'), 'w')
+        self.configfile = os.path.join(self.directory, 'aws.conf')
+        open(self.configfile, 'w')
 
     def tearDown(self):
         shutil.rmtree(self.directory)
@@ -33,23 +34,27 @@ class AwsomeTests(TestCase):
 
     def testDefaultConfigPath(self):
         aws = AWS()
+        aws(['./bin/aws', 'help'])
         self.assertEqual(aws.configfile, 'etc/aws.conf')
 
     def testDirectoryAsConfig(self):
         aws = AWS(configpath=self.directory)
+        aws(['./bin/aws', 'help'])
         self.assertEqual(
             aws.configfile,
-            os.path.join(self.directory, 'aws.conf'))
+            self.configfile)
 
     def testFileConfigName(self):
         aws = AWS(configpath=self.directory, configname='foo.conf')
+        aws(['./bin/aws', 'help'])
         self.assertEqual(
             aws.configfile,
             os.path.join(self.directory, 'foo.conf'))
 
     def testMissingConfig(self):
-        os.remove(os.path.join(self.directory, 'aws.conf'))
+        os.remove(self.configfile)
         aws = AWS(configpath=self.directory)
+        aws.configfile = self.configfile
         with patch('mr.awsome.log') as LogMock:
             with self.assertRaises(SystemExit):
                 aws.config
@@ -64,20 +69,32 @@ class AwsomeTests(TestCase):
         self.assertIn('usage:', output)
         self.assertIn('too few arguments', output)
 
-    def testKnownHostsWithNoConfigErrors(self):
-        os.remove(os.path.join(self.directory, 'aws.conf'))
+    def testOverwriteConfigPath(self):
+        open(os.path.join(self.directory, 'foo.conf'), 'w').write('\n'.join([
+            '[global]',
+            'foo = bar']))
         aws = AWS(configpath=self.directory)
+        aws(['./bin/aws', '-c', os.path.join(self.directory, 'foo.conf'), 'help'])
+        assert aws.configfile == os.path.join(self.directory, 'foo.conf')
+        assert aws.config == {'global': {'global': {'foo': 'bar'}}}
+
+    def testKnownHostsWithNoConfigErrors(self):
+        os.remove(self.configfile)
+        aws = AWS(configpath=self.directory)
+        aws.configfile = self.configfile
         with pytest.raises(SystemExit):
             aws.known_hosts
 
     def testKnownHosts(self):
         aws = AWS(configpath=self.directory)
+        aws.configfile = self.configfile
         self.assertEqual(
             aws.known_hosts,
             os.path.join(self.directory, 'known_hosts'))
 
     def testConflictingPluginCommandName(self):
         aws = AWS(configpath=self.directory)
+        aws.configfile = self.configfile
         aws.plugins = dict(dummy=dict(
             get_commands=lambda x: [
                 ('ssh', None)]))
@@ -90,14 +107,16 @@ class AwsomeTests(TestCase):
 class StartCommandTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
+        self.configfile = os.path.join(self.directory, 'aws.conf')
         self.aws = AWS(self.directory)
+        self.aws.configfile = self.configfile
 
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
 
     def _write_config(self, content):
-        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+        with open(self.configfile, 'w') as f:
             f.write(content)
 
     def testCallWithNoArguments(self):
@@ -232,14 +251,16 @@ class StartCommandTests(TestCase):
 class StatusCommandTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
+        self.configfile = os.path.join(self.directory, 'aws.conf')
         self.aws = AWS(self.directory)
+        self.aws.configfile = self.configfile
 
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
 
     def _write_config(self, content):
-        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+        with open(self.configfile, 'w') as f:
             f.write(content)
 
     def testCallWithNoArguments(self):
@@ -276,14 +297,16 @@ class StatusCommandTests(TestCase):
 class StopCommandTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
+        self.configfile = os.path.join(self.directory, 'aws.conf')
         self.aws = AWS(self.directory)
+        self.aws.configfile = self.configfile
 
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
 
     def _write_config(self, content):
-        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+        with open(self.configfile, 'w') as f:
             f.write(content)
 
     def testCallWithNoArguments(self):
@@ -320,14 +343,16 @@ class StopCommandTests(TestCase):
 class TerminateCommandTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
+        self.configfile = os.path.join(self.directory, 'aws.conf')
         self.aws = AWS(self.directory)
+        self.aws.configfile = self.configfile
 
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
 
     def _write_config(self, content):
-        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+        with open(self.configfile, 'w') as f:
             f.write(content)
 
     def testCallWithNoArguments(self):
@@ -374,14 +399,16 @@ class TerminateCommandTests(TestCase):
 class DebugCommandTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
+        self.configfile = os.path.join(self.directory, 'aws.conf')
         self.aws = AWS(self.directory)
+        self.aws.configfile = self.configfile
 
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
 
     def _write_config(self, content):
-        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+        with open(self.configfile, 'w') as f:
             f.write(content)
 
     def testCallWithNoArguments(self):
@@ -514,14 +541,16 @@ class DebugCommandTests(TestCase):
 class ListCommandTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
+        self.configfile = os.path.join(self.directory, 'aws.conf')
         self.aws = AWS(self.directory)
+        self.aws.configfile = self.configfile
 
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
 
     def _write_config(self, content):
-        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+        with open(self.configfile, 'w') as f:
             f.write(content)
 
     def testCallWithNoArguments(self):
@@ -606,7 +635,9 @@ class ListCommandTests(TestCase):
 class SSHCommandTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
+        self.configfile = os.path.join(self.directory, 'aws.conf')
         self.aws = AWS(self.directory)
+        self.aws.configfile = self.configfile
         self._os_execvp_mock = patch("os.execvp")
         self.os_execvp_mock = self._os_execvp_mock.start()
 
@@ -617,7 +648,7 @@ class SSHCommandTests(TestCase):
         del self.directory
 
     def _write_config(self, content):
-        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+        with open(self.configfile, 'w') as f:
             f.write(content)
 
     def testCallWithNoArguments(self):
@@ -665,14 +696,16 @@ class SSHCommandTests(TestCase):
 class SnapshotCommandTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
+        self.configfile = os.path.join(self.directory, 'aws.conf')
         self.aws = AWS(self.directory)
+        self.aws.configfile = self.configfile
 
     def tearDown(self):
         shutil.rmtree(self.directory)
         del self.directory
 
     def _write_config(self, content):
-        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+        with open(self.configfile, 'w') as f:
             f.write(content)
 
     def testCallWithNoArguments(self):
@@ -713,7 +746,9 @@ class SnapshotCommandTests(TestCase):
 class HelpCommandTests(TestCase):
     def setUp(self):
         self.directory = tempfile.mkdtemp()
+        self.configfile = os.path.join(self.directory, 'aws.conf')
         self.aws = AWS(self.directory)
+        self.aws.configfile = self.configfile
         self._write_config('')
 
     def tearDown(self):
@@ -721,7 +756,7 @@ class HelpCommandTests(TestCase):
         del self.directory
 
     def _write_config(self, content):
-        with open(os.path.join(self.directory, 'aws.conf'), 'w') as f:
+        with open(self.configfile, 'w') as f:
             f.write(content)
 
     def testCallWithNoArguments(self):
@@ -770,6 +805,7 @@ class InstanceTests(TestCase):
         import mr.awsome.tests.dummy_plugin
         self.directory = tempfile.mkdtemp()
         self.aws = AWS(self.directory)
+        self.aws.configfile = os.path.join(self.directory, 'aws.conf')
         self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
         self._write_file('\n'.join([
             '[dummy-master:master]',

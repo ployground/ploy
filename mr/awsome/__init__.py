@@ -44,7 +44,8 @@ class AWS(object):
             configname = 'aws.conf'
         if configpath is None:
             configpath = 'etc'
-        self.configfile = os.path.join(configpath, configname)
+        self.configname = configname
+        self.configpath = configpath
 
     @lazy
     def plugins(self):
@@ -431,9 +432,10 @@ class AWS(object):
     def __call__(self, argv):
         parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+        configfile = os.path.join(self.configpath, self.configname)
         parser.add_argument('-c', '--config',
                             dest="configfile",
-                            default=self.configfile,
+                            default=configfile,
                             help="Use the specified config file.")
 
         version = pkg_resources.get_distribution("mr.awsome").version
@@ -466,8 +468,7 @@ class AWS(object):
                 break
         sub_argv = argv[len(main_argv):]
         args = parser.parse_args(main_argv[1:])
-        if args.configfile is not None:
-            self.configfile = args.configfile
+        self.configfile = args.configfile
         args.func(sub_argv, args.func.__doc__)
 
 

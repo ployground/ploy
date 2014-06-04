@@ -142,13 +142,15 @@ def sshclient(paramiko):
 
 @pytest.fixture
 def instance(tempdir, sshconfig):
-    with open(os.path.join(tempdir, 'aws.conf'), 'w') as f:
+    configfile = os.path.join(tempdir, 'aws.conf')
+    with open(configfile, 'w') as f:
         f.write('\n'.join([
             '[plain-instance:foo]',
             '[plain-instance:master]',
             'host=example.com',
             'fingerprint=master']))
     aws = AWS(tempdir)
+    aws.configfile = os.path.join(tempdir, 'aws.conf')
     return aws.instances['foo']
 
 
