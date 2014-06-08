@@ -79,10 +79,6 @@ def yesno(question, default=None, all=False):
 
 
 class StartupScriptMixin(object):
-    def get_config(self, overrides=None):
-        return self.master.main_config.get_section_with_overrides(
-            self.sectiongroupname, self.id, overrides)
-
     def startup_script(self, overrides=None, debug=False):
         from mr.awsome import template  # avoid circular import
 
@@ -200,6 +196,10 @@ class BaseInstance(object):
             sys.exit(1)
         self._conn = ssh_info['client']
         return self._conn
+
+    def get_config(self, overrides=None):
+        return self.master.main_config.get_section_with_overrides(
+            self.sectiongroupname, self.id, overrides)
 
 
 class Hooks(object):

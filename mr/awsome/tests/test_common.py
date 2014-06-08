@@ -1,6 +1,6 @@
 from StringIO import StringIO
 from mock import patch
-from mr.awsome.common import InstanceHooks, StartupScriptMixin
+from mr.awsome.common import InstanceHooks, BaseInstance, StartupScriptMixin
 from mr.awsome.config import Config, StartupScriptMassager
 from unittest2 import TestCase
 import os
@@ -19,7 +19,7 @@ class MockMaster(object):
         self.main_config = main_config
 
 
-class MockInstance(StartupScriptMixin):
+class MockInstance(BaseInstance, StartupScriptMixin):
     sectiongroupname = "instance"
 
     def __init__(self):
