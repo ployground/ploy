@@ -1,0 +1,4 @@
+include HISTORY.rst
+include README.rst
+include setup.py
+include tox.ini

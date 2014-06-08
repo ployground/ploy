@@ -28,7 +28,7 @@ setup(
     url='http://github.com/fschulze/mr.awsome',
     include_package_data=True,
     zip_safe=False,
-    packages=['mr'],
+    packages=['mr', 'mr.awsome', 'mr.awsome.tests'],
     namespace_packages=['mr'],
     install_requires=install_requires,
     entry_points="""
