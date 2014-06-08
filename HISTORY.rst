@@ -4,6 +4,9 @@ Changelog
 1.0rc5 - unreleased
 -------------------
 
+* Instances can provide a get_port method to return a default port.
+  [fschulze]
+
 * Catch socket errors in init_ssh_key of plain instances to print additional
   info for debugging.
   [fschulze]

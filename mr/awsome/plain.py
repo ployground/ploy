@@ -101,7 +101,10 @@ class Instance(BaseInstance):
             host = self.get_host()
         except KeyError:
             raise paramiko.SSHException("No host or ip set in config.")
-        port = self.config.get('port', 22)
+        port = 22
+        if hasattr(self, 'get_port'):
+            port = self.get_port()
+        port = self.config.get('port', port)
         hostname = sshconfig.lookup(host).get('hostname', host)
         port = sshconfig.lookup(host).get('port', port)
         password = None
