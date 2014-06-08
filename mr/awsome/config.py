@@ -265,7 +265,7 @@ class Config(ConfigSection):
             self.get_section(sectiongroupname, sectionname)
             if key is not None:
                 if key == 'massagers':
-                    for spec in value.split('\n'):
+                    for spec in value.splitlines():
                         spec = spec.strip()
                         if not spec:
                             continue

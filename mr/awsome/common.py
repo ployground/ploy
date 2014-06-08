@@ -28,9 +28,9 @@ def gzip_string(value):
 
 
 def strip_hashcomments(value):
-    lines = value.split('\n')
+    lines = value.splitlines()
     result = []
-    if lines[0].rstrip() in ('#!/bin/sh', '#!/bin/bash'):
+    if lines and lines[0].rstrip() in ('#!/bin/sh', '#!/bin/bash'):
         for index, line in enumerate(lines):
             if index > 0 and line.strip().startswith('#'):
                 continue

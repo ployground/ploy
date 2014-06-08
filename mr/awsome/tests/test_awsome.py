@@ -583,7 +583,7 @@ class ListCommandTests(TestCase):
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
-        output = filter(None, output.split('\n'))
+        output = filter(None, output.splitlines())
         assert len(output) == 1
 
     def testCallWithExistingListAndDummySnapshots(self):
@@ -607,7 +607,7 @@ class ListCommandTests(TestCase):
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
-        output = filter(None, output.split('\n'))
+        output = filter(None, output.splitlines())
         assert len(output) == 2
         assert output[0] == 'get_masters called'
 
@@ -625,7 +625,7 @@ class ListCommandTests(TestCase):
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
-        output = filter(None, output.split('\n'))
+        output = filter(None, output.splitlines())
         assert len(output) == 2
         assert 'description' in output[0]
         assert output[1].split() == [
@@ -786,7 +786,7 @@ class HelpCommandTests(TestCase):
         with patch('sys.stdout') as StdOutMock:
             self.aws(['./bin/aws', 'help', '-z'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
-        self.assertIn('start', output.split('\n'))
+        self.assertIn('start', output.splitlines())
 
     def testZSHHelperCommand(self):
         import mr.awsome.tests.dummy_plugin
