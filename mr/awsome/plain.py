@@ -3,6 +3,7 @@ from mr.awsome.common import BaseMaster, BaseInstance, import_paramiko, yesno
 import getpass
 import logging
 import os
+import socket
 import sys
 
 
@@ -152,7 +153,7 @@ class Instance(BaseInstance):
                     os.remove(known_hosts)
                     open(known_hosts, 'w').close()
                 client.get_host_keys().clear()
-            except paramiko.SSHException:
+            except (paramiko.SSHException, socket.error):
                 log.error('Failed to connect to %s (%s)' % (self.id, hostname))
                 for option in ('username', 'password', 'port', 'key_filename', 'sock'):
                     if client_args[option] is not None:

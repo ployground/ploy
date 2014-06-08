@@ -4,6 +4,10 @@ Changelog
 1.0rc5 - unreleased
 -------------------
 
+* Catch socket errors in init_ssh_key of plain instances to print additional
+  info for debugging.
+  [fschulze]
+
 * Delay setting of config file path to expose too early use of config in
   plugins. Refs #29
   [fschulze]
