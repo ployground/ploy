@@ -4,6 +4,9 @@ Changelog
 1.0rc5 - unreleased
 -------------------
 
+* Allow overwriting the command name in help messages for bsdploy.
+  [fschulze]
+
 * Make debug command usable for instances that don't have a startup script.
   [fschulze]
 

@@ -32,7 +32,7 @@ class LazyInstanceDict(dict):
 
 
 class AWS(object):
-    def __init__(self, configpath=None, configname=None):
+    def __init__(self, configpath=None, configname=None, progname=None):
         plog = logging.getLogger('paramiko.transport')
         log.setLevel(logging.INFO)
         plog.setLevel(logging.WARN)
@@ -46,6 +46,9 @@ class AWS(object):
             configpath = 'etc'
         self.configname = configname
         self.configpath = configpath
+        if progname is None:
+            progname = 'aws'
+        self.progname = 'aws'
 
     @lazy
     def plugins(self):
@@ -136,7 +139,7 @@ class AWS(object):
     def cmd_status(self, argv, help):
         """Prints status"""
         parser = argparse.ArgumentParser(
-            prog="aws status",
+            prog="%s status" % self.progname,
             description=help,
         )
         instances = self.get_instances(command='status')
@@ -151,7 +154,7 @@ class AWS(object):
     def cmd_stop(self, argv, help):
         """Stops the instance"""
         parser = argparse.ArgumentParser(
-            prog="aws stop",
+            prog="%s stop" % self.progname,
             description=help,
         )
         instances = self.get_instances(command='stop')
@@ -166,7 +169,7 @@ class AWS(object):
     def cmd_terminate(self, argv, help):
         """Terminates the instance"""
         parser = argparse.ArgumentParser(
-            prog="aws terminate",
+            prog="%s terminate" % self.progname,
             description=help,
         )
         instances = self.get_instances(command='terminate')
@@ -198,7 +201,7 @@ class AWS(object):
     def cmd_start(self, argv, help):
         """Starts the instance"""
         parser = argparse.ArgumentParser(
-            prog="aws start",
+            prog="%s start" % self.progname,
             description=help,
         )
         instances = self.get_instances(command='start')
@@ -222,7 +225,7 @@ class AWS(object):
     def cmd_debug(self, argv, help):
         """Prints some debug info for this script"""
         parser = argparse.ArgumentParser(
-            prog="aws debug",
+            prog="%s debug" % self.progname,
             description=help,
         )
         instances = self.instances
@@ -289,7 +292,7 @@ class AWS(object):
     def cmd_list(self, argv, help):
         """Return a list of various AWS things"""
         parser = argparse.ArgumentParser(
-            prog="aws list",
+            prog="%s list" % self.progname,
             description=help,
         )
         parser.add_argument("list", nargs=1,
@@ -310,7 +313,7 @@ class AWS(object):
     def cmd_ssh(self, argv, help):
         """Log into the server with ssh using the automatically generated known hosts"""
         parser = argparse.ArgumentParser(
-            prog="aws ssh",
+            prog="%s ssh" % self.progname,
             description=help,
         )
         instances = self.get_instances(command='init_ssh_key')
@@ -384,7 +387,7 @@ class AWS(object):
     def cmd_snapshot(self, argv, help):
         """Creates a snapshot of the volumes specified in the configuration"""
         parser = argparse.ArgumentParser(
-            prog="aws snapshot",
+            prog="%s snapshot" % self.progname,
             description=help,
         )
         instances = self.get_instances(command='snapshot')
@@ -399,7 +402,7 @@ class AWS(object):
     def cmd_help(self, argv, help):
         """Print help"""
         parser = argparse.ArgumentParser(
-            prog="aws help",
+            prog="%s help" % self.progname,
             description=help,
         )
         parser.add_argument('-z', '--zsh',
@@ -480,14 +483,14 @@ class AWS(object):
         args.func(sub_argv, args.func.__doc__)
 
 
-def aws(configpath=None, configname=None):  # pragma: no cover
+def aws(configpath=None, configname=None, progname=None):  # pragma: no cover
     argv = sys.argv[:]
-    aws = AWS(configpath=configpath, configname=configname)
+    aws = AWS(configpath=configpath, configname=configname, progname=progname)
     return aws(argv)
 
 
-def aws_ssh(configpath=None, configname=None):  # pragma: no cover
+def aws_ssh(configpath=None, configname=None, progname=None):  # pragma: no cover
     argv = sys.argv[:]
     argv.insert(1, "ssh")
-    aws = AWS(configpath=configpath, configname=configname)
+    aws = AWS(configpath=configpath, configname=configname, progname=progname)
     return aws(argv)
