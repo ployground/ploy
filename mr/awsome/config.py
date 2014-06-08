@@ -51,13 +51,17 @@ class IntegerMassager(BaseMassager):
         return int(value)
 
 
+def expand_path(value, base):
+    value = os.path.expanduser(value)
+    if not os.path.isabs(value):
+        value = os.path.join(base, value)
+    return value
+
+
 class PathMassager(BaseMassager):
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
-        value = os.path.expanduser(value)
-        if not os.path.isabs(value):
-            value = os.path.join(self.path(config, sectionname), value)
-        return value
+        return expand_path(value, self.path(config, sectionname))
 
 
 def resolve_dotted_name(value):
