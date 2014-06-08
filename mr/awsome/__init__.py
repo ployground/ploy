@@ -225,7 +225,7 @@ class AWS(object):
             prog="aws debug",
             description=help,
         )
-        instances = self.get_instances(command='startup_script')
+        instances = self.instances
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
@@ -245,32 +245,40 @@ class AWS(object):
         overrides = self._parse_overrides(args)
         overrides['servers'] = self.instances
         server = instances[args.server[0]]
-        startup_script = server.startup_script(overrides=overrides, debug=True)
-        max_size = getattr(server, 'max_startup_script_size', 16 * 1024)
-        log.info("Length of startup script: %s/%s", len(startup_script['raw']), max_size)
-        if args.verbose:
-            if 'startup_script' in server.config:
-                if startup_script['original'] == startup_script['raw']:
-                    log.info("Startup script:")
-                elif args.raw:
-                    log.info("Compressed startup script:")
+        if hasattr(server, 'startup_script'):
+            startup_script = server.startup_script(overrides=overrides, debug=True)
+            max_size = getattr(server, 'max_startup_script_size', 16 * 1024)
+            log.info("Length of startup script: %s/%s", len(startup_script['raw']), max_size)
+            if args.verbose:
+                if 'startup_script' in server.config:
+                    if startup_script['original'] == startup_script['raw']:
+                        log.info("Startup script:")
+                    elif args.raw:
+                        log.info("Compressed startup script:")
+                    else:
+                        log.info("Uncompressed startup script:")
                 else:
-                    log.info("Uncompressed startup script:")
-            else:
-                log.info("No startup script specified")
-        if args.raw:
-            print startup_script['raw'],
-        elif args.verbose:
-            print startup_script['original'],
+                    log.info("No startup script specified")
+            if args.raw:
+                print startup_script['raw'],
+            elif args.verbose:
+                print startup_script['original'],
         if args.console_output:
-            print server.instance.get_console_output().output
+            if hasattr(server.instance, 'get_console_output'):
+                print server.instance.get_console_output().output
+            else:
+                log.error("The instance doesn't support console output.")
         if args.interactive:  # pragma: no cover
             import readline
-            conn = server.conn
-            instance = server.instance
-            conn, instance  # shutup pyflakes
+            from pprint import pprint
+            local = dict(
+                aws=self,
+                instances=self.instances,
+                server=server,
+                pprint=pprint)
+            if hasattr(server, 'instance'):
+                local['instance'] = server.instance
             readline.parse_and_bind('tab: complete')
-            local = locals()
             try:
                 import rlcompleter
                 readline.set_completer(rlcompleter.Completer(local).complete)
