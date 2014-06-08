@@ -48,7 +48,7 @@ class AWS(object):
         self.configpath = configpath
         if progname is None:
             progname = 'aws'
-        self.progname = 'aws'
+        self.progname = progname
 
     @lazy
     def plugins(self):
