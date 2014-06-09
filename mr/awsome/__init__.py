@@ -364,23 +364,7 @@ class AWS(object):
         client = ssh_info['client']
         client.get_transport().sock.close()
         client.close()
-        additional_args = []
-        for key in ssh_info:
-            if key[0].isupper():
-                additional_args.append('-o')
-                additional_args.append('%s=%s' % (key, ssh_info[key]))
-        if 'user' in ssh_info:
-            additional_args.append('-l')
-            additional_args.append(ssh_info['user'])
-        if 'port' in ssh_info:
-            additional_args.append('-p')
-            additional_args.append(str(ssh_info['port']))
-        if 'host' in ssh_info:
-            additional_args.append(ssh_info['host'])
-        if server.config.get('ssh-key-filename'):
-            additional_args.append('-i')
-            additional_args.append(server.config.get('ssh-key-filename'))
-        argv[sid_index:sid_index + 1] = additional_args
+        argv[sid_index:sid_index + 1] = server.ssh_args_from_info(ssh_info)
         argv[0:0] = ['ssh']
         os.execvp('ssh', argv)
 

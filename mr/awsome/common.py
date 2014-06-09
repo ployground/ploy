@@ -201,6 +201,25 @@ class BaseInstance(object):
         return self.master.main_config.get_section_with_overrides(
             self.sectiongroupname, self.id, overrides)
 
+    def ssh_args_from_info(self, ssh_info):
+        additional_args = []
+        for key in ssh_info:
+            if key[0].isupper():
+                additional_args.append('-o')
+                additional_args.append('%s=%s' % (key, ssh_info[key]))
+        if 'user' in ssh_info:
+            additional_args.append('-l')
+            additional_args.append(ssh_info['user'])
+        if 'port' in ssh_info:
+            additional_args.append('-p')
+            additional_args.append(str(ssh_info['port']))
+        if 'host' in ssh_info:
+            additional_args.append(ssh_info['host'])
+        if self.config.get('ssh-key-filename'):
+            additional_args.append('-i')
+            additional_args.append(self.config.get('ssh-key-filename'))
+        return additional_args
+
 
 class Hooks(object):
     def __init__(self):

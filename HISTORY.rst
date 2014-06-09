@@ -4,6 +4,11 @@ Changelog
 1.0rc5 - unreleased
 -------------------
 
+* Provide helper method ``ssh_args_from_info`` on BaseInstance to get the
+  arguments for running the ssh executable from the info provided by
+  init_ssh_key.
+  [fschulze]
+
 * Allow overwriting the command name in help messages for bsdploy.
   [fschulze]
 
