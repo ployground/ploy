@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0rc5 - unreleased
+1.0rc5 - 2014-06-09
 -------------------
 
 * Provide helper method ``ssh_args_from_info`` on BaseInstance to get the
