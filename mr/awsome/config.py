@@ -12,6 +12,9 @@ import warnings
 log = logging.getLogger('mr.awsome')
 
 
+_marker = object()
+
+
 def value_asbool(value):
     if isinstance(value, bool):
         return value
@@ -27,7 +30,7 @@ class BaseMassager(object):
         self.key = key
 
     def path(self, config, sectionname):
-        return config._dict[self.key].path
+        return config.get_path(self.key)
 
     def __call__(self, config, sectionname):
         value = config._dict[self.key]
@@ -128,6 +131,12 @@ class ConfigSection(DictMixin):
 
     def __delitem__(self, key):
         del self._dict[key]
+
+    def get_path(self, key, default=_marker):
+        if default is not _marker:
+            if key not in self._dict:
+                return default
+        return self._dict[key].path
 
     def __getitem__(self, key):
         if key == '__groupname__':

@@ -4,6 +4,8 @@ Changelog
 1.0rc6 - unreleased
 -------------------
 
+* Add ``get_path`` method to ConfigSection class.
+  [fschulze]
 
 
 1.0rc5 - 2014-06-09
