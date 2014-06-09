@@ -203,7 +203,7 @@ class BaseInstance(object):
 
     def ssh_args_from_info(self, ssh_info):
         additional_args = []
-        for key in ssh_info:
+        for key in sorted(ssh_info):
             if key[0].isupper():
                 additional_args.append('-o')
                 additional_args.append('%s=%s' % (key, ssh_info[key]))
