@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0rc6 - unreleased
+1.0rc6 - 2014-06-10
 -------------------
 
 * Add ``get_path`` method to ConfigSection class.
