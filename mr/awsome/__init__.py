@@ -238,7 +238,7 @@ class AWS(object):
         parser.add_argument("-c", "--console-output", dest="console_output",
                             action="store_true", help="Prints the console output of the instance if available")
         parser.add_argument("-i", "--interactive", dest="interactive",
-                            action="store_true", help="Creates a connection and drops you into pdb")
+                            action="store_true", help="Creates a connection and drops you into an interactive Python session")
         parser.add_argument("-r", "--raw", dest="raw",
                             action="store_true", help="Outputs the raw possibly compressed startup script")
         parser.add_argument("-o", "--override", nargs="*", type=str,
