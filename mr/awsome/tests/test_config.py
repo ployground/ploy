@@ -4,8 +4,6 @@ from mr.awsome.config import Config
 from unittest2 import TestCase
 import os
 import pytest
-import shutil
-import tempfile
 
 
 class ConfigTests(TestCase):
@@ -66,7 +64,7 @@ class ConfigTests(TestCase):
             "[macro]",
             "<=macro",
             "macrovalue=1"]))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             Config(contents).parse()
 
     def testMacroCleaners(self):
@@ -158,7 +156,7 @@ def test_value_asbool(value, expected):
     assert value_asbool(value) == expected
 
 
-class MassagerTests(TestCase):
+class MassagerTests:
     def setUp(self):
         TestCase.setUp(self)
         self.dummyplugin = DummyPlugin()
@@ -208,7 +206,7 @@ class MassagerTests(TestCase):
             "[section:foo]",
             "value=foo"]))
         config = Config(contents, plugins=self.plugins).parse()
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             config['section']['foo']['value']
 
     def testIntegerMassager(self):
@@ -224,7 +222,7 @@ class MassagerTests(TestCase):
             "[section:foo]",
             "value=foo"]))
         config = Config(contents, plugins=self.plugins).parse()
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             config['section']['foo']['value']
 
     def testPathMassager(self):
@@ -499,17 +497,14 @@ class MassagersFromConfigTests(TestCase):
                 (("Can't import massager from '%s'.\n%s", 'mr.awsome.foobar', "'module' object has no attribute 'foobar'"), {})])
 
 
-class ConfigExtendTests(TestCase):
-    def setUp(self):
-        self.directory = tempfile.mkdtemp()
-
-    def tearDown(self):
-        shutil.rmtree(self.directory)
-        del self.directory
+class ConfigExtendTests:
+    @pytest.fixture(autouse=True)
+    def setup_tempdir(self, tempdir):
+        self.tempdir = tempdir
+        self.directory = tempdir.directory
 
     def _write_config(self, conf, content):
-        with open(os.path.join(self.directory, conf), 'w') as f:
-            f.write(content)
+        self.tempdir[conf].fill(content)
 
     def testExtend(self):
         awsconf = 'aws.conf'
@@ -594,7 +589,5 @@ class ConfigExtendTests(TestCase):
         with patch('mr.awsome.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(os.path.join(self.directory, awsconf)).parse()
-        self.assertEquals(
-            LogMock.error.call_args_list,
-            [
-                (("Config file '%s' doesn't exist.", os.path.join(self.directory, 'foo.conf')), {})])
+        assert LogMock.error.call_args_list == [
+            (("Config file '%s' doesn't exist.", os.path.join(self.directory, 'foo.conf')), {})]

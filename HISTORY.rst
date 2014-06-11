@@ -4,6 +4,9 @@ Changelog
 1.0rc7 - unreleased
 -------------------
 
+* Expose some test fixtures for reuse in plugins.
+  [fschulze]
+
 * Add before_terminate and after_start hooks and make it simple for plugins
   to add their own hooks.
   [fschulze]

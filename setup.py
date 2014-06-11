@@ -37,4 +37,6 @@ setup(
         assh = mr.awsome:aws_ssh
         [mr.awsome.plugins]
         plain = mr.awsome.plain:plugin
+        [pytest11]
+        mr_awsome = mr.awsome.tests.pytest_plugin
     """)

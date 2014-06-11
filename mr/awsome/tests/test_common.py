@@ -5,8 +5,6 @@ from mr.awsome.config import Config, StartupScriptMassager
 from unittest2 import TestCase
 import os
 import pytest
-import shutil
-import tempfile
 
 
 class MockAWS(object):
@@ -29,12 +27,10 @@ class MockInstance(BaseInstance, StartupScriptMixin):
 
 
 class StartupScriptTests(TestCase):
-    def setUp(self):
-        self.directory = tempfile.mkdtemp()
-
-    def tearDown(self):
-        shutil.rmtree(self.directory)
-        del self.directory
+    @pytest.fixture(autouse=True)
+    def setup_tempdir(self, tempdir):
+        self.tempdir = tempdir
+        self.directory = tempdir.directory
 
     def _create_config(self, contents, path=None):
         contents = StringIO(contents)
@@ -59,15 +55,14 @@ class StartupScriptTests(TestCase):
             path=self.directory)
         instance.master = MockMaster(config)
         with patch('mr.awsome.common.log') as CommonLogMock:
-            with self.assertRaises(SystemExit):
+            with pytest.raises(SystemExit):
                 instance.startup_script()
         CommonLogMock.error.assert_called_with(
             "Startup script '%s' not found.",
             os.path.join(self.directory, 'foo'))
 
     def testEmptyStartupScript(self):
-        with open(os.path.join(self.directory, 'foo'), 'w') as f:
-            f.write("")
+        self.tempdir['foo'].fill("")
         instance = MockInstance()
         config = self._create_config(
             "\n".join([
@@ -79,8 +74,7 @@ class StartupScriptTests(TestCase):
         self.assertMultiLineEqual(result, "")
 
     def testGzip(self):
-        with open(os.path.join(self.directory, 'foo'), 'w') as f:
-            f.write("")
+        self.tempdir['foo'].fill("")
         instance = MockInstance()
         config = self._create_config(
             "\n".join([
@@ -102,13 +96,12 @@ class StartupScriptTests(TestCase):
         self.assertEqual(body, "\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00")
 
     def test_strip_hashcomments(self):
-        with open(os.path.join(self.directory, 'foo'), 'w') as f:
-            f.write("\n".join([
-                "#!/bin/bash",
-                "some command",
-                "#some comment",
-                "    # an indented comment",
-                "and another command"]))
+        self.tempdir['foo'].fill([
+            "#!/bin/bash",
+            "some command",
+            "#some comment",
+            "    # an indented comment",
+            "and another command"])
         instance = MockInstance()
         config = self._create_config(
             "\n".join([
@@ -123,8 +116,7 @@ class StartupScriptTests(TestCase):
             "and another command"])
 
     def testMaxSizeOk(self):
-        with open(os.path.join(self.directory, 'foo'), 'w') as f:
-            f.write("")
+        self.tempdir['foo'].fill("")
         instance = MockInstance()
         config = self._create_config(
             "\n".join([
@@ -137,8 +129,7 @@ class StartupScriptTests(TestCase):
         self.assertMultiLineEqual(result, "")
 
     def testMaxSizeExceeded(self):
-        with open(os.path.join(self.directory, 'foo'), 'w') as f:
-            f.write("aaaaabbbbbccccc")
+        self.tempdir['foo'].fill("aaaaabbbbbccccc")
         instance = MockInstance()
         config = self._create_config(
             "\n".join([
@@ -148,13 +139,12 @@ class StartupScriptTests(TestCase):
         instance.master = MockMaster(config)
         instance.max_startup_script_size = 10
         with patch('mr.awsome.common.log') as LogMock:
-            with self.assertRaises(SystemExit):
+            with pytest.raises(SystemExit):
                 instance.startup_script()
             LogMock.error.assert_called_with('Startup script too big (%s > %s).', 15, 10)
 
     def testMaxSizeExceededDebug(self):
-        with open(os.path.join(self.directory, 'foo'), 'w') as f:
-            f.write("aaaaabbbbbccccc")
+        self.tempdir['foo'].fill("aaaaabbbbbccccc")
         instance = MockInstance()
         config = self._create_config(
             "\n".join([

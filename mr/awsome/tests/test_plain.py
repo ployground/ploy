@@ -39,7 +39,7 @@ class PlainTests(TestCase):
         self._write_config('\n'.join([
             '[plain-instance:foo]']))
         with patch('sys.stderr') as StdErrMock:
-            with self.assertRaises(SystemExit):
+            with pytest.raises(SystemExit):
                 self.aws(['./bin/aws', 'status', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         self.assertIn("invalid choice: 'foo'", output)
@@ -48,7 +48,7 @@ class PlainTests(TestCase):
         self._write_config('\n'.join([
             '[plain-instance:foo]']))
         with patch('sys.stderr') as StdErrMock:
-            with self.assertRaises(SystemExit):
+            with pytest.raises(SystemExit):
                 self.aws(['./bin/aws', 'start', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         self.assertIn("invalid choice: 'foo'", output)
@@ -57,7 +57,7 @@ class PlainTests(TestCase):
         self._write_config('\n'.join([
             '[plain-instance:foo]']))
         with patch('sys.stderr') as StdErrMock:
-            with self.assertRaises(SystemExit):
+            with pytest.raises(SystemExit):
                 self.aws(['./bin/aws', 'stop', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         self.assertIn("invalid choice: 'foo'", output)
@@ -66,7 +66,7 @@ class PlainTests(TestCase):
         self._write_config('\n'.join([
             '[plain-instance:foo]']))
         with patch('sys.stderr') as StdErrMock:
-            with self.assertRaises(SystemExit):
+            with pytest.raises(SystemExit):
                 self.aws(['./bin/aws', 'stop', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         self.assertIn("invalid choice: 'foo'", output)
@@ -75,7 +75,7 @@ class PlainTests(TestCase):
         self._write_config('\n'.join([
             '[plain-instance:foo]']))
         with patch('mr.awsome.log') as LogMock:
-            with self.assertRaises(SystemExit):
+            with pytest.raises(SystemExit):
                 self.aws(['./bin/aws', 'ssh', 'foo'])
         self.assertEquals(
             LogMock.error.call_args_list, [
@@ -91,7 +91,7 @@ class PlainTests(TestCase):
         self.ssh_client_mock().connect.side_effect = self.paramiko.SSHException(
             "Fingerprint doesn't match for localhost (got bar, expected foo)")
         with patch('mr.awsome.log') as LogMock:
-            with self.assertRaises(SystemExit):
+            with pytest.raises(SystemExit):
                 self.aws(['./bin/aws', 'ssh', 'foo'])
         self.assertEquals(
             LogMock.error.call_args_list, [

@@ -1,22 +1,15 @@
 from mr.awsome.template import Template
 from unittest2 import TestCase
-import os
-import shutil
-import tempfile
+import pytest
 
 
 class TemplateTests(TestCase):
-    def setUp(self):
-        self.directory = tempfile.mkdtemp()
-        self.template_path = os.path.join(self.directory, 'template.txt')
-
-    def tearDown(self):
-        shutil.rmtree(self.directory)
-        del self.directory
-
-    def _fillTemplate(self, data):
-        with open(self.template_path, "w") as f:
-            f.write(data)
+    @pytest.fixture(autouse=True)
+    def setup_tempdir(self, tempdir):
+        self.tempdir = tempdir
+        self.template = tempdir['template.txt']
+        self.template_path = self.template.path
+        self._fillTemplate = self.template.fill
 
     def testEmpty(self):
         self._fillTemplate("")
@@ -52,16 +45,14 @@ class TemplateTests(TestCase):
     def testEscapeEolOption(self):
         self._fillTemplate("option: file,escape_eol test.txt\n\n{option}")
         template = Template(self.template_path)
-        with open(os.path.join(self.directory, 'test.txt'), "w") as f:
-            f.write("1\n2\n")
+        self.tempdir['test.txt'].fill("1\n2\n")
         result = template()
         self.assertMultiLineEqual(result, "1\\n2\\n")
 
     def testFileOption(self):
         self._fillTemplate("option: file test.txt\n\n{option}")
         template = Template(self.template_path)
-        with open(os.path.join(self.directory, 'test.txt'), "w") as f:
-            f.write("1")
+        self.tempdir['test.txt'].fill("1")
         result = template()
         self.assertMultiLineEqual(result, "1")
 
@@ -85,13 +76,12 @@ class TemplateTests(TestCase):
     def testTemplateOption(self):
         self._fillTemplate("template: template test.txt\n\n{template}")
         template = Template(self.template_path)
-        with open(os.path.join(self.directory, 'test.txt'), "w") as f:
-            f.write("option: format 1\n\n{option}")
+        self.tempdir['test.txt'].fill("option: format 1\n\n{option}")
         result = template()
         self.assertMultiLineEqual(result, "1")
 
     def testUnkownOption(self):
         self._fillTemplate("option: foo 1\n\n{option}")
         template = Template(self.template_path)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             template()
