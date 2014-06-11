@@ -159,17 +159,10 @@ class InstanceHooks(object):
             if func is not None:
                 yield func
 
-    def after_terminate(self, server):
-        for func in self._iter_funcs('after_terminate'):
-            func(server)
-
-    def before_start(self, server):
-        for func in self._iter_funcs('before_start'):
-            func(server)
-
-    def startup_script_options(self, options):
-        for func in self._iter_funcs('startup_script_options'):
-            func(options)
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: [
+            func(*args, **kwargs)
+            for func in self._iter_funcs(name)]
 
 
 class BaseInstance(object):

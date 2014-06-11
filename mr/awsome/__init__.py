@@ -179,6 +179,7 @@ class AWS(object):
                             choices=list(instances))
         args = parser.parse_args(argv)
         server = instances[args.server[0]]
+        server.hooks.before_terminate(server)
         server.terminate()
         server.hooks.after_terminate(server)
 
@@ -218,6 +219,7 @@ class AWS(object):
         server = instances[args.server[0]]
         server.hooks.before_start(server)
         instance = server.start(overrides)
+        server.hooks.after_start(server)
         if instance is None:
             return
         server.status()
