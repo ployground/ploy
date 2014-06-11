@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0rc7 - unreleased
+1.0rc7 - 2014-06-11
 -------------------
 
 * Expose some test fixtures for reuse in plugins.
