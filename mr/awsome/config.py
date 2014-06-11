@@ -58,7 +58,7 @@ def expand_path(value, base):
     value = os.path.expanduser(value)
     if not os.path.isabs(value):
         value = os.path.join(base, value)
-    return value
+    return os.path.normpath(value)
 
 
 class PathMassager(BaseMassager):
