@@ -20,6 +20,8 @@ class File:
         self.path = path
 
     def fill(self, content):
+        if not os.path.exists(self.directory):
+            os.makedirs(self.directory)
         with open(self.path, 'w') as f:
             if hasattr(content, '__iter__'):
                 content = '\n'.join(content)
@@ -43,4 +45,4 @@ def tempdir():
 def awsconf(tempdir):
     """ Returns a Configfile object which manages aws.conf.
     """
-    yield tempdir['aws.conf']
+    yield tempdir['etc/aws.conf']

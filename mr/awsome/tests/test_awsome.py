@@ -99,8 +99,9 @@ class AwsomeTests(TestCase):
 
 class StartCommandTests(TestCase):
     @pytest.fixture(autouse=True)
-    def setup_aws(self, awsconf):
+    def setup_aws(self, awsconf, tempdir):
         self.directory = awsconf.directory
+        self.tempdir = tempdir
         self.aws = AWS(awsconf.directory)
         self.aws.configfile = awsconf.path
         self._write_config = awsconf.fill
@@ -220,12 +221,11 @@ class StartCommandTests(TestCase):
     def testHook(self):
         import mr.awsome.tests.dummy_plugin
         self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
-        startup = os.path.join(self.directory, 'startup')
-        with open(startup, 'w') as f:
-            f.write(';;;;;;;;;;')
+        startup = self.tempdir['startup']
+        startup.fill(';;;;;;;;;;')
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
-            'startup_script = %s' % startup,
+            'startup_script = %s' % startup.path,
             'hooks = mr.awsome.tests.test_awsome.DummyHooks']))
         with patch('mr.awsome.tests.test_awsome.log') as LogMock:
             self.aws(['./bin/aws', 'start', 'foo'])
@@ -735,7 +735,7 @@ class InstanceTests(TestCase):
             '[dummy-master:master]',
             '[instance:foo]',
             'master = master',
-            'startup_script = startup'])
+            'startup_script = ../startup'])
         tempdir['startup'].fill('startup')
         self.aws = AWS(awsconf.directory)
         self.aws.configfile = awsconf.path
