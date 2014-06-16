@@ -4,6 +4,8 @@ Changelog
 1.0rc8 - unreleased
 -------------------
 
+* Give a bit more info on ssh connection failures.
+  [fschulze]
 
 
 1.0rc7 - 2014-06-11

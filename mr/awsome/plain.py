@@ -146,6 +146,10 @@ class Instance(BaseInstance):
                 break
             except paramiko.AuthenticationException:
                 if not self.config.get('password-fallback', False):
+                    log.error('Failed to connect to %s (%s)' % (self.id, hostname))
+                    for option in ('username', 'password', 'port', 'key_filename', 'sock'):
+                        if client_args[option] is not None:
+                            log.error('%s: %r' % (option, client_args[option]))
                     raise
                 if password is None and 'password' in self.config:
                     password = self.config['password']
