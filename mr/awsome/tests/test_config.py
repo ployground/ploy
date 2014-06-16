@@ -156,18 +156,13 @@ def test_value_asbool(value, expected):
     assert value_asbool(value) == expected
 
 
-class MassagerTests:
-    def setUp(self):
-        TestCase.setUp(self)
+class MassagerTests(TestCase):
+    @pytest.fixture(autouse=True)
+    def setup_dummyplugin(self):
         self.dummyplugin = DummyPlugin()
         self.plugins = dict(
             dummy=dict(
                 get_massagers=self.dummyplugin.get_massagers))
-
-    def tearDown(self):
-        TestCase.tearDown(self)
-        del self.plugins
-        del self.dummyplugin
 
     def testBaseMassager(self):
         from mr.awsome.config import BaseMassager
@@ -497,7 +492,7 @@ class MassagersFromConfigTests(TestCase):
                 (("Can't import massager from '%s'.\n%s", 'mr.awsome.foobar', "'module' object has no attribute 'foobar'"), {})])
 
 
-class ConfigExtendTests:
+class ConfigExtendTests(TestCase):
     @pytest.fixture(autouse=True)
     def setup_tempdir(self, tempdir):
         self.tempdir = tempdir
