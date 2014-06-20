@@ -1,4 +1,4 @@
-from mr.awsome.template import Template
+from ploy.template import Template
 from unittest2 import TestCase
 import pytest
 

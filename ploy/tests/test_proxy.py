@@ -1,63 +1,63 @@
-from mr.awsome.proxy import ProxyInstance
+from ploy.proxy import ProxyInstance
 import pytest
 
 
 @pytest.fixture
-def aws(awsconf):
-    from mr.awsome import AWS
-    import mr.awsome.plain
-    import mr.awsome.tests.dummy_proxy_plugin
-    awsconf.fill([''])
-    aws = AWS(configpath=awsconf.directory)
-    aws.plugins = {
-        'dummy': mr.awsome.tests.dummy_proxy_plugin.plugin,
-        'plain': mr.awsome.plain.plugin}
-    aws.configfile = awsconf.path
-    return aws
+def ctrl(ployconf):
+    from ploy import Controller
+    import ploy.plain
+    import ploy.tests.dummy_proxy_plugin
+    ployconf.fill([''])
+    ctrl = Controller(configpath=ployconf.directory)
+    ctrl.plugins = {
+        'dummy': ploy.tests.dummy_proxy_plugin.plugin,
+        'plain': ploy.plain.plugin}
+    ctrl.configfile = ployconf.path
+    return ctrl
 
 
-def test_proxy_with_default_instance_object(aws, awsconf):
-    from mr.awsome.tests.dummy_plugin import Instance
-    awsconf.fill([
+def test_proxy_with_default_instance_object(ctrl, ployconf):
+    from ploy.tests.dummy_plugin import Instance
+    ployconf.fill([
         '[dummy-master:foo]'])
-    master = aws.masters['foo']
+    master = ctrl.masters['foo']
     assert isinstance(master.instance, ProxyInstance)
-    assert isinstance(master.instance.instance, Instance)
+    assert isinstance(master.instance._proxied_instance, Instance)
 
 
-def test_proxy_instance(aws, awsconf):
-    from mr.awsome.plain import Instance
-    awsconf.fill([
+def test_proxy_instance(ctrl, ployconf):
+    from ploy.plain import Instance
+    ployconf.fill([
         '[plain-instance:bar]',
         '[dummy-master:foo]',
         'instance = bar'])
-    master = aws.masters['foo']
+    master = ctrl.masters['foo']
     assert isinstance(master.instance, ProxyInstance)
-    assert isinstance(master.instance.instance, Instance)
+    assert isinstance(master.instance._proxied_instance, Instance)
 
 
-def test_proxy_nonexisting_instance(aws, awsconf):
-    awsconf.fill([
+def test_proxy_nonexisting_instance(ctrl, ployconf):
+    ployconf.fill([
         '[dummy-master:foo]',
         'instance = bar'])
-    master = aws.masters['foo']
+    master = ctrl.masters['foo']
     assert isinstance(master.instance, ProxyInstance)
     with pytest.raises(ValueError) as e:
         master.instance.instance
     assert e.value.args == ("The to be proxied instance 'bar' for master 'foo' wasn't found.",)
 
 
-def test_proxy_config_values_passed_on(aws, awsconf):
-    awsconf.fill([
+def test_proxy_config_values_passed_on(ctrl, ployconf):
+    ployconf.fill([
         '[plain-instance:bar]',
         'ham = 1',
         '[dummy-master:foo]',
         'instance = bar'])
-    bar = aws.instances['bar']
-    foo = aws.instances['foo']
-    proxy = aws.masters['foo'].instance
+    bar = ctrl.instances['bar']
+    foo = ctrl.instances['foo']
+    proxy = ctrl.masters['foo'].instance
     # we have to trigger the lazy attribute
-    proxied = aws.masters['foo'].instance.instance
+    proxied = ctrl.masters['foo'].instance._proxied_instance
     assert bar.config == {'ham': '1'}
     assert foo.config == {'ham': '1', 'instance': 'bar'}
     assert proxy.config == {'ham': '1', 'instance': 'bar'}

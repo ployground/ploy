@@ -42,7 +42,7 @@ def tempdir():
 
 
 @pytest.yield_fixture
-def awsconf(tempdir):
-    """ Returns a Configfile object which manages aws.conf.
+def ployconf(tempdir):
+    """ Returns a Configfile object which manages ploy.conf.
     """
-    yield tempdir['etc/aws.conf']
+    yield tempdir['etc/ploy.conf']

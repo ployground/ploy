@@ -1,5 +1,5 @@
 from mock import patch
-from mr.awsome import AWS
+from ploy import Controller
 from unittest2 import TestCase
 import logging
 import os
@@ -22,42 +22,42 @@ class DummyHooks(object):
 
 class AwsomeTests(TestCase):
     @pytest.fixture(autouse=True)
-    def setup_configfile(self, awsconf):
-        self.directory = awsconf.directory
-        awsconf.fill([])
-        self.configfile = awsconf
+    def setup_configfile(self, ployconf):
+        self.directory = ployconf.directory
+        ployconf.fill([])
+        self.configfile = ployconf
 
     def testDefaultConfigPath(self):
-        aws = AWS()
-        aws(['./bin/aws', 'help'])
-        self.assertEqual(aws.configfile, 'etc/aws.conf')
+        ctrl = Controller()
+        ctrl(['./bin/ploy', 'help'])
+        self.assertEqual(ctrl.configfile, 'etc/ploy.conf')
 
     def testDirectoryAsConfig(self):
-        aws = AWS(configpath=self.directory)
-        aws(['./bin/aws', 'help'])
-        assert aws.configfile == self.configfile.path
+        ctrl = Controller(configpath=self.directory)
+        ctrl(['./bin/ploy', 'help'])
+        assert ctrl.configfile == self.configfile.path
 
     def testFileConfigName(self):
-        aws = AWS(configpath=self.directory, configname='foo.conf')
-        aws(['./bin/aws', 'help'])
+        ctrl = Controller(configpath=self.directory, configname='foo.conf')
+        ctrl(['./bin/ploy', 'help'])
         self.assertEqual(
-            aws.configfile,
+            ctrl.configfile,
             os.path.join(self.directory, 'foo.conf'))
 
     def testMissingConfig(self):
         os.remove(self.configfile.path)
-        aws = AWS(configpath=self.directory)
-        aws.configfile = self.configfile.path
-        with patch('mr.awsome.log') as LogMock:
+        ctrl = Controller(configpath=self.directory)
+        ctrl.configfile = self.configfile.path
+        with patch('ploy.log') as LogMock:
             with self.assertRaises(SystemExit):
-                aws.config
-            LogMock.error.assert_called_with("Config '%s' doesn't exist." % aws.configfile)
+                ctrl.config
+            LogMock.error.assert_called_with("Config '%s' doesn't exist." % ctrl.configfile)
 
     def testCallWithNoArguments(self):
-        aws = AWS(configpath=self.directory)
+        ctrl = Controller(configpath=self.directory)
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                aws(['./bin/aws'])
+                ctrl(['./bin/ploy'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         self.assertIn('usage:', output)
         self.assertIn('too few arguments', output)
@@ -66,72 +66,72 @@ class AwsomeTests(TestCase):
         open(os.path.join(self.directory, 'foo.conf'), 'w').write('\n'.join([
             '[global]',
             'foo = bar']))
-        aws = AWS(configpath=self.directory)
-        aws(['./bin/aws', '-c', os.path.join(self.directory, 'foo.conf'), 'help'])
-        assert aws.configfile == os.path.join(self.directory, 'foo.conf')
-        assert aws.config == {'global': {'global': {'foo': 'bar'}}}
+        ctrl = Controller(configpath=self.directory)
+        ctrl(['./bin/ploy', '-c', os.path.join(self.directory, 'foo.conf'), 'help'])
+        assert ctrl.configfile == os.path.join(self.directory, 'foo.conf')
+        assert ctrl.config == {'global': {'global': {'foo': 'bar'}}}
 
     def testKnownHostsWithNoConfigErrors(self):
         os.remove(self.configfile.path)
-        aws = AWS(configpath=self.directory)
-        aws.configfile = self.configfile.path
+        ctrl = Controller(configpath=self.directory)
+        ctrl.configfile = self.configfile.path
         with pytest.raises(SystemExit):
-            aws.known_hosts
+            ctrl.known_hosts
 
     def testKnownHosts(self):
-        aws = AWS(configpath=self.directory)
-        aws.configfile = self.configfile.path
+        ctrl = Controller(configpath=self.directory)
+        ctrl.configfile = self.configfile.path
         self.assertEqual(
-            aws.known_hosts,
+            ctrl.known_hosts,
             os.path.join(self.directory, 'known_hosts'))
 
     def testConflictingPluginCommandName(self):
-        aws = AWS(configpath=self.directory)
-        aws.configfile = self.configfile.path
-        aws.plugins = dict(dummy=dict(
+        ctrl = Controller(configpath=self.directory)
+        ctrl.configfile = self.configfile.path
+        ctrl.plugins = dict(dummy=dict(
             get_commands=lambda x: [
                 ('ssh', None)]))
-        with patch('mr.awsome.log') as LogMock:
+        with patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
-                aws([])
+                ctrl([])
         LogMock.error.assert_called_with("Command name '%s' of '%s' conflicts with existing command name.", 'ssh', 'dummy')
 
 
 class StartCommandTests(TestCase):
     @pytest.fixture(autouse=True)
-    def setup_aws(self, awsconf, tempdir):
-        self.directory = awsconf.directory
+    def setup_ctrl(self, ployconf, tempdir):
+        self.directory = ployconf.directory
         self.tempdir = tempdir
-        self.aws = AWS(awsconf.directory)
-        self.aws.configfile = awsconf.path
-        self._write_config = awsconf.fill
+        self.ctrl = Controller(ployconf.directory)
+        self.ctrl.configfile = ployconf.path
+        self._write_config = ployconf.fill
 
     def testCallWithNoArguments(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'start'])
+                self.ctrl(['./bin/ploy', 'start'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws start', output)
+        self.assertIn('usage: ploy start', output)
         self.assertIn('too few arguments', output)
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'start', 'foo'])
+                self.ctrl(['./bin/ploy', 'start', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws start', output)
+        self.assertIn('usage: ploy start', output)
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
-        with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
+        with patch('ploy.tests.dummy_plugin.log') as LogMock:
             try:
-                self.aws(['./bin/aws', 'start', 'foo'])
+                self.ctrl(['./bin/ploy', 'start', 'foo'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         assert len(LogMock.info.call_args_list) == 1
@@ -142,23 +142,23 @@ class StartCommandTests(TestCase):
         assert call_args[2]['servers'].keys() == ['foo']
 
     def testCallWithInvalidOverride(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
-        with patch('mr.awsome.log') as LogMock:
+        with patch('ploy.log') as LogMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'start', 'foo', '-o', 'ham:egg,spam:1'])
+                self.ctrl(['./bin/ploy', 'start', 'foo', '-o', 'ham:egg,spam:1'])
         LogMock.error.assert_called_with("Invalid format for override 'ham:egg,spam:1', should be NAME=VALUE.")
 
     def testCallWithOverride(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
-        with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
+        with patch('ploy.tests.dummy_plugin.log') as LogMock:
             try:
-                self.aws(['./bin/aws', 'start', 'foo', '-o', 'ham=egg'])
+                self.ctrl(['./bin/ploy', 'start', 'foo', '-o', 'ham=egg'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         assert len(LogMock.info.call_args_list) == 2
@@ -170,13 +170,13 @@ class StartCommandTests(TestCase):
         assert LogMock.info.call_args_list[1] == (('status: %s', 'foo'), {})
 
     def testCallWithOverrides(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
-        with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
+        with patch('ploy.tests.dummy_plugin.log') as LogMock:
             try:
-                self.aws(['./bin/aws', 'start', 'foo', '-o', 'ham=egg', 'spam=1'])
+                self.ctrl(['./bin/ploy', 'start', 'foo', '-o', 'ham=egg', 'spam=1'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         assert len(LogMock.info.call_args_list) == 2
@@ -188,47 +188,47 @@ class StartCommandTests(TestCase):
         assert LogMock.info.call_args_list[1] == (('status: %s', 'foo'), {})
 
     def testCallWithMissingStartupScript(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
             'startup_script = %s' % os.path.join(self.directory, 'startup')]))
-        with patch('mr.awsome.common.log') as LogMock:
+        with patch('ploy.common.log') as LogMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'debug', 'foo'])
+                self.ctrl(['./bin/ploy', 'debug', 'foo'])
         LogMock.error.assert_called_with(
             "Startup script '%s' not found.",
             os.path.join(self.directory, 'startup'))
 
     def testCallWithTooBigStartupScript(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         startup = os.path.join(self.directory, 'startup')
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
             'startup_script = %s' % startup]))
         with open(startup, 'w') as f:
             f.write(';;;;;;;;;;' * 150)
-        with patch('mr.awsome.log') as LogMock:
-            with patch('mr.awsome.common.log') as CommonLogMock:
+        with patch('ploy.log') as LogMock:
+            with patch('ploy.common.log') as CommonLogMock:
                 try:
-                    self.aws(['./bin/aws', 'debug', 'foo'])
+                    self.ctrl(['./bin/ploy', 'debug', 'foo'])
                 except SystemExit:  # pragma: no cover - only if something is wrong
                     self.fail("SystemExit raised")
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 1500, 1024)
         CommonLogMock.error.assert_called_with('Startup script too big (%s > %s).', 1500, 1024)
 
     def testHook(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         startup = self.tempdir['startup']
         startup.fill(';;;;;;;;;;')
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
             'startup_script = %s' % startup.path,
-            'hooks = mr.awsome.tests.test_awsome.DummyHooks']))
-        with patch('mr.awsome.tests.test_awsome.log') as LogMock:
-            self.aws(['./bin/aws', 'start', 'foo'])
+            'hooks = ploy.tests.test_ploy.DummyHooks']))
+        with patch('ploy.tests.test_ploy.log') as LogMock:
+            self.ctrl(['./bin/ploy', 'start', 'foo'])
         assert LogMock.info.call_args_list == [
             (('before_start',), {}),
             (('startup_script_options',), {})]
@@ -236,37 +236,37 @@ class StartCommandTests(TestCase):
 
 class StatusCommandTests(TestCase):
     @pytest.fixture(autouse=True)
-    def setup_aws(self, awsconf):
-        self.aws = AWS(awsconf.directory)
-        self.aws.configfile = awsconf.path
-        self._write_config = awsconf.fill
+    def setup_ctrl(self, ployconf):
+        self.ctrl = Controller(ployconf.directory)
+        self.ctrl.configfile = ployconf.path
+        self._write_config = ployconf.fill
 
     def testCallWithNoArguments(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'status'])
+                self.ctrl(['./bin/ploy', 'status'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws status', output)
+        self.assertIn('usage: ploy status', output)
         self.assertIn('too few arguments', output)
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'status', 'foo'])
+                self.ctrl(['./bin/ploy', 'status', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws status', output)
+        self.assertIn('usage: ploy status', output)
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
-        with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
+        with patch('ploy.tests.dummy_plugin.log') as LogMock:
             try:
-                self.aws(['./bin/aws', 'status', 'foo'])
+                self.ctrl(['./bin/ploy', 'status', 'foo'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         LogMock.info.assert_called_with('status: %s', 'foo')
@@ -274,37 +274,37 @@ class StatusCommandTests(TestCase):
 
 class StopCommandTests(TestCase):
     @pytest.fixture(autouse=True)
-    def setup_aws(self, awsconf):
-        self.aws = AWS(awsconf.directory)
-        self.aws.configfile = awsconf.path
-        self._write_config = awsconf.fill
+    def setup_ctrl(self, ployconf):
+        self.ctrl = Controller(ployconf.directory)
+        self.ctrl.configfile = ployconf.path
+        self._write_config = ployconf.fill
 
     def testCallWithNoArguments(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'stop'])
+                self.ctrl(['./bin/ploy', 'stop'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws stop', output)
+        self.assertIn('usage: ploy stop', output)
         self.assertIn('too few arguments', output)
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'stop', 'foo'])
+                self.ctrl(['./bin/ploy', 'stop', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws stop', output)
+        self.assertIn('usage: ploy stop', output)
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
-        with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
+        with patch('ploy.tests.dummy_plugin.log') as LogMock:
             try:
-                self.aws(['./bin/aws', 'stop', 'foo'])
+                self.ctrl(['./bin/ploy', 'stop', 'foo'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         LogMock.info.assert_called_with('stop: %s', 'foo')
@@ -312,124 +312,124 @@ class StopCommandTests(TestCase):
 
 class TerminateCommandTests(TestCase):
     @pytest.fixture(autouse=True)
-    def setup_aws(self, awsconf):
-        self.aws = AWS(awsconf.directory)
-        self.aws.configfile = awsconf.path
-        self._write_config = awsconf.fill
+    def setup_ctrl(self, ployconf):
+        self.ctrl = Controller(ployconf.directory)
+        self.ctrl.configfile = ployconf.path
+        self._write_config = ployconf.fill
 
     def testCallWithNoArguments(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'terminate'])
+                self.ctrl(['./bin/ploy', 'terminate'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws terminate', output)
+        self.assertIn('usage: ploy terminate', output)
         self.assertIn('too few arguments', output)
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'terminate', 'foo'])
+                self.ctrl(['./bin/ploy', 'terminate', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws terminate', output)
+        self.assertIn('usage: ploy terminate', output)
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
-        with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
+        with patch('ploy.tests.dummy_plugin.log') as LogMock:
             try:
-                self.aws(['./bin/aws', 'terminate', 'foo'])
+                self.ctrl(['./bin/ploy', 'terminate', 'foo'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         LogMock.info.assert_called_with('terminate: %s', 'foo')
 
     def testHook(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
-            'hooks = mr.awsome.tests.test_awsome.DummyHooks']))
-        with patch('mr.awsome.tests.test_awsome.log') as LogMock:
-            self.aws(['./bin/aws', 'terminate', 'foo'])
+            'hooks = ploy.tests.test_ploy.DummyHooks']))
+        with patch('ploy.tests.test_ploy.log') as LogMock:
+            self.ctrl(['./bin/ploy', 'terminate', 'foo'])
         assert LogMock.info.call_args_list == [(('after_terminate',), {})]
 
 
 class DebugCommandTests(TestCase):
     @pytest.fixture(autouse=True)
-    def setup_aws(self, awsconf):
-        self.directory = awsconf.directory
-        self.aws = AWS(awsconf.directory)
-        self.aws.configfile = awsconf.path
-        self._write_config = awsconf.fill
+    def setup_ctrl(self, ployconf):
+        self.directory = ployconf.directory
+        self.ctrl = Controller(ployconf.directory)
+        self.ctrl.configfile = ployconf.path
+        self._write_config = ployconf.fill
 
     def testCallWithNoArguments(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'debug'])
+                self.ctrl(['./bin/ploy', 'debug'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws debug', output)
+        self.assertIn('usage: ploy debug', output)
         self.assertIn('too few arguments', output)
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'debug', 'foo'])
+                self.ctrl(['./bin/ploy', 'debug', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws debug', output)
+        self.assertIn('usage: ploy debug', output)
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
-        with patch('mr.awsome.log') as LogMock:
+        with patch('ploy.log') as LogMock:
             try:
-                self.aws(['./bin/aws', 'debug', 'foo'])
+                self.ctrl(['./bin/ploy', 'debug', 'foo'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 0, 1024)
 
     def testCallWithMissingStartupScript(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
             'startup_script = %s' % os.path.join(self.directory, 'startup')]))
-        with patch('mr.awsome.common.log') as LogMock:
+        with patch('ploy.common.log') as LogMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'debug', 'foo'])
+                self.ctrl(['./bin/ploy', 'debug', 'foo'])
         LogMock.error.assert_called_with(
             "Startup script '%s' not found.",
             os.path.join(self.directory, 'startup'))
 
     def testCallWithTooBigStartupScript(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         startup = os.path.join(self.directory, 'startup')
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
             'startup_script = %s' % startup]))
         with open(startup, 'w') as f:
             f.write(';;;;;;;;;;' * 150)
-        with patch('mr.awsome.log') as LogMock:
-            with patch('mr.awsome.common.log') as CommonLogMock:
+        with patch('ploy.log') as LogMock:
+            with patch('ploy.common.log') as CommonLogMock:
                 try:
-                    self.aws(['./bin/aws', 'debug', 'foo'])
+                    self.ctrl(['./bin/ploy', 'debug', 'foo'])
                 except SystemExit:  # pragma: no cover - only if something is wrong
                     self.fail("SystemExit raised")
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 1500, 1024)
         CommonLogMock.error.assert_called_with('Startup script too big (%s > %s).', 1500, 1024)
 
     def testCallWithVerboseOption(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         startup = os.path.join(self.directory, 'startup')
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
@@ -437,9 +437,9 @@ class DebugCommandTests(TestCase):
         with open(startup, 'w') as f:
             f.write('FooBar')
         with patch('sys.stdout') as StdOutMock:
-            with patch('mr.awsome.log') as LogMock:
+            with patch('ploy.log') as LogMock:
                 try:
-                    self.aws(['./bin/aws', 'debug', 'foo', '-v'])
+                    self.ctrl(['./bin/ploy', 'debug', 'foo', '-v'])
                 except SystemExit:  # pragma: no cover - only if something is wrong
                     self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
@@ -449,8 +449,8 @@ class DebugCommandTests(TestCase):
             [(('Length of startup script: %s/%s', 6, 1024), {}), (('Startup script:',), {})])
 
     def testCallWithTemplateStartupScript(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         startup = os.path.join(self.directory, 'startup')
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
@@ -459,9 +459,9 @@ class DebugCommandTests(TestCase):
         with open(startup, 'w') as f:
             f.write('{foo}')
         with patch('sys.stdout') as StdOutMock:
-            with patch('mr.awsome.log') as LogMock:
+            with patch('ploy.log') as LogMock:
                 try:
-                    self.aws(['./bin/aws', 'debug', 'foo', '-v'])
+                    self.ctrl(['./bin/ploy', 'debug', 'foo', '-v'])
                 except SystemExit:  # pragma: no cover - only if something is wrong
                     self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
@@ -471,8 +471,8 @@ class DebugCommandTests(TestCase):
             [(('Length of startup script: %s/%s', 3, 1024), {}), (('Startup script:',), {})])
 
     def testCallWithOverride(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         startup = os.path.join(self.directory, 'startup')
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
@@ -481,9 +481,9 @@ class DebugCommandTests(TestCase):
         with open(startup, 'w') as f:
             f.write('{foo}')
         with patch('sys.stdout') as StdOutMock:
-            with patch('mr.awsome.log') as LogMock:
+            with patch('ploy.log') as LogMock:
                 try:
-                    self.aws(['./bin/aws', 'debug', 'foo', '-v', '-o', 'foo=hamster'])
+                    self.ctrl(['./bin/ploy', 'debug', 'foo', '-v', '-o', 'foo=hamster'])
                 except SystemExit:  # pragma: no cover - only if something is wrong
                     self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
@@ -495,38 +495,38 @@ class DebugCommandTests(TestCase):
 
 class ListCommandTests(TestCase):
     @pytest.fixture(autouse=True)
-    def setup_aws(self, awsconf):
-        self.aws = AWS(awsconf.directory)
-        self.aws.configfile = awsconf.path
-        self._write_config = awsconf.fill
+    def setup_ctrl(self, ployconf):
+        self.ctrl = Controller(ployconf.directory)
+        self.ctrl.configfile = ployconf.path
+        self._write_config = ployconf.fill
 
     def testCallWithNoArguments(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'list'])
+                self.ctrl(['./bin/ploy', 'list'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws list', output)
+        self.assertIn('usage: ploy list', output)
         self.assertIn('too few arguments', output)
 
     def testCallWithNonExistingList(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'list', 'foo'])
+                self.ctrl(['./bin/ploy', 'list', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws list', output)
+        self.assertIn('usage: ploy list', output)
         self.assertIn("argument list: invalid choice: 'foo'", output)
 
     def testCallWithExistingListButNoMastersWithSnapshots(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
             'host = localhost']))
         with patch('sys.stdout') as StdOutMock:
             try:
-                self.aws(['./bin/aws', 'list', 'snapshots'])
+                self.ctrl(['./bin/ploy', 'list', 'snapshots'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
@@ -534,23 +534,23 @@ class ListCommandTests(TestCase):
         assert len(output) == 1
 
     def testCallWithExistingListAndDummySnapshots(self):
-        import mr.awsome.tests.dummy_plugin
+        import ploy.tests.dummy_plugin
         snapshots = {}
 
-        def get_masters(aws):
-            master = mr.awsome.tests.dummy_plugin.Master(
-                aws, 'dummy-master', {})
+        def get_masters(ctrl):
+            master = ploy.tests.dummy_plugin.Master(
+                ctrl, 'dummy-master', {})
             print "get_masters called"
             master.snapshots = snapshots
             return [master]
 
-        self.aws.plugins = {'dummy': {'get_masters': get_masters}}
+        self.ctrl.plugins = {'dummy': {'get_masters': get_masters}}
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
             'host = localhost']))
         with patch('sys.stdout') as StdOutMock:
             try:
-                self.aws(['./bin/aws', 'list', 'snapshots'])
+                self.ctrl(['./bin/ploy', 'list', 'snapshots'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
@@ -568,7 +568,7 @@ class ListCommandTests(TestCase):
             progress=80, description='bar')
         with patch('sys.stdout') as StdOutMock:
             try:
-                self.aws(['./bin/aws', 'list', 'snapshots'])
+                self.ctrl(['./bin/ploy', 'list', 'snapshots'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
@@ -587,40 +587,40 @@ def os_execvp_mock():
 
 class SSHCommandTests(TestCase):
     @pytest.fixture(autouse=True)
-    def setup_aws(self, awsconf, os_execvp_mock):
-        self.directory = awsconf.directory
-        self.aws = AWS(awsconf.directory)
-        self.aws.configfile = awsconf.path
-        self._write_config = awsconf.fill
+    def setup_ctrl(self, ployconf, os_execvp_mock):
+        self.directory = ployconf.directory
+        self.ctrl = Controller(ployconf.directory)
+        self.ctrl.configfile = ployconf.path
+        self._write_config = ployconf.fill
         self.os_execvp_mock = os_execvp_mock
 
     def testCallWithNoArguments(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'ssh'])
+                self.ctrl(['./bin/ploy', 'ssh'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws ssh', output)
+        self.assertIn('usage: ploy ssh', output)
         self.assertIn('too few arguments', output)
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'ssh', 'foo'])
+                self.ctrl(['./bin/ploy', 'ssh', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws ssh', output)
+        self.assertIn('usage: ploy ssh', output)
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
             'host = localhost']))
-        with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
+        with patch('ploy.tests.dummy_plugin.log') as LogMock:
             try:
-                self.aws(['./bin/aws', 'ssh', 'foo'])
+                self.ctrl(['./bin/ploy', 'ssh', 'foo'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         self.assertEquals(
@@ -638,38 +638,38 @@ class SSHCommandTests(TestCase):
 
 class SnapshotCommandTests(TestCase):
     @pytest.fixture(autouse=True)
-    def setup_aws(self, awsconf):
-        self.aws = AWS(awsconf.directory)
-        self.aws.configfile = awsconf.path
-        self._write_config = awsconf.fill
+    def setup_ctrl(self, ployconf):
+        self.ctrl = Controller(ployconf.directory)
+        self.ctrl.configfile = ployconf.path
+        self._write_config = ployconf.fill
 
     def testCallWithNoArguments(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'snapshot'])
+                self.ctrl(['./bin/ploy', 'snapshot'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws snapshot', output)
+        self.assertIn('usage: ploy snapshot', output)
         self.assertIn('too few arguments', output)
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'snapshot', 'foo'])
+                self.ctrl(['./bin/ploy', 'snapshot', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws snapshot', output)
+        self.assertIn('usage: ploy snapshot', output)
         self.assertIn("argument instance: invalid choice: 'foo'", output)
 
     def testCallWithExistingInstance(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
             'host = localhost']))
-        with patch('mr.awsome.tests.dummy_plugin.log') as LogMock:
+        with patch('ploy.tests.dummy_plugin.log') as LogMock:
             try:
-                self.aws(['./bin/aws', 'snapshot', 'foo'])
+                self.ctrl(['./bin/ploy', 'snapshot', 'foo'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         self.assertEquals(
@@ -680,68 +680,68 @@ class SnapshotCommandTests(TestCase):
 
 class HelpCommandTests(TestCase):
     @pytest.fixture(autouse=True)
-    def setup_aws(self, awsconf):
-        self.aws = AWS(awsconf.directory)
-        self.aws.configfile = awsconf.path
-        self._write_config = awsconf.fill
+    def setup_ctrl(self, ployconf):
+        self.ctrl = Controller(ployconf.directory)
+        self.ctrl.configfile = ployconf.path
+        self._write_config = ployconf.fill
         self._write_config('')
 
     def testCallWithNoArguments(self):
         with patch('sys.stdout') as StdOutMock:
-            self.aws(['./bin/aws', 'help'])
+            self.ctrl(['./bin/ploy', 'help'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
-        self.assertIn('usage: aws help', output)
+        self.assertIn('usage: ploy help', output)
         self.assertIn('Name of the command you want help for.', output)
 
     def testCallWithNonExistingCommand(self):
         with patch('sys.stderr') as StdErrMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'help', 'foo'])
+                self.ctrl(['./bin/ploy', 'help', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn('usage: aws help', output)
+        self.assertIn('usage: ploy help', output)
         self.assertIn("argument command: invalid choice: 'foo'", output)
 
     def testCallWithExistingCommand(self):
         with patch('sys.stdout') as StdOutMock:
             with self.assertRaises(SystemExit):
-                self.aws(['./bin/aws', 'help', 'start'])
+                self.ctrl(['./bin/ploy', 'help', 'start'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
-        self.assertIn('usage: aws start', output)
+        self.assertIn('usage: ploy start', output)
         self.assertIn('Starts the instance', output)
 
     def testZSHHelperCommands(self):
         with patch('sys.stdout') as StdOutMock:
-            self.aws(['./bin/aws', 'help', '-z'])
+            self.ctrl(['./bin/ploy', 'help', '-z'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         self.assertIn('start', output.splitlines())
 
     def testZSHHelperCommand(self):
-        import mr.awsome.tests.dummy_plugin
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        import ploy.tests.dummy_plugin
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
             'host = localhost']))
         with patch('sys.stdout') as StdOutMock:
-            self.aws(['./bin/aws', 'help', '-z', 'start'])
+            self.ctrl(['./bin/ploy', 'help', '-z', 'start'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         assert output == 'foo\n'
 
 
 class InstanceTests(TestCase):
     @pytest.fixture(autouse=True)
-    def setup_aws(self, awsconf, tempdir):
-        import mr.awsome.tests.dummy_plugin
-        awsconf.fill([
+    def setup_ctrl(self, ployconf, tempdir):
+        import ploy.tests.dummy_plugin
+        ployconf.fill([
             '[dummy-master:master]',
             '[instance:foo]',
             'master = master',
             'startup_script = ../startup'])
         tempdir['startup'].fill('startup')
-        self.aws = AWS(awsconf.directory)
-        self.aws.configfile = awsconf.path
-        self.aws.plugins = {'dummy': mr.awsome.tests.dummy_plugin.plugin}
+        self.ctrl = Controller(ployconf.directory)
+        self.ctrl.configfile = ployconf.path
+        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
 
     def testStartupScript(self):
-        instance = self.aws.instances['foo']
+        instance = self.ctrl.instances['foo']
         startup = instance.startup_script()
         assert startup == 'startup'

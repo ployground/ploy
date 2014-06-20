@@ -22,21 +22,20 @@ setup(
     version=version,
     description="A script allowing to setup Amazon EC2 instances through configuration files.",
     long_description=README + "\n\n" + HISTORY,
-    name="mr.awsome",
+    name="ploy",
     author='Florian Schulze',
     author_email='florian.schulze@gmx.net',
-    url='http://github.com/fschulze/mr.awsome',
+    url='http://github.com/ployground/ploy',
     include_package_data=True,
     zip_safe=False,
-    packages=['mr', 'mr.awsome', 'mr.awsome.tests'],
-    namespace_packages=['mr'],
+    packages=['ploy', 'ploy.tests'],
     install_requires=install_requires,
     entry_points="""
         [console_scripts]
-        aws = mr.awsome:aws
-        assh = mr.awsome:aws_ssh
-        [mr.awsome.plugins]
-        plain = mr.awsome.plain:plugin
+        ploy = ploy:ploy
+        ploy-ssh = ploy:ploy_ssh
+        [ploy.plugins]
+        plain = ploy.plain:plugin
         [pytest11]
-        mr_awsome = mr.awsome.tests.pytest_plugin
+        ploy = ploy.tests.pytest_plugin
     """)

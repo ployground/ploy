@@ -1,5 +1,5 @@
-from mr.awsome.tests.dummy_plugin import Master as BaseMaster, get_instance_massagers
-from mr.awsome.proxy import ProxyInstance
+from ploy.tests.dummy_plugin import Master as BaseMaster, get_instance_massagers
+from ploy.proxy import ProxyInstance
 
 
 class Master(BaseMaster):
@@ -18,10 +18,10 @@ def get_massagers():
     return get_instance_massagers('dummy-instance')
 
 
-def get_masters(aws):
-    masters = aws.config.get('dummy-master', {'default': {}})
+def get_masters(ctrl):
+    masters = ctrl.config.get('dummy-master', {'default': {}})
     for master, master_config in masters.iteritems():
-        yield Master(aws, master, master_config)
+        yield Master(ctrl, master, master_config)
 
 
 plugin = dict(

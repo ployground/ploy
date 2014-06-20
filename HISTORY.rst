@@ -4,6 +4,9 @@ Changelog
 1.0rc9 - unreleased
 -------------------
 
+* Renamed from mr.awsome to ploy.
+  [fschulze]
+
 
 1.0rc8 - 2014-06-16
 -------------------

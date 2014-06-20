@@ -1,19 +1,19 @@
 from StringIO import StringIO
 from mock import patch
-from mr.awsome.common import InstanceHooks, BaseInstance, StartupScriptMixin
-from mr.awsome.config import Config, StartupScriptMassager
+from ploy.common import InstanceHooks, BaseInstance, StartupScriptMixin
+from ploy.config import Config, StartupScriptMassager
 from unittest2 import TestCase
 import os
 import pytest
 
 
-class MockAWS(object):
+class MockController(object):
     plugins = {}
 
 
 class MockMaster(object):
     def __init__(self, main_config):
-        self.aws = MockAWS()
+        self.ctrl = MockController()
         self.main_config = main_config
 
 
@@ -54,7 +54,7 @@ class StartupScriptTests(TestCase):
                 "startup_script = foo"]),
             path=self.directory)
         instance.master = MockMaster(config)
-        with patch('mr.awsome.common.log') as CommonLogMock:
+        with patch('ploy.common.log') as CommonLogMock:
             with pytest.raises(SystemExit):
                 instance.startup_script()
         CommonLogMock.error.assert_called_with(
@@ -138,7 +138,7 @@ class StartupScriptTests(TestCase):
             path=self.directory)
         instance.master = MockMaster(config)
         instance.max_startup_script_size = 10
-        with patch('mr.awsome.common.log') as LogMock:
+        with patch('ploy.common.log') as LogMock:
             with pytest.raises(SystemExit):
                 instance.startup_script()
             LogMock.error.assert_called_with('Startup script too big (%s > %s).', 15, 10)
@@ -153,7 +153,7 @@ class StartupScriptTests(TestCase):
             path=self.directory)
         instance.master = MockMaster(config)
         instance.max_startup_script_size = 10
-        with patch('mr.awsome.common.log') as LogMock:
+        with patch('ploy.common.log') as LogMock:
             instance.startup_script(debug=True)
             LogMock.error.assert_called_with('Startup script too big (%s > %s).', 15, 10)
 
@@ -178,7 +178,7 @@ class StartupScriptTests(TestCase):
     (False, False, 'Foo [yes/No] ', [''], False),
     ('all', True, 'Foo [yes/no/All] ', [''], 'all')])
 def test_yesno(default, all, question, answer, expected):
-    from mr.awsome.common import yesno
+    from ploy.common import yesno
     raw_input_values = answer
 
     def raw_input_result(q):

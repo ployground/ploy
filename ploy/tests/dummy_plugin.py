@@ -1,10 +1,10 @@
-from mr.awsome.common import BaseInstance, BaseMaster, StartupScriptMixin
-from mr.awsome.config import HooksMassager
-from mr.awsome.config import StartupScriptMassager
+from ploy.common import BaseInstance, BaseMaster, StartupScriptMixin
+from ploy.config import HooksMassager
+from ploy.config import StartupScriptMassager
 import logging
 
 
-log = logging.getLogger('mr.awsome.dummy_plugin')
+log = logging.getLogger('ploy.dummy_plugin')
 
 
 class MockSock(object):
@@ -83,10 +83,10 @@ def get_massagers():
     return get_instance_massagers('dummy-instance')
 
 
-def get_masters(aws):
-    masters = aws.config.get('dummy-master', {'default': {}})
+def get_masters(ctrl):
+    masters = ctrl.config.get('dummy-master', {'default': {}})
     for master, master_config in masters.iteritems():
-        yield Master(aws, master, master_config)
+        yield Master(ctrl, master, master_config)
 
 
 plugin = dict(

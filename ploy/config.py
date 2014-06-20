@@ -1,4 +1,4 @@
-from mr.awsome.common import Hooks
+from ploy.common import Hooks
 from ConfigParser import RawConfigParser
 from UserDict import DictMixin
 from weakref import proxy
@@ -9,7 +9,7 @@ import sys
 import warnings
 
 
-log = logging.getLogger('mr.awsome')
+log = logging.getLogger('ploy')
 
 
 _marker = object()

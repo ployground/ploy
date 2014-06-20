@@ -1,7 +1,7 @@
 import pkg_resources
 from lazy import lazy
-from mr.awsome.config import Config
-from mr.awsome import template
+from ploy.config import Config
+from ploy import template
 import logging
 import argparse
 import os
@@ -12,7 +12,7 @@ import sys
 __all__ = [template.__name__]
 
 
-log = logging.getLogger('mr.awsome')
+log = logging.getLogger('ploy')
 
 
 class LazyInstanceDict(dict):
@@ -31,7 +31,7 @@ class LazyInstanceDict(dict):
         return instance
 
 
-class AWS(object):
+class Controller(object):
     def __init__(self, configpath=None, configname=None, progname=None):
         plog = logging.getLogger('paramiko.transport')
         log.setLevel(logging.INFO)
@@ -41,19 +41,19 @@ class AWS(object):
         log.addHandler(ch)
         plog.addHandler(ch)
         if configname is None:
-            configname = 'aws.conf'
+            configname = 'ploy.conf'
         if configpath is None:
             configpath = 'etc'
         self.configname = configname
         self.configpath = configpath
         if progname is None:
-            progname = 'aws'
+            progname = 'ploy'
         self.progname = progname
 
     @lazy
     def plugins(self):
         plugins = {}
-        group = 'mr.awsome.plugins'
+        group = 'ploy.plugins'
         for entrypoint in pkg_resources.iter_entry_points(group=group):
             plugin = entrypoint.load()
             plugins[entrypoint.name] = plugin
@@ -277,7 +277,7 @@ class AWS(object):
             import readline
             from pprint import pprint
             local = dict(
-                aws=self,
+                ctrl=self,
                 instances=self.instances,
                 server=server,
                 pprint=pprint)
@@ -292,7 +292,7 @@ class AWS(object):
             __import__("code").interact(local=local)
 
     def cmd_list(self, argv, help):
-        """Return a list of various AWS things"""
+        """Return a list of various things"""
         parser = argparse.ArgumentParser(
             prog="%s list" % self.progname,
             description=help,
@@ -435,10 +435,10 @@ class AWS(object):
                             default=configfile,
                             help="Use the specified config file.")
 
-        version = pkg_resources.get_distribution("mr.awsome").version
+        version = pkg_resources.get_distribution("ploy").version
         parser.add_argument('-v', '--version',
                             action='version',
-                            version='mr.awsome %s' % version,
+                            version='ploy %s' % version,
                             help="Print version and exit")
 
         self.cmds = dict(
@@ -469,14 +469,14 @@ class AWS(object):
         args.func(sub_argv, args.func.__doc__)
 
 
-def aws(configpath=None, configname=None, progname=None):  # pragma: no cover
+def ploy(configpath=None, configname=None, progname=None):  # pragma: no cover
     argv = sys.argv[:]
-    aws = AWS(configpath=configpath, configname=configname, progname=progname)
-    return aws(argv)
+    ctrl = Controller(configpath=configpath, configname=configname, progname=progname)
+    return ctrl(argv)
 
 
-def aws_ssh(configpath=None, configname=None, progname=None):  # pragma: no cover
+def ploy_ssh(configpath=None, configname=None, progname=None):  # pragma: no cover
     argv = sys.argv[:]
     argv.insert(1, "ssh")
-    aws = AWS(configpath=configpath, configname=configname, progname=progname)
-    return aws(argv)
+    ctrl = Controller(configpath=configpath, configname=configname, progname=progname)
+    return ctrl(argv)

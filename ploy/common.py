@@ -8,7 +8,7 @@ import logging
 import sys
 
 
-log = logging.getLogger('mr.awsome')
+log = logging.getLogger('ploy')
 
 
 def import_paramiko():  # pragma: no cover - we support both
@@ -80,7 +80,7 @@ def yesno(question, default=None, all=False):
 
 class StartupScriptMixin(object):
     def startup_script(self, overrides=None, debug=False):
-        from mr.awsome import template  # avoid circular import
+        from ploy import template  # avoid circular import
 
         config = self.get_config(overrides)
         startup_script_path = config.get('startup_script', None)
@@ -122,13 +122,13 @@ class StartupScriptMixin(object):
 
 
 class BaseMaster(object):
-    def __init__(self, aws, id, master_config):
+    def __init__(self, ctrl, id, master_config):
         self.id = id
-        self.aws = aws
-        assert self.aws.__class__.__name__ == 'AWS'
-        self.main_config = self.aws.config
+        self.ctrl = ctrl
+        assert self.ctrl.__class__.__name__ == 'Controller'
+        self.main_config = self.ctrl.config
         self.master_config = master_config
-        self.known_hosts = self.aws.known_hosts
+        self.known_hosts = self.ctrl.known_hosts
         self.instances = {}
         if getattr(self, 'section_info', None) is None:
             self.section_info = {
@@ -148,7 +148,7 @@ class InstanceHooks(object):
 
     def _iter_funcs(self, func_name):
         hooks = []
-        for plugin in self.instance.master.aws.plugins.values():
+        for plugin in self.instance.master.ctrl.plugins.values():
             if 'get_hooks' not in plugin:
                 continue
             hooks.extend(plugin['get_hooks']())

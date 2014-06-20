@@ -1,5 +1,5 @@
 from lazy import lazy
-from mr.awsome.common import BaseMaster, BaseInstance, import_paramiko, yesno
+from ploy.common import BaseMaster, BaseInstance, import_paramiko, yesno
 import getpass
 import logging
 import os
@@ -7,7 +7,7 @@ import socket
 import sys
 
 
-log = logging.getLogger('mr.awsome')
+log = logging.getLogger('ploy')
 
 
 def ServerHostKeyPolicy(*args, **kwarks):
@@ -122,7 +122,7 @@ class Instance(BaseInstance):
                 log.error("The following ProxyCommand failed:\n%s" % proxy_command)
                 raise
         elif proxy_host:
-            proxy_instance = self.master.aws.instances[proxy_host]
+            proxy_instance = self.master.ctrl.instances[proxy_host]
             sock = proxy_instance.conn.get_transport().open_channel(
                 'direct-tcpip',
                 (hostname, port),
@@ -184,7 +184,7 @@ class Master(BaseMaster):
 
 
 def get_massagers():
-    from mr.awsome.config import BooleanMassager, UserMassager
+    from ploy.config import BooleanMassager, UserMassager
 
     sectiongroupname = 'plain-instance'
     return [
@@ -192,10 +192,10 @@ def get_massagers():
         BooleanMassager(sectiongroupname, 'password-fallback')]
 
 
-def get_masters(aws):
-    masters = aws.config.get('plain-master', {'plain-master': {}})
+def get_masters(ctrl):
+    masters = ctrl.config.get('plain-master', {'plain-master': {}})
     for master, master_config in masters.iteritems():
-        yield Master(aws, master, master_config)
+        yield Master(ctrl, master, master_config)
 
 
 plugin = dict(

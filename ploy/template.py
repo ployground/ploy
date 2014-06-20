@@ -1,4 +1,4 @@
-from mr.awsome.common import gzip_string
+from ploy.common import gzip_string
 import email
 import os
 
