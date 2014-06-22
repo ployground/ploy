@@ -96,6 +96,18 @@ class AwsomeTests(TestCase):
                 ctrl([])
         LogMock.error.assert_called_with("Command name '%s' of '%s' conflicts with existing command name.", 'ssh', 'dummy')
 
+    def testInvalidInstanceName(self):
+        import ploy.tests.dummy_plugin
+        self.configfile.fill([
+            '[dummy-instance:fo o]'])
+        ctrl = Controller(configpath=self.directory)
+        ctrl.configfile = self.configfile.path
+        ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
+        with patch('ploy.common.log') as LogMock:
+            with pytest.raises(SystemExit):
+                ctrl(['./bin/ploy', 'ssh', 'bar'])
+        LogMock.error.assert_called_with("Invalid instance name 'fo o'. An instance name may only contain letters, numbers, dashes and underscores.")
+
 
 class StartCommandTests(TestCase):
     @pytest.fixture(autouse=True)

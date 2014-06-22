@@ -5,6 +5,7 @@ except ImportError:  # pragma: no cover
     from StringIO import StringIO
 import gzip
 import logging
+import re
 import sys
 
 
@@ -167,14 +168,21 @@ class InstanceHooks(object):
 
 class BaseInstance(object):
     def __init__(self, master, sid, config):
-        validate_id = getattr(self, 'validate_id', lambda x: x)
-        self.id = validate_id(sid)
+        self.id = self.validate_id(sid)
         self.master = master
         self.config = config
         self.hooks = InstanceHooks(self)
         get_massagers = getattr(self, 'get_massagers', lambda: [])
         for massager in get_massagers():
             self.config.add_massager(massager)
+
+    _id_regexp = re.compile('^[a-zA-Z0-9-_]+$')
+
+    def validate_id(self, sid):
+        if self._id_regexp.match(sid) is None:
+            log.error("Invalid instance name '%s'. An instance name may only contain letters, numbers, dashes and underscores." % sid)
+            sys.exit(1)
+        return sid
 
     @property
     def conn(self):

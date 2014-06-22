@@ -4,6 +4,10 @@ Changelog
 1.0rc9 - unreleased
 -------------------
 
+* Add instance id validator which limits to letters, numbers, dashes and
+  underscores.
+  [fschulze]
+
 * Renamed from mr.awsome to ploy.
   [fschulze]
 
