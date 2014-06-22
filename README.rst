@@ -4,7 +4,7 @@
 Overview
 ========
 
-ploy is a commandline-tool (ploy) to provision, manage and control server instances.
+Ploy is a commandline-tool to provision, manage and control server instances.
 What kind of server instances these are depends on the used plugins.
 There are plugins for EC2 (ploy_ec2), FreeBSD Jails (ploy_ezjail) and more.
 You can create, delete, monitor and ssh into instances while ploy handles the details like ssh fingerprint checking.
@@ -72,6 +72,9 @@ Options
 ``password-fallback``
   If this boolean is true, then using a password as fallback is enabled if the
   ssh key doesn't work. This is off by default.
+  You may be asked more than once for the password.
+  The first time is by paramiko which always happens, but is remembered.
+  The other times is by the ssh command line tool if it's invoked.
 
 ``password``
   Never use this directly! If password-fallback is enabled this password is
