@@ -73,10 +73,18 @@ class Master(BaseMaster):
     instance_class = Instance
 
 
+def list_dummy(argv, help):
+    print "list_dummy"
+
+
 def get_instance_massagers(sectiongroupname='instance'):
     return [
         HooksMassager(sectiongroupname, 'hooks'),
         StartupScriptMassager(sectiongroupname, 'startup_script')]
+
+
+def get_list_commands(ctrl):
+    return [('dummy', list_dummy)]
 
 
 def get_massagers():
@@ -90,5 +98,6 @@ def get_masters(ctrl):
 
 
 plugin = dict(
+    get_list_commands=get_list_commands,
     get_massagers=get_massagers,
     get_masters=get_masters)

@@ -295,19 +295,16 @@ class Controller(object):
             description=help,
         )
         parser.add_argument("list", nargs=1,
-                            metavar="list",
+                            metavar="listname",
                             help="Name of list to show.",
-                            choices=['snapshots'])
+                            choices=sorted(self.list_cmds))
+        parser.add_argument("listopts",
+                            metavar="...",
+                            nargs=argparse.REMAINDER,
+                            help="list command options")
         args = parser.parse_args(argv)
-        if args.list[0] == 'snapshots':
-            snapshots = []
-            for master in self.get_masters('snapshots'):
-                snapshots.extend(master.snapshots.values())
-            snapshots = sorted(snapshots, key=lambda x: x.start_time)
-            print "id            time                      size   volume       progress description"
-            for snapshot in snapshots:
-                info = snapshot.__dict__
-                print "{id} {start_time} {volume_size:>4} GB {volume_id} {progress:>8} {description}".format(**info)
+        for name, func in sorted(self.list_cmds[args.list[0]]):
+            func(args.listopts, func.__doc__)
 
     def cmd_ssh(self, argv, help):
         """Log into the instance with ssh using the automatically generated known hosts"""
@@ -441,14 +438,17 @@ class Controller(object):
         self.cmds = dict(
             (x[4:], getattr(self, x))
             for x in dir(self) if x.startswith('cmd_'))
+        self.list_cmds = {}
         for pluginname, plugin in self.plugins.items():
-            if 'get_commands' not in plugin:
-                continue
-            for cmd, func in plugin['get_commands'](self):
-                if cmd in self.cmds:
-                    log.error("Command name '%s' of '%s' conflicts with existing command name.", cmd, pluginname)
-                    sys.exit(1)
-                self.cmds[cmd] = func
+            if 'get_commands' in plugin:
+                for cmd, func in plugin['get_commands'](self):
+                    if cmd in self.cmds:
+                        log.error("Command name '%s' of '%s' conflicts with existing command name.", cmd, pluginname)
+                        sys.exit(1)
+                    self.cmds[cmd] = func
+            if 'get_list_commands' in plugin:
+                for cmd, func in plugin['get_list_commands'](self):
+                    self.list_cmds.setdefault(cmd, []).append((pluginname, func))
         cmdparsers = parser.add_subparsers(title="commands")
         self.subparsers = {}
         for cmd, func in self.cmds.items():

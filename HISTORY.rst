@@ -4,6 +4,9 @@ Changelog
 1.0rc9 - unreleased
 -------------------
 
+* Let plugins add type of lists to show with the ``list`` command.
+  [fschulze]
+
 * Use ``server`` and ``instance`` consistently.
   [fschulze]
 

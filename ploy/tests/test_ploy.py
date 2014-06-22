@@ -545,7 +545,7 @@ class ListCommandTests(TestCase):
                 self.ctrl(['./bin/ploy', 'list', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         self.assertIn('usage: ploy list', output)
-        self.assertIn("argument list: invalid choice: 'foo'", output)
+        self.assertIn("argument listname: invalid choice: 'foo'", output)
 
     def testCallWithExistingListButNoMastersWithSnapshots(self):
         import ploy.tests.dummy_plugin
@@ -555,57 +555,12 @@ class ListCommandTests(TestCase):
             'host = localhost']))
         with patch('sys.stdout') as StdOutMock:
             try:
-                self.ctrl(['./bin/ploy', 'list', 'snapshots'])
+                self.ctrl(['./bin/ploy', 'list', 'dummy'])
             except SystemExit:  # pragma: no cover - only if something is wrong
                 self.fail("SystemExit raised")
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         output = filter(None, output.splitlines())
-        assert len(output) == 1
-
-    def testCallWithExistingListAndDummySnapshots(self):
-        import ploy.tests.dummy_plugin
-        snapshots = {}
-
-        def get_masters(ctrl):
-            master = ploy.tests.dummy_plugin.Master(
-                ctrl, 'dummy-master', {})
-            print "get_masters called"
-            master.snapshots = snapshots
-            return [master]
-
-        self.ctrl.plugins = {'dummy': {'get_masters': get_masters}}
-        self._write_config('\n'.join([
-            '[dummy-instance:foo]',
-            'host = localhost']))
-        with patch('sys.stdout') as StdOutMock:
-            try:
-                self.ctrl(['./bin/ploy', 'list', 'snapshots'])
-            except SystemExit:  # pragma: no cover - only if something is wrong
-                self.fail("SystemExit raised")
-        output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
-        output = filter(None, output.splitlines())
-        assert len(output) == 2
-        assert output[0] == 'get_masters called'
-
-        # now with data
-        class Snapshot(object):
-            def __init__(self, **kw):
-                self.__dict__.update(kw)
-        snapshots['foo'] = Snapshot(
-            id='foo', start_time='20:00',
-            volume_size='100', volume_id='0sht80sht',
-            progress=80, description='bar')
-        with patch('sys.stdout') as StdOutMock:
-            try:
-                self.ctrl(['./bin/ploy', 'list', 'snapshots'])
-            except SystemExit:  # pragma: no cover - only if something is wrong
-                self.fail("SystemExit raised")
-        output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
-        output = filter(None, output.splitlines())
-        assert len(output) == 2
-        assert 'description' in output[0]
-        assert output[1].split() == [
-            'foo', '20:00', '100', 'GB', '0sht80sht', '80', 'bar']
+        assert output == ['list_dummy']
 
 
 @pytest.yield_fixture
