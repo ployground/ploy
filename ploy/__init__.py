@@ -268,8 +268,8 @@ class Controller(object):
             elif args.verbose:
                 print startup_script['original'],
         if args.console_output:
-            if hasattr(instance.instance, 'get_console_output'):
-                print instance.instance.get_console_output().output
+            if hasattr(instance, 'get_console_output'):
+                print instance.get_console_output()
             else:
                 log.error("The instance doesn't support console output.")
         if args.interactive:  # pragma: no cover
