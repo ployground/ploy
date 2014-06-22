@@ -168,7 +168,7 @@ class StartCommandTests(TestCase):
         assert call_args[0] == 'start: %s %s'
         assert call_args[1] == 'foo'
         assert call_args[2].keys() == ['servers']
-        assert call_args[2]['servers'].keys() == ['default-foo', 'foo']
+        assert sorted(call_args[2]['servers'].keys()) == ['default-foo', 'foo']
 
     def testCallWithInvalidOverride(self):
         import ploy.tests.dummy_plugin
@@ -195,7 +195,7 @@ class StartCommandTests(TestCase):
         assert call_args[0] == 'start: %s %s'
         assert call_args[1] == 'foo'
         assert sorted(call_args[2].keys()) == ['ham', 'servers']
-        assert call_args[2]['servers'].keys() == ['default-foo', 'foo']
+        assert sorted(call_args[2]['servers'].keys()) == ['default-foo', 'foo']
         assert LogMock.info.call_args_list[1] == (('status: %s', 'foo'), {})
 
     def testCallWithOverrides(self):
@@ -213,7 +213,7 @@ class StartCommandTests(TestCase):
         assert call_args[0] == 'start: %s %s'
         assert call_args[1] == 'foo'
         assert sorted(call_args[2].keys()) == ['ham', 'servers', 'spam']
-        assert call_args[2]['servers'].keys() == ['default-foo', 'foo']
+        assert sorted(call_args[2]['servers'].keys()) == ['default-foo', 'foo']
         assert LogMock.info.call_args_list[1] == (('status: %s', 'foo'), {})
 
     def testCallWithMissingStartupScript(self):

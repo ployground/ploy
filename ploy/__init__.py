@@ -416,7 +416,7 @@ class Controller(object):
                     for subcmd in ('snapshots',):
                         print subcmd
                 elif args.command != 'help':
-                    for server in self.get_instances(command=args.command):
+                    for server in sorted(self.get_instances(command=args.command)):
                         print server
         else:
             if args.command is None:
