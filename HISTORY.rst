@@ -4,6 +4,9 @@ Changelog
 1.0rc9 - unreleased
 -------------------
 
+* Use ``server`` and ``instance`` consistently.
+  [fschulze]
+
 * Always make instances accessible by their full name in the form of
   "[master_id]-[instance_id]". Only if there is no conflict, the short version
   with just "[instance_id]" is also available for convenience.

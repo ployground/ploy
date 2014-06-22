@@ -142,13 +142,13 @@ class Controller(object):
             description=help,
         )
         instances = self.get_instances(command='status')
-        parser.add_argument("server", nargs=1,
+        parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
                             choices=sorted(instances))
         args = parser.parse_args(argv)
-        server = instances[args.server[0]]
-        server.status()
+        instance = instances[args.instance[0]]
+        instance.status()
 
     def cmd_stop(self, argv, help):
         """Stops the instance"""
@@ -157,13 +157,13 @@ class Controller(object):
             description=help,
         )
         instances = self.get_instances(command='stop')
-        parser.add_argument("server", nargs=1,
+        parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
                             choices=sorted(instances))
         args = parser.parse_args(argv)
-        server = instances[args.server[0]]
-        server.stop()
+        instance = instances[args.instance[0]]
+        instance.stop()
 
     def cmd_terminate(self, argv, help):
         """Terminates the instance"""
@@ -172,15 +172,15 @@ class Controller(object):
             description=help,
         )
         instances = self.get_instances(command='terminate')
-        parser.add_argument("server", nargs=1,
+        parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
                             choices=sorted(instances))
         args = parser.parse_args(argv)
-        server = instances[args.server[0]]
-        server.hooks.before_terminate(server)
-        server.terminate()
-        server.hooks.after_terminate(server)
+        instance = instances[args.instance[0]]
+        instance.hooks.before_terminate(instance)
+        instance.terminate()
+        instance.hooks.after_terminate(instance)
 
     def _parse_overrides(self, options):
         overrides = dict()
@@ -205,23 +205,23 @@ class Controller(object):
             description=help,
         )
         instances = self.get_instances(command='start')
-        parser.add_argument("server", nargs=1,
+        parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
                             choices=sorted(instances))
         parser.add_argument("-o", "--override", nargs="*", type=str,
                             dest="overrides", metavar="OVERRIDE",
-                            help="Option to override in server config for startup script (name=value).")
+                            help="Option to override in instance config for startup script (name=value).")
         args = parser.parse_args(argv)
         overrides = self._parse_overrides(args)
-        overrides['servers'] = self.instances
-        server = instances[args.server[0]]
-        server.hooks.before_start(server)
-        instance = server.start(overrides)
-        server.hooks.after_start(server)
-        if instance is None:
+        overrides['instances'] = self.instances
+        instance = instances[args.instance[0]]
+        instance.hooks.before_start(instance)
+        result = instance.start(overrides)
+        instance.hooks.after_start(instance)
+        if result is None:
             return
-        server.status()
+        instance.status()
 
     def cmd_debug(self, argv, help):
         """Prints some debug info for this script"""
@@ -230,7 +230,7 @@ class Controller(object):
             description=help,
         )
         instances = self.instances
-        parser.add_argument("server", nargs=1,
+        parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
                             choices=sorted(instances))
@@ -244,17 +244,17 @@ class Controller(object):
                             action="store_true", help="Outputs the raw possibly compressed startup script")
         parser.add_argument("-o", "--override", nargs="*", type=str,
                             dest="overrides", metavar="OVERRIDE",
-                            help="Option to override server config for startup script (name=value).")
+                            help="Option to override instance config for startup script (name=value).")
         args = parser.parse_args(argv)
         overrides = self._parse_overrides(args)
-        overrides['servers'] = self.instances
-        server = instances[args.server[0]]
-        if hasattr(server, 'startup_script'):
-            startup_script = server.startup_script(overrides=overrides, debug=True)
-            max_size = getattr(server, 'max_startup_script_size', 16 * 1024)
+        overrides['instances'] = self.instances
+        instance = instances[args.instance[0]]
+        if hasattr(instance, 'startup_script'):
+            startup_script = instance.startup_script(overrides=overrides, debug=True)
+            max_size = getattr(instance, 'max_startup_script_size', 16 * 1024)
             log.info("Length of startup script: %s/%s", len(startup_script['raw']), max_size)
             if args.verbose:
-                if 'startup_script' in server.config:
+                if 'startup_script' in instance.config:
                     if startup_script['original'] == startup_script['raw']:
                         log.info("Startup script:")
                     elif args.raw:
@@ -268,8 +268,8 @@ class Controller(object):
             elif args.verbose:
                 print startup_script['original'],
         if args.console_output:
-            if hasattr(server.instance, 'get_console_output'):
-                print server.instance.get_console_output().output
+            if hasattr(instance.instance, 'get_console_output'):
+                print instance.instance.get_console_output().output
             else:
                 log.error("The instance doesn't support console output.")
         if args.interactive:  # pragma: no cover
@@ -278,10 +278,8 @@ class Controller(object):
             local = dict(
                 ctrl=self,
                 instances=self.instances,
-                server=server,
+                instance=instance,
                 pprint=pprint)
-            if hasattr(server, 'instance'):
-                local['instance'] = server.instance
             readline.parse_and_bind('tab: complete')
             try:
                 import rlcompleter
@@ -312,15 +310,15 @@ class Controller(object):
                 print "{id} {start_time} {volume_size:>4} GB {volume_id} {progress:>8} {description}".format(**info)
 
     def cmd_ssh(self, argv, help):
-        """Log into the server with ssh using the automatically generated known hosts"""
+        """Log into the instance with ssh using the automatically generated known hosts"""
         parser = argparse.ArgumentParser(
             prog="%s ssh" % self.progname,
             description=help,
         )
         instances = self.get_instances(command='init_ssh_key')
-        parser.add_argument("server", nargs=1,
+        parser.add_argument("instance", nargs=1,
                             metavar="instance",
-                            help="Name of the instance or server from the config.",
+                            help="Name of the instance from the config.",
                             choices=sorted(instances))
         parser.add_argument("...", nargs=argparse.REMAINDER,
                             help="ssh options")
@@ -347,25 +345,25 @@ class Controller(object):
             if '@' in sid:
                 user, sid = sid.split('@', 1)
             parser.parse_args([sid])
-        server = instances[sid]
+        instance = instances[sid]
         if user is None:
-            user = server.config.get('user')
+            user = instance.config.get('user')
         try:  # pragma: no cover - we support both
             from paramiko import SSHException
             SSHException  # shutup pyflakes
         except ImportError:  # pragma: no cover - we support both
             from ssh import SSHException
         try:
-            ssh_info = server.init_ssh_key(user=user)
+            ssh_info = instance.init_ssh_key(user=user)
         except SSHException, e:
             log.error("Couldn't validate fingerprint for ssh connection.")
             log.error(unicode(e))
-            log.error("Is the server finished starting up?")
+            log.error("Is the instance finished starting up?")
             sys.exit(1)
         client = ssh_info['client']
         client.get_transport().sock.close()
         client.close()
-        argv[sid_index:sid_index + 1] = server.ssh_args_from_info(ssh_info)
+        argv[sid_index:sid_index + 1] = instance.ssh_args_from_info(ssh_info)
         argv[0:0] = ['ssh']
         os.execvp('ssh', argv)
 
@@ -376,13 +374,13 @@ class Controller(object):
             description=help,
         )
         instances = self.get_instances(command='snapshot')
-        parser.add_argument("server", nargs=1,
+        parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
                             choices=sorted(instances))
         args = parser.parse_args(argv)
-        server = instances[args.server[0]]
-        server.snapshot()
+        instance = instances[args.instance[0]]
+        instance.snapshot()
 
     def cmd_help(self, argv, help):
         """Print help"""
@@ -407,17 +405,17 @@ class Controller(object):
                     for item in self.cmds[args.command].get_completion():
                         print item
                 elif args.command in ('do', 'ssh'):
-                    for server in self.get_instances(command='init_ssh_key'):
-                        print server
+                    for instance in self.get_instances(command='init_ssh_key'):
+                        print instance
                 elif args.command == 'debug':
-                    for server in self.get_instances(command='startup_script'):
-                        print server
+                    for instance in self.get_instances(command='startup_script'):
+                        print instance
                 elif args.command == 'list':
                     for subcmd in ('snapshots',):
                         print subcmd
                 elif args.command != 'help':
-                    for server in sorted(self.get_instances(command=args.command)):
-                        print server
+                    for instance in sorted(self.get_instances(command=args.command)):
+                        print instance
         else:
             if args.command is None:
                 parser.print_help()

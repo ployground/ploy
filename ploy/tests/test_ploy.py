@@ -10,10 +10,10 @@ log = logging.getLogger('test')
 
 
 class DummyHooks(object):
-    def after_terminate(self, server):
+    def after_terminate(self, instance):
         log.info('after_terminate')
 
-    def before_start(self, server):
+    def before_start(self, instance):
         log.info('before_start')
 
     def startup_script_options(self, options):
@@ -167,8 +167,8 @@ class StartCommandTests(TestCase):
         call_args = LogMock.info.call_args_list[0][0]
         assert call_args[0] == 'start: %s %s'
         assert call_args[1] == 'foo'
-        assert call_args[2].keys() == ['servers']
-        assert sorted(call_args[2]['servers'].keys()) == ['default-foo', 'foo']
+        assert call_args[2].keys() == ['instances']
+        assert sorted(call_args[2]['instances'].keys()) == ['default-foo', 'foo']
 
     def testCallWithInvalidOverride(self):
         import ploy.tests.dummy_plugin
@@ -194,8 +194,8 @@ class StartCommandTests(TestCase):
         call_args = LogMock.info.call_args_list[0][0]
         assert call_args[0] == 'start: %s %s'
         assert call_args[1] == 'foo'
-        assert sorted(call_args[2].keys()) == ['ham', 'servers']
-        assert sorted(call_args[2]['servers'].keys()) == ['default-foo', 'foo']
+        assert sorted(call_args[2].keys()) == ['ham', 'instances']
+        assert sorted(call_args[2]['instances'].keys()) == ['default-foo', 'foo']
         assert LogMock.info.call_args_list[1] == (('status: %s', 'foo'), {})
 
     def testCallWithOverrides(self):
@@ -212,8 +212,8 @@ class StartCommandTests(TestCase):
         call_args = LogMock.info.call_args_list[0][0]
         assert call_args[0] == 'start: %s %s'
         assert call_args[1] == 'foo'
-        assert sorted(call_args[2].keys()) == ['ham', 'servers', 'spam']
-        assert sorted(call_args[2]['servers'].keys()) == ['default-foo', 'foo']
+        assert sorted(call_args[2].keys()) == ['ham', 'instances', 'spam']
+        assert sorted(call_args[2]['instances'].keys()) == ['default-foo', 'foo']
         assert LogMock.info.call_args_list[1] == (('status: %s', 'foo'), {})
 
     def testCallWithMissingStartupScript(self):

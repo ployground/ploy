@@ -81,7 +81,7 @@ class PlainTests(TestCase):
             LogMock.error.call_args_list, [
                 (("Couldn't validate fingerprint for ssh connection.",), {}),
                 (("No host or ip set in config.",), {}),
-                (('Is the server finished starting up?',), {})])
+                (('Is the instance finished starting up?',), {})])
 
     def testSSHWithFingerprintMismatch(self):
         self._write_config('\n'.join([
@@ -97,7 +97,7 @@ class PlainTests(TestCase):
             LogMock.error.call_args_list, [
                 (("Couldn't validate fingerprint for ssh connection.",), {}),
                 (("Fingerprint doesn't match for localhost (got bar, expected foo)",), {}),
-                (('Is the server finished starting up?',), {})])
+                (('Is the instance finished starting up?',), {})])
 
     def testSSH(self):
         self._write_config('\n'.join([
