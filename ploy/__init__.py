@@ -146,7 +146,7 @@ class Controller(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(instances))
+                            choices=sorted(instances))
         args = parser.parse_args(argv)
         server = instances[args.server[0]]
         server.status()
@@ -161,7 +161,7 @@ class Controller(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(instances))
+                            choices=sorted(instances))
         args = parser.parse_args(argv)
         server = instances[args.server[0]]
         server.stop()
@@ -176,7 +176,7 @@ class Controller(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(instances))
+                            choices=sorted(instances))
         args = parser.parse_args(argv)
         server = instances[args.server[0]]
         server.hooks.before_terminate(server)
@@ -209,7 +209,7 @@ class Controller(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(instances))
+                            choices=sorted(instances))
         parser.add_argument("-o", "--override", nargs="*", type=str,
                             dest="overrides", metavar="OVERRIDE",
                             help="Option to override in server config for startup script (name=value).")
@@ -234,7 +234,7 @@ class Controller(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(instances))
+                            choices=sorted(instances))
         parser.add_argument("-v", "--verbose", dest="verbose",
                             action="store_true", help="Print more info and output the startup script")
         parser.add_argument("-c", "--console-output", dest="console_output",
@@ -322,7 +322,7 @@ class Controller(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance or server from the config.",
-                            choices=list(instances))
+                            choices=sorted(instances))
         parser.add_argument("...", nargs=argparse.REMAINDER,
                             help="ssh options")
         iargs = enumerate(argv)
@@ -380,7 +380,7 @@ class Controller(object):
         parser.add_argument("server", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=list(instances))
+                            choices=sorted(instances))
         args = parser.parse_args(argv)
         server = instances[args.server[0]]
         server.snapshot()
