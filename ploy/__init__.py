@@ -95,36 +95,35 @@ class Controller(object):
     @lazy
     def instances(self):
         result = LazyInstanceDict()
-        instances = []
-        instances.extend((None, i) for i in self.config.get('instance', {}))
+        for instance_id in self.config.get('instance', {}):
+            iconfig = self.config['instance'][instance_id]
+            if 'master' not in iconfig:
+                log.error("Instance 'instance:%s' has no master set." % instance_id)
+                sys.exit(1)
+            master = self.masters[iconfig['master']]
+            if instance_id in master.instances:
+                log.error("Instance 'instance:%s' conflicts with another instance with id '%s' in master '%s'." % (instance_id, instance_id, master.id))
+                sys.exit(1)
+            instance_class = master.section_info.get(None)
+            if instance_class is None:
+                log.error("Master '%s' has no default instance class." % (master.id))
+                sys.exit(1)
+            instance = instance_class(master, instance_id, iconfig)
+            instance.sectiongroupname = 'instance'
+            master.instances[instance_id] = instance
+        shortname_map = {}
         for master in self.masters.values():
-            instances.extend((master, i) for i in master.instances)
-        instance_name_count = dict()
-        for master, instance_id in instances:
-            count = instance_name_count.get(instance_id, 0)
-            instance_name_count[instance_id] = count + 1
-        for master, instance_id in instances:
-            if master is None:
-                iconfig = self.config['instance'][instance_id]
-                if 'master' not in iconfig:
-                    log.error("Instance 'instance:%s' has no master set." % instance_id)
-                    sys.exit(1)
-                master = self.masters[iconfig['master']]
-                if instance_id in master.instances:
-                    log.error("Instance 'instance:%s' conflicts with another instance with id '%s' in master '%s'." % (instance_id, instance_id, master.id))
-                    sys.exit(1)
-                instance_class = master.section_info.get(None)
-                if instance_class is None:
-                    log.error("Master '%s' has no default instance class." % (master.id))
-                    sys.exit(1)
-                instance = instance_class(master, instance_id, iconfig)
-                instance.sectiongroupname = 'instance'
-                master.instances[instance_id] = instance
-            if instance_name_count[instance_id] > 1:
-                name = '%s-%s' % (master.id, instance_id)
-            else:
-                name = instance_id
-            result[name] = master.instances[instance_id]
+            for instance_id in master.instances:
+                instance = master.instances[instance_id]
+                if hasattr(master, 'instance') and master.id == instance.id:
+                    key = instance.id
+                else:
+                    key = instance.uid
+                result[key] = instance
+                shortname_map.setdefault(instance_id, []).append(instance)
+        for shortname, instances in shortname_map.items():
+            if len(instances) == 1:
+                result[shortname] = instances[0]
         result.plugins = self.plugins
         return result
 

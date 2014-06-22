@@ -96,6 +96,23 @@ class AwsomeTests(TestCase):
                 ctrl([])
         LogMock.error.assert_called_with("Command name '%s' of '%s' conflicts with existing command name.", 'ssh', 'dummy')
 
+    def testConflictingInstanceShortName(self):
+        import ploy.tests.dummy_plugin
+        import ploy.plain
+        self.configfile.fill([
+            '[dummy-instance:foo]',
+            '[plain-instance:foo]'])
+        ctrl = Controller(configpath=self.directory)
+        ctrl.configfile = self.configfile.path
+        ctrl.plugins = {
+            'dummy': ploy.tests.dummy_plugin.plugin,
+            'plain': ploy.plain.plugin}
+        with patch('sys.stderr') as StdErrMock:
+            with pytest.raises(SystemExit):
+                ctrl(['./bin/ploy', 'ssh', 'bar'])
+        output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
+        assert "(choose from 'default-foo', 'plain-master-foo')" in output
+
     def testInvalidInstanceName(self):
         import ploy.tests.dummy_plugin
         self.configfile.fill([
@@ -151,7 +168,7 @@ class StartCommandTests(TestCase):
         assert call_args[0] == 'start: %s %s'
         assert call_args[1] == 'foo'
         assert call_args[2].keys() == ['servers']
-        assert call_args[2]['servers'].keys() == ['foo']
+        assert call_args[2]['servers'].keys() == ['default-foo', 'foo']
 
     def testCallWithInvalidOverride(self):
         import ploy.tests.dummy_plugin
@@ -178,7 +195,7 @@ class StartCommandTests(TestCase):
         assert call_args[0] == 'start: %s %s'
         assert call_args[1] == 'foo'
         assert sorted(call_args[2].keys()) == ['ham', 'servers']
-        assert call_args[2]['servers'].keys() == ['foo']
+        assert call_args[2]['servers'].keys() == ['default-foo', 'foo']
         assert LogMock.info.call_args_list[1] == (('status: %s', 'foo'), {})
 
     def testCallWithOverrides(self):
@@ -196,7 +213,7 @@ class StartCommandTests(TestCase):
         assert call_args[0] == 'start: %s %s'
         assert call_args[1] == 'foo'
         assert sorted(call_args[2].keys()) == ['ham', 'servers', 'spam']
-        assert call_args[2]['servers'].keys() == ['foo']
+        assert call_args[2]['servers'].keys() == ['default-foo', 'foo']
         assert LogMock.info.call_args_list[1] == (('status: %s', 'foo'), {})
 
     def testCallWithMissingStartupScript(self):
@@ -736,7 +753,7 @@ class HelpCommandTests(TestCase):
         with patch('sys.stdout') as StdOutMock:
             self.ctrl(['./bin/ploy', 'help', '-z', 'start'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
-        assert output == 'foo\n'
+        assert output.splitlines() == ['default-foo', 'foo']
 
 
 class InstanceTests(TestCase):

@@ -185,6 +185,10 @@ class BaseInstance(object):
         return sid
 
     @property
+    def uid(self):
+        return "%s-%s" % (self.master.id, self.id)
+
+    @property
     def conn(self):
         if getattr(self, '_conn', None) is not None:
             if self._conn.get_transport() is not None:
