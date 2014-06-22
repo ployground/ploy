@@ -189,6 +189,10 @@ class BaseInstance(object):
         return "%s-%s" % (self.master.id, self.id)
 
     @property
+    def config_id(self):
+        return "%s:%s" % (self.sectiongroupname, self.id)
+
+    @property
     def conn(self):
         if getattr(self, '_conn', None) is not None:
             if self._conn.get_transport() is not None:
@@ -196,7 +200,7 @@ class BaseInstance(object):
         try:
             ssh_info = self.init_ssh_key()
         except self.paramiko.SSHException as e:
-            log.error("Couldn't connect to %s:%s." % (self.sectiongroupname, self.id))
+            log.error("Couldn't connect to %s." % (self.config_id))
             log.error(unicode(e))
             sys.exit(1)
         self._conn = ssh_info['client']

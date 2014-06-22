@@ -146,7 +146,7 @@ class Instance(BaseInstance):
                 break
             except paramiko.AuthenticationException:
                 if not self.config.get('password-fallback', False):
-                    log.error('Failed to connect to %s (%s)' % (self.id, hostname))
+                    log.error('Failed to connect to %s (%s)' % (self.config_id, hostname))
                     for option in ('username', 'password', 'port', 'key_filename', 'sock'):
                         if client_args[option] is not None:
                             log.error('%s: %r' % (option, client_args[option]))
@@ -161,7 +161,7 @@ class Instance(BaseInstance):
                     open(known_hosts, 'w').close()
                 client.get_host_keys().clear()
             except (paramiko.SSHException, socket.error):
-                log.error('Failed to connect to %s (%s)' % (self.id, hostname))
+                log.error('Failed to connect to %s (%s)' % (self.config_id, hostname))
                 for option in ('username', 'password', 'port', 'key_filename', 'sock'):
                     if client_args[option] is not None:
                         log.error('%s: %r' % (option, client_args[option]))

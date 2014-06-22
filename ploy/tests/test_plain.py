@@ -186,7 +186,7 @@ def test_conn_fingerprint_mismatch(instance, paramiko, sshclient):
         (("Couldn't connect to plain-instance:foo.",), {}),
         (("Fingerprint doesn't match for localhost (got bar, expected foo)",), {})]
     assert PlainLogMock.error.call_args_list == [
-        (("Failed to connect to foo (localhost)",), {}),
+        (("Failed to connect to plain-instance:foo (localhost)",), {}),
         (("username: 'root'",), {}),
         (("port: 22",), {})]
 
