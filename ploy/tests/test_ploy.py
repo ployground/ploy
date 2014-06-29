@@ -159,10 +159,7 @@ class StartCommandTests(TestCase):
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
         with patch('ploy.tests.dummy_plugin.log') as LogMock:
-            try:
-                self.ctrl(['./bin/ploy', 'start', 'foo'])
-            except SystemExit:  # pragma: no cover - only if something is wrong
-                self.fail("SystemExit raised")
+            self.ctrl(['./bin/ploy', 'start', 'foo'])
         assert len(LogMock.info.call_args_list) == 1
         call_args = LogMock.info.call_args_list[0][0]
         assert call_args[0] == 'start: %s %s'
@@ -186,10 +183,7 @@ class StartCommandTests(TestCase):
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
         with patch('ploy.tests.dummy_plugin.log') as LogMock:
-            try:
-                self.ctrl(['./bin/ploy', 'start', 'foo', '-o', 'ham=egg'])
-            except SystemExit:  # pragma: no cover - only if something is wrong
-                self.fail("SystemExit raised")
+            self.ctrl(['./bin/ploy', 'start', 'foo', '-o', 'ham=egg'])
         assert len(LogMock.info.call_args_list) == 2
         call_args = LogMock.info.call_args_list[0][0]
         assert call_args[0] == 'start: %s %s'
@@ -204,10 +198,7 @@ class StartCommandTests(TestCase):
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
         with patch('ploy.tests.dummy_plugin.log') as LogMock:
-            try:
-                self.ctrl(['./bin/ploy', 'start', 'foo', '-o', 'ham=egg', 'spam=1'])
-            except SystemExit:  # pragma: no cover - only if something is wrong
-                self.fail("SystemExit raised")
+            self.ctrl(['./bin/ploy', 'start', 'foo', '-o', 'ham=egg', 'spam=1'])
         assert len(LogMock.info.call_args_list) == 2
         call_args = LogMock.info.call_args_list[0][0]
         assert call_args[0] == 'start: %s %s'
@@ -240,10 +231,7 @@ class StartCommandTests(TestCase):
             f.write(';;;;;;;;;;' * 150)
         with patch('ploy.log') as LogMock:
             with patch('ploy.common.log') as CommonLogMock:
-                try:
-                    self.ctrl(['./bin/ploy', 'debug', 'foo'])
-                except SystemExit:  # pragma: no cover - only if something is wrong
-                    self.fail("SystemExit raised")
+                self.ctrl(['./bin/ploy', 'debug', 'foo'])
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 1500, 1024)
         CommonLogMock.error.assert_called_with('Startup script too big (%s > %s).', 1500, 1024)
 
@@ -294,10 +282,7 @@ class StatusCommandTests(TestCase):
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
         with patch('ploy.tests.dummy_plugin.log') as LogMock:
-            try:
-                self.ctrl(['./bin/ploy', 'status', 'foo'])
-            except SystemExit:  # pragma: no cover - only if something is wrong
-                self.fail("SystemExit raised")
+            self.ctrl(['./bin/ploy', 'status', 'foo'])
         LogMock.info.assert_called_with('status: %s', 'foo')
 
 
@@ -332,10 +317,7 @@ class StopCommandTests(TestCase):
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
         with patch('ploy.tests.dummy_plugin.log') as LogMock:
-            try:
-                self.ctrl(['./bin/ploy', 'stop', 'foo'])
-            except SystemExit:  # pragma: no cover - only if something is wrong
-                self.fail("SystemExit raised")
+            self.ctrl(['./bin/ploy', 'stop', 'foo'])
         LogMock.info.assert_called_with('stop: %s', 'foo')
 
 
@@ -370,10 +352,7 @@ class TerminateCommandTests(TestCase):
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
         with patch('ploy.tests.dummy_plugin.log') as LogMock:
-            try:
-                self.ctrl(['./bin/ploy', 'terminate', 'foo'])
-            except SystemExit:  # pragma: no cover - only if something is wrong
-                self.fail("SystemExit raised")
+            self.ctrl(['./bin/ploy', 'terminate', 'foo'])
         LogMock.info.assert_called_with('terminate: %s', 'foo')
 
     def testHook(self):
@@ -419,10 +398,7 @@ class DebugCommandTests(TestCase):
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
         with patch('ploy.log') as LogMock:
-            try:
-                self.ctrl(['./bin/ploy', 'debug', 'foo'])
-            except SystemExit:  # pragma: no cover - only if something is wrong
-                self.fail("SystemExit raised")
+            self.ctrl(['./bin/ploy', 'debug', 'foo'])
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 0, 1024)
 
     def testCallWithMissingStartupScript(self):
@@ -449,10 +425,7 @@ class DebugCommandTests(TestCase):
             f.write(';;;;;;;;;;' * 150)
         with patch('ploy.log') as LogMock:
             with patch('ploy.common.log') as CommonLogMock:
-                try:
-                    self.ctrl(['./bin/ploy', 'debug', 'foo'])
-                except SystemExit:  # pragma: no cover - only if something is wrong
-                    self.fail("SystemExit raised")
+                self.ctrl(['./bin/ploy', 'debug', 'foo'])
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 1500, 1024)
         CommonLogMock.error.assert_called_with('Startup script too big (%s > %s).', 1500, 1024)
 
@@ -467,10 +440,7 @@ class DebugCommandTests(TestCase):
             f.write('FooBar')
         with patch('sys.stdout') as StdOutMock:
             with patch('ploy.log') as LogMock:
-                try:
-                    self.ctrl(['./bin/ploy', 'debug', 'foo', '-v'])
-                except SystemExit:  # pragma: no cover - only if something is wrong
-                    self.fail("SystemExit raised")
+                self.ctrl(['./bin/ploy', 'debug', 'foo', '-v'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         self.assertEquals(output, 'FooBar')
         self.assertEquals(
@@ -489,10 +459,7 @@ class DebugCommandTests(TestCase):
             f.write('{foo}')
         with patch('sys.stdout') as StdOutMock:
             with patch('ploy.log') as LogMock:
-                try:
-                    self.ctrl(['./bin/ploy', 'debug', 'foo', '-v'])
-                except SystemExit:  # pragma: no cover - only if something is wrong
-                    self.fail("SystemExit raised")
+                self.ctrl(['./bin/ploy', 'debug', 'foo', '-v'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         self.assertEquals(output, 'bar')
         self.assertEquals(
@@ -511,10 +478,7 @@ class DebugCommandTests(TestCase):
             f.write('{foo}')
         with patch('sys.stdout') as StdOutMock:
             with patch('ploy.log') as LogMock:
-                try:
-                    self.ctrl(['./bin/ploy', 'debug', 'foo', '-v', '-o', 'foo=hamster'])
-                except SystemExit:  # pragma: no cover - only if something is wrong
-                    self.fail("SystemExit raised")
+                self.ctrl(['./bin/ploy', 'debug', 'foo', '-v', '-o', 'foo=hamster'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         self.assertEquals(output, 'hamster')
         self.assertEquals(
@@ -554,10 +518,7 @@ class ListCommandTests(TestCase):
             '[dummy-instance:foo]',
             'host = localhost']))
         with patch('sys.stdout') as StdOutMock:
-            try:
-                self.ctrl(['./bin/ploy', 'list', 'dummy'])
-            except SystemExit:  # pragma: no cover - only if something is wrong
-                self.fail("SystemExit raised")
+            self.ctrl(['./bin/ploy', 'list', 'dummy'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         output = filter(None, output.splitlines())
         assert output == ['list_dummy']
@@ -603,10 +564,7 @@ class SSHCommandTests(TestCase):
             '[dummy-instance:foo]',
             'host = localhost']))
         with patch('ploy.tests.dummy_plugin.log') as LogMock:
-            try:
-                self.ctrl(['./bin/ploy', 'ssh', 'foo'])
-            except SystemExit:  # pragma: no cover - only if something is wrong
-                self.fail("SystemExit raised")
+            self.ctrl(['./bin/ploy', 'ssh', 'foo'])
         self.assertEquals(
             LogMock.info.call_args_list,
             [
@@ -652,10 +610,7 @@ class SnapshotCommandTests(TestCase):
             '[dummy-instance:foo]',
             'host = localhost']))
         with patch('ploy.tests.dummy_plugin.log') as LogMock:
-            try:
-                self.ctrl(['./bin/ploy', 'snapshot', 'foo'])
-            except SystemExit:  # pragma: no cover - only if something is wrong
-                self.fail("SystemExit raised")
+            self.ctrl(['./bin/ploy', 'snapshot', 'foo'])
         self.assertEquals(
             LogMock.info.call_args_list,
             [
