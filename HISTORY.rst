@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0rc9 - unreleased
+1.0rc9 - 2014-06-29
 -------------------
 
 * Let plugins add type of lists to show with the ``list`` command.
