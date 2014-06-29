@@ -1,3 +1,4 @@
+from lazy import lazy
 try:
     import cStringIO
     StringIO = cStringIO.StringIO  # shutup pyflakes
@@ -191,6 +192,10 @@ class BaseInstance(object):
     @property
     def config_id(self):
         return "%s:%s" % (self.sectiongroupname, self.id)
+
+    @lazy
+    def paramiko(self):
+        return import_paramiko()
 
     @property
     def conn(self):

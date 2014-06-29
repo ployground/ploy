@@ -345,14 +345,9 @@ class Controller(object):
         instance = instances[sid]
         if user is None:
             user = instance.config.get('user')
-        try:  # pragma: no cover - we support both
-            from paramiko import SSHException
-            SSHException  # shutup pyflakes
-        except ImportError:  # pragma: no cover - we support both
-            from ssh import SSHException
         try:
             ssh_info = instance.init_ssh_key(user=user)
-        except SSHException, e:
+        except instance.paramiko.SSHException as e:
             log.error("Couldn't validate fingerprint for ssh connection.")
             log.error(unicode(e))
             log.error("Is the instance finished starting up?")

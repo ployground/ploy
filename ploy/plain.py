@@ -66,10 +66,6 @@ class Instance(BaseInstance):
         return fingerprint
 
     @lazy
-    def paramiko(self):
-        return import_paramiko()
-
-    @lazy
     def sshconfig(self):
         sshconfig = self.paramiko.SSHConfig()
         path = os.path.expanduser('~/.ssh/config')
