@@ -6,6 +6,12 @@ import tempfile
 import shutil
 
 
+try:
+    unicode
+except NameError:  # pragma: nocover
+    unicode = str
+
+
 class TestPlain:
     @pytest.fixture(autouse=True)
     def setup_ctrl(self, os_execvp_mock, paramiko, sshclient, sshconfig):
@@ -301,7 +307,7 @@ def test_missing_host_key_mismatch(paramiko, sshclient):
     key.get_fingerprint.return_value = 'bar'
     with pytest.raises(paramiko.SSHException) as e:
         shkp.missing_host_key(sshclient, 'localhost', key)
-    assert e.value.message == "Fingerprint doesn't match for localhost (got 62:61:72, expected 66:6f:6f)"
+    assert unicode(e.value) == "Fingerprint doesn't match for localhost (got 62:61:72, expected 66:6f:6f)"
 
 
 def test_missing_host_key(tempdir, sshclient):

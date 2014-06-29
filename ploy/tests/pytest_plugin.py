@@ -24,7 +24,7 @@ class File:
         if not os.path.exists(self.directory):
             os.makedirs(self.directory)
         with open(self.path, 'w') as f:
-            if hasattr(content, '__iter__'):
+            if isinstance(content, (list, tuple)):
                 content = '\n'.join(content)
             f.write(content)
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import pkg_resources
 from lazy import lazy
 from ploy.config import Config
@@ -13,6 +14,12 @@ __all__ = [template.__name__]
 
 
 log = logging.getLogger('ploy')
+
+
+try:
+    unicode
+except NameError:  # pragma: nocover
+    unicode = str
 
 
 class LazyInstanceDict(dict):
@@ -260,12 +267,12 @@ class Controller(object):
                 else:
                     log.info("No startup script specified")
             if args.raw:
-                print startup_script['raw'],
+                print(startup_script['raw'], end='')
             elif args.verbose:
-                print startup_script['original'],
+                print(startup_script['original'], end='')
         if args.console_output:
             if hasattr(instance, 'get_console_output'):
-                print instance.get_console_output()
+                print(instance.get_console_output())
             else:
                 log.error("The instance doesn't support console output.")
         if args.interactive:  # pragma: no cover
@@ -387,23 +394,23 @@ class Controller(object):
         if args.zsh:
             if args.command is None:
                 for cmd in self.subparsers.keys():
-                    print cmd
+                    print(cmd)
             else:  # pragma: no cover
                 if hasattr(self.cmds[args.command], 'get_completion'):
                     for item in self.cmds[args.command].get_completion():
-                        print item
+                        print(item)
                 elif args.command in ('do', 'ssh'):
                     for instance in self.get_instances(command='init_ssh_key'):
-                        print instance
+                        print(instance)
                 elif args.command == 'debug':
                     for instance in sorted(self.instances):
-                        print instance
+                        print(instance)
                 elif args.command == 'list':
                     for subcmd in sorted(self.list_cmds):
-                        print subcmd
+                        print(subcmd)
                 elif args.command != 'help':
                     for instance in sorted(self.get_instances(command=args.command)):
-                        print instance
+                        print(instance)
         else:
             if args.command is None:
                 parser.print_help()
@@ -441,6 +448,8 @@ class Controller(object):
                 for cmd, func in plugin['get_list_commands'](self):
                     self.list_cmds.setdefault(cmd, []).append((pluginname, func))
         cmdparsers = parser.add_subparsers(title="commands")
+        cmdparsers.required = True
+        cmdparsers.dest = 'commands'
         self.subparsers = {}
         for cmd, func in self.cmds.items():
             subparser = cmdparsers.add_parser(cmd, help=func.__doc__)

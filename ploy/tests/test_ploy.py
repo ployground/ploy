@@ -3,6 +3,7 @@ from ploy import Controller
 import logging
 import os
 import pytest
+import sys
 
 
 log = logging.getLogger('test')
@@ -17,6 +18,12 @@ class DummyHooks(object):
 
     def startup_script_options(self, options):
         log.info('startup_script_options')
+
+
+if sys.version_info < (3,):  # pragma: nocover
+    too_view_arguments = 'too few arguments'
+else:  # pragma: nocover
+    too_view_arguments = 'the following arguments are required'
 
 
 class TestPloy:
@@ -57,7 +64,7 @@ class TestPloy:
                 ctrl(['./bin/ploy'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage:' in output
-        assert 'too few arguments' in output
+        assert too_view_arguments in output
 
     def testOverwriteConfigPath(self):
         open(os.path.join(self.directory, 'foo.conf'), 'w').write('\n'.join([
@@ -137,7 +144,7 @@ class TestStartCommand:
                 self.ctrl(['./bin/ploy', 'start'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy start' in output
-        assert 'too few arguments' in output
+        assert too_view_arguments in output
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
@@ -159,7 +166,7 @@ class TestStartCommand:
         call_args = LogMock.info.call_args_list[0][0]
         assert call_args[0] == 'start: %s %s'
         assert call_args[1] == 'foo'
-        assert call_args[2].keys() == ['instances']
+        assert list(call_args[2].keys()) == ['instances']
         assert sorted(call_args[2]['instances'].keys()) == ['default-foo', 'foo']
 
     def testCallWithInvalidOverride(self):
@@ -260,7 +267,7 @@ class TestStatusCommand:
                 self.ctrl(['./bin/ploy', 'status'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy status' in output
-        assert 'too few arguments' in output
+        assert too_view_arguments in output
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
@@ -295,7 +302,7 @@ class TestStopCommand:
                 self.ctrl(['./bin/ploy', 'stop'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy stop' in output
-        assert 'too few arguments' in output
+        assert too_view_arguments in output
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
@@ -330,7 +337,7 @@ class TestTerminateCommand:
                 self.ctrl(['./bin/ploy', 'terminate'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy terminate' in output
-        assert 'too few arguments' in output
+        assert too_view_arguments in output
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
@@ -376,7 +383,7 @@ class TestDebugCommand:
                 self.ctrl(['./bin/ploy', 'debug'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy debug' in output
-        assert 'too few arguments' in output
+        assert too_view_arguments in output
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
@@ -492,7 +499,7 @@ class TestListCommand:
                 self.ctrl(['./bin/ploy', 'list'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy list' in output
-        assert 'too few arguments' in output
+        assert too_view_arguments in output
 
     def testCallWithNonExistingList(self):
         self._write_config('')
@@ -512,7 +519,7 @@ class TestListCommand:
         with patch('sys.stdout') as StdOutMock:
             self.ctrl(['./bin/ploy', 'list', 'dummy'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
-        output = filter(None, output.splitlines())
+        output = list(filter(None, output.splitlines()))
         assert output == ['list_dummy']
 
 
@@ -532,7 +539,7 @@ class TestSSHCommand:
                 self.ctrl(['./bin/ploy', 'ssh'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy ssh' in output
-        assert 'too few arguments' in output
+        assert too_view_arguments in output
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')
@@ -576,7 +583,7 @@ class TestSnapshotCommand:
                 self.ctrl(['./bin/ploy', 'snapshot'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy snapshot' in output
-        assert 'too few arguments' in output
+        assert too_view_arguments in output
 
     def testCallWithNonExistingInstance(self):
         self._write_config('')

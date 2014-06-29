@@ -1,4 +1,5 @@
 from ploy.template import Template
+import base64
 import pytest
 
 
@@ -39,7 +40,7 @@ class TestTemplate:
         template = Template(self.template_path)
         result = template()
         assert result == "MQ==\n"
-        assert result.decode('base64') == "1"
+        assert base64.decodestring(result.encode('ascii')) == b"1"
 
     def testEscapeEolOption(self):
         self._fillTemplate("option: file,escape_eol test.txt\n\n{option}")
@@ -65,12 +66,12 @@ class TestTemplate:
         self._fillTemplate("option: gzip,base64 1\n\n{option}")
         template = Template(self.template_path)
         result = template()
-        payload = result.decode('base64')
+        payload = base64.decodestring(result.encode('ascii'))
         header = payload[:10]
         body = payload[10:]
-        assert header[:4] == "\x1f\x8b\x08\x00"  # magic + compression + flags
-        assert header[8:] == "\x02\xff"  # extra flags + os
-        assert body == "3\x04\x00\xb7\xef\xdc\x83\x01\x00\x00\x00"
+        assert header[:4] == b"\x1f\x8b\x08\x00"  # magic + compression + flags
+        assert header[8:] == b"\x02\xff"  # extra flags + os
+        assert body == b"3\x04\x00\xb7\xef\xdc\x83\x01\x00\x00\x00"
 
     def testTemplateOption(self):
         self._fillTemplate("template: template test.txt\n\n{template}")

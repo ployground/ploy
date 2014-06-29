@@ -1,9 +1,12 @@
+from __future__ import print_function
 from lazy import lazy
 try:
-    import cStringIO
-    StringIO = cStringIO.StringIO  # shutup pyflakes
+    from cStringIO import StringIO as BytesIO
 except ImportError:  # pragma: no cover
-    from StringIO import StringIO
+    try:
+        from StringIO import StringIO as BytesIO
+    except ImportError:
+        from io import BytesIO
 import gzip
 import logging
 import re
@@ -11,6 +14,17 @@ import sys
 
 
 log = logging.getLogger('ploy')
+
+
+try:
+    unicode
+except NameError:  # pragma: nocover
+    unicode = str
+
+try:
+    get_input = raw_input
+except NameError:  # pragma: nocover
+    get_input = input
 
 
 def import_paramiko():  # pragma: no cover - we support both
@@ -22,11 +36,13 @@ def import_paramiko():  # pragma: no cover - we support both
 
 
 def gzip_string(value):
-    s = StringIO()
+    s = BytesIO()
     gz = gzip.GzipFile(mode='wb', fileobj=s)
+    if not isinstance(value, bytes):
+        value = value.encode('ascii')
     gz.write(value)
     gz.close()
-    return s.getvalue()
+    return bytes(s.getvalue())
 
 
 def strip_hashcomments(value):
@@ -70,14 +86,14 @@ def yesno(question, default=None, all=False):
             question = "%s/all" % question
     question = "%s] " % question
     while 1:
-        answer = raw_input(question).lower()
+        answer = get_input(question).lower()
         for option in answers:
             if answer in answers[option]:
                 return option
         if all:
-            print >>sys.stderr, "You have to answer with y, yes, n, no, a or all."
+            print("You have to answer with y, yes, n, no, a or all.", file=sys.stderr)
         else:
-            print >>sys.stderr, "You have to answer with y, yes, n or no."
+            print("You have to answer with y, yes, n or no.", file=sys.stderr)
 
 
 class StartupScriptMixin(object):
@@ -104,10 +120,10 @@ class StartupScriptMixin(object):
         self.hooks.startup_script_options(config)
         result = dict(original=startup_script(**config))
         if startup_script_path.get('gzip', False):
-            result['raw'] = "\n".join([
-                "#!/bin/sh",
-                "tail -n+4 $0 | gunzip -c | sh",
-                "exit $?",
+            result['raw'] = b"\n".join([
+                b"#!/bin/sh",
+                b"tail -n+4 $0 | gunzip -c | sh",
+                b"exit $?",
                 gzip_string(result['original'])
             ])
         else:
@@ -137,7 +153,7 @@ class BaseMaster(object):
                 None: self.instance_class,
                 self.sectiongroupname: self.instance_class}
         for sectiongroupname, instance_class in self.section_info.items():
-            for sid, config in self.main_config.get(sectiongroupname, {}).iteritems():
+            for sid, config in self.main_config.get(sectiongroupname, {}).items():
                 if self.id != config.get('master', self.id):
                     continue
                 self.instances[sid] = instance_class(self, sid, config)

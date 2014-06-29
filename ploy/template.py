@@ -1,4 +1,5 @@
 from ploy.common import gzip_string
+import base64
 import email
 import os
 
@@ -24,7 +25,9 @@ class Template(object):
                         path = os.path.join(os.path.dirname(self.path), path)
                     value = open(path).read()
                 elif cmd == 'base64':
-                    value = value.encode("base64")
+                    if not isinstance(value, bytes):
+                        value = value.encode('ascii')
+                    value = base64.encodestring(value).decode('ascii')
                 elif cmd == 'format':
                     value = value.format(**kwargs)
                 elif cmd == 'template':

@@ -1,3 +1,4 @@
+from __future__ import print_function
 from ploy.common import BaseInstance, BaseMaster, StartupScriptMixin
 from ploy.config import HooksMassager
 from ploy.config import StartupScriptMassager
@@ -42,7 +43,7 @@ class Instance(BaseInstance, StartupScriptMixin):
         self.startup_script(overrides=overrides)
         log.info('start: %s %s', self.id, overrides)
         # this is here to get full coverage of the cmd_start method in common.py
-        if overrides.keys() != ['instances']:
+        if list(overrides.keys()) != ['instances']:
             return overrides
 
     def status(self):
@@ -74,7 +75,7 @@ class Master(BaseMaster):
 
 
 def list_dummy(argv, help):
-    print "list_dummy"
+    print("list_dummy")
 
 
 def get_instance_massagers(sectiongroupname='instance'):
@@ -93,7 +94,7 @@ def get_massagers():
 
 def get_masters(ctrl):
     masters = ctrl.config.get('dummy-master', {'default': {}})
-    for master, master_config in masters.iteritems():
+    for master, master_config in masters.items():
         yield Master(ctrl, master, master_config)
 
 

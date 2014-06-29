@@ -1,6 +1,12 @@
 from ploy.common import Hooks
-from ConfigParser import RawConfigParser
-from UserDict import DictMixin
+try:
+    from configparser import RawConfigParser
+except ImportError:
+    from ConfigParser import RawConfigParser
+try:
+    from collections import MutableMapping as DictMixin
+except ImportError:  # pragma: nocover
+    from UserDict import DictMixin
 from weakref import proxy
 import inspect
 import logging
@@ -10,6 +16,12 @@ import warnings
 
 
 log = logging.getLogger('ploy')
+
+
+try:
+    unicode
+except NameError:  # pragma: nocover
+    unicode = str
 
 
 _marker = object()
@@ -70,10 +82,10 @@ class PathMassager(BaseMassager):
 def resolve_dotted_name(value):
     if '.' in value:
         prefix, name = value.rsplit('.', 1)
-        _temp = __import__(prefix, globals(), locals(), [name], -1)
+        _temp = __import__(prefix, globals(), locals(), [name])
         return getattr(_temp, name)
     else:
-        return __import__(value, globals(), locals(), [], -1)
+        return __import__(value, globals(), locals(), [])
 
 
 class HooksMassager(BaseMassager):
@@ -170,6 +182,12 @@ class ConfigSection(DictMixin):
 
     def keys(self):
         return self._dict.keys()
+
+    def __len__(self):
+        return len(self._dict)
+
+    def __iter__(self):
+        return iter(self.keys())
 
     def copy(self):
         new = ConfigSection()
@@ -306,10 +324,10 @@ class Config(ConfigSection):
                         try:
                             massager = resolve_dotted_name(massager)
                         except ImportError as e:
-                            log.error("Can't import massager from '%s'.\n%s", massager, e.message)
+                            log.error("Can't import massager from '%s'.\n%s", massager, unicode(e))
                             sys.exit(1)
                         except AttributeError as e:
-                            log.error("Can't import massager from '%s'.\n%s", massager, e.message)
+                            log.error("Can't import massager from '%s'.\n%s", massager, unicode(e))
                             sys.exit(1)
                         massager = massager(massager_sectiongroupname, massager_key)
                         if massager_sectionname is None:

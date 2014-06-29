@@ -1,4 +1,8 @@
-from StringIO import StringIO
+from __future__ import print_function
+try:
+    from StringIO import StringIO
+except ImportError:  # pragma: nocover
+    from io import StringIO
 from mock import patch
 from ploy.common import InstanceHooks, BaseInstance, StartupScriptMixin
 from ploy.config import Config, StartupScriptMassager
@@ -82,17 +86,17 @@ class TestStartupScript:
             path=self.directory)
         instance.master = MockMaster(config)
         result = instance.startup_script()
-        assert result[:48] == "\n".join([
-            "#!/bin/sh",
-            "tail -n+4 $0 | gunzip -c | sh",
-            "exit $?",
-            ""])
+        assert result[:48] == b"\n".join([
+            b"#!/bin/sh",
+            b"tail -n+4 $0 | gunzip -c | sh",
+            b"exit $?",
+            b""])
         payload = result[48:]
         header = payload[:10]
         body = payload[10:]
-        assert header[:4] == "\x1f\x8b\x08\x00"  # magic + compression + flags
-        assert header[8:] == "\x02\xff"  # extra flags + os
-        assert body == "\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        assert header[:4] == b"\x1f\x8b\x08\x00"  # magic + compression + flags
+        assert header[8:] == b"\x02\xff"  # extra flags + os
+        assert body == b"\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 
     def test_strip_hashcomments(self):
         self.tempdir['foo'].fill([
@@ -180,14 +184,14 @@ def test_yesno(default, all, question, answer, expected):
     from ploy.common import yesno
     raw_input_values = answer
 
-    def raw_input_result(q):
+    def get_input_result(q):
         assert q == question
         a = raw_input_values.pop()
-        print q, repr(a)
+        print(q, repr(a))
         return a
 
-    with patch('__builtin__.raw_input') as RawInput:
-        RawInput.side_effect = raw_input_result
+    with patch('ploy.common.get_input') as RawInput:
+        RawInput.side_effect = get_input_result
         try:
             assert yesno('Foo', default, all) == expected
         except Exception as e:

@@ -1,8 +1,18 @@
-from StringIO import StringIO
+from __future__ import print_function
+try:
+    from StringIO import StringIO
+except ImportError:  # pragma: nocover
+    from io import StringIO
 from mock import patch
 from ploy.config import Config
 import os
 import pytest
+
+
+try:
+    unicode
+except NameError:  # pragma: nocover
+    unicode = str
 
 
 class TestConfig:
@@ -314,7 +324,7 @@ class TestMassagers:
         config.add_massager(BaseMassager('section', 'value'))
         with pytest.raises(ValueError) as e:
             config.add_massager(BaseMassager('section', 'value'))
-        assert e.value.message == "Massager for option 'value' in section group 'section' already registered."
+        assert unicode(e.value) == "Massager for option 'value' in section group 'section' already registered."
 
     def testMassagedOverrides(self):
         from ploy.config import IntegerMassager
@@ -432,8 +442,7 @@ def _expected(first, second, third):
 def test_valid_massagers_specs_in_config(description, massagers, expected):
     config = _make_config(massagers)
     expected = _expected(*expected)
-    print "Description of failed test:\n   ", description
-    print
+    print("Description of failed test:\n    %s\n" % description)
     assert dict(config) == expected
 
 
@@ -468,8 +477,11 @@ class TestMassagersFromConfig:
         with patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
-        assert LogMock.error.call_args_list == [
-            (("Can't import massager from '%s'.\n%s", 'bar', 'No module named bar'), {})]
+        assert len(LogMock.error.call_args_list) == 1
+        assert LogMock.error.call_args_list[0][0][0] == "Can't import massager from '%s'.\n%s"
+        assert LogMock.error.call_args_list[0][0][1] == 'bar'
+        assert LogMock.error.call_args_list[0][0][2].startswith('No module named')
+        assert 'bar' in LogMock.error.call_args_list[0][0][2]
 
     def testUnknownAttributeFor(self):
         contents = StringIO("\n".join([

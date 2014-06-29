@@ -23,7 +23,11 @@ def ServerHostKeyPolicy(*args, **kwarks):
             return self.fingerprint_func()
 
         def missing_host_key(self, client, hostname, key):
-            fingerprint = ':'.join("%02x" % ord(x) for x in key.get_fingerprint())
+            key_fingerprint = key.get_fingerprint()
+            if isinstance(key_fingerprint[0], int):
+                fingerprint = ':'.join("%02x" % x for x in key_fingerprint)
+            else:
+                fingerprint = ':'.join("%02x" % ord(x) for x in key_fingerprint)
             if self.fingerprint.lower() == 'ask':
                 if not self.ask:
                     return
@@ -190,7 +194,7 @@ def get_massagers():
 
 def get_masters(ctrl):
     masters = ctrl.config.get('plain-master', {'plain-master': {}})
-    for master, master_config in masters.iteritems():
+    for master, master_config in masters.items():
         yield Master(ctrl, master, master_config)
 
 
