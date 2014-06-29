@@ -33,13 +33,9 @@ class LazyInstanceDict(dict):
 
 class Controller(object):
     def __init__(self, configpath=None, configname=None, progname=None):
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
         plog = logging.getLogger('paramiko.transport')
-        log.setLevel(logging.INFO)
         plog.setLevel(logging.WARN)
-        ch = logging.StreamHandler()
-        ch.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
-        log.addHandler(ch)
-        plog.addHandler(ch)
         if configname is None:
             configname = 'ploy.conf'
         if configpath is None:
