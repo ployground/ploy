@@ -405,7 +405,7 @@ class Controller(object):
                     for instance in self.get_instances(command='init_ssh_key'):
                         print instance
                 elif args.command == 'debug':
-                    for instance in self.get_instances(command='startup_script'):
+                    for instance in sorted(self.instances):
                         print instance
                 elif args.command == 'list':
                     for subcmd in sorted(self.list_cmds):
