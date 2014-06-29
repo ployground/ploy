@@ -1,35 +1,19 @@
 from mock import MagicMock, call, patch
 from ploy import Controller
-from unittest2 import TestCase
 import os
 import pytest
 import tempfile
 import shutil
 
 
-class PlainTests(TestCase):
-    def setUp(self):
-        from ploy.common import import_paramiko
+class TestPlain:
+    @pytest.fixture(autouse=True)
+    def setup_ctrl(self, os_execvp_mock, paramiko, sshclient, sshconfig):
         self.directory = tempfile.mkdtemp()
         self.ctrl = Controller(self.directory)
-        self.paramiko = import_paramiko()
-        self._ssh_client_mock = patch("%s.SSHClient" % self.paramiko.__name__)
-        self.ssh_client_mock = self._ssh_client_mock.start()
-        self._ssh_config_mock = patch("%s.SSHConfig" % self.paramiko.__name__)
-        self.ssh_config_mock = self._ssh_config_mock.start()
-        self.ssh_config_mock().lookup.return_value = {}
-        self._os_execvp_mock = patch("os.execvp")
-        self.os_execvp_mock = self._os_execvp_mock.start()
-
-    def tearDown(self):
-        self.os_execvp_mock = self._os_execvp_mock.stop()
-        del self.os_execvp_mock
-        self.ssh_config_mock = self._ssh_config_mock.stop()
-        del self.ssh_config_mock
-        self.ssh_client_mock = self._ssh_client_mock.stop()
-        del self.ssh_client_mock
-        shutil.rmtree(self.directory)
-        del self.directory
+        self.paramiko = paramiko
+        self.ssh_client_mock = sshclient
+        self.os_execvp_mock = os_execvp_mock
 
     def _write_config(self, content):
         with open(os.path.join(self.directory, 'ploy.conf'), 'w') as f:
@@ -42,7 +26,7 @@ class PlainTests(TestCase):
             with pytest.raises(SystemExit):
                 self.ctrl(['./bin/ploy', 'status', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn("invalid choice: 'foo'", output)
+        assert "invalid choice: 'foo'" in output
 
     def testInstanceCantBeStarted(self):
         self._write_config('\n'.join([
@@ -51,7 +35,7 @@ class PlainTests(TestCase):
             with pytest.raises(SystemExit):
                 self.ctrl(['./bin/ploy', 'start', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn("invalid choice: 'foo'", output)
+        assert "invalid choice: 'foo'" in output
 
     def testInstanceCantBeStopped(self):
         self._write_config('\n'.join([
@@ -60,7 +44,7 @@ class PlainTests(TestCase):
             with pytest.raises(SystemExit):
                 self.ctrl(['./bin/ploy', 'stop', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn("invalid choice: 'foo'", output)
+        assert "invalid choice: 'foo'" in output
 
     def testInstanceCantBeTerminated(self):
         self._write_config('\n'.join([
@@ -69,7 +53,7 @@ class PlainTests(TestCase):
             with pytest.raises(SystemExit):
                 self.ctrl(['./bin/ploy', 'stop', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        self.assertIn("invalid choice: 'foo'", output)
+        assert "invalid choice: 'foo'" in output
 
     def testSSHWithNoHost(self):
         self._write_config('\n'.join([
@@ -77,11 +61,10 @@ class PlainTests(TestCase):
         with patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
                 self.ctrl(['./bin/ploy', 'ssh', 'foo'])
-        self.assertEquals(
-            LogMock.error.call_args_list, [
-                (("Couldn't validate fingerprint for ssh connection.",), {}),
-                (("No host or ip set in config.",), {}),
-                (('Is the instance finished starting up?',), {})])
+        assert LogMock.error.call_args_list == [
+            (("Couldn't validate fingerprint for ssh connection.",), {}),
+            (("No host or ip set in config.",), {}),
+            (('Is the instance finished starting up?',), {})]
 
     def testSSHWithFingerprintMismatch(self):
         self._write_config('\n'.join([
@@ -93,11 +76,10 @@ class PlainTests(TestCase):
         with patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
                 self.ctrl(['./bin/ploy', 'ssh', 'foo'])
-        self.assertEquals(
-            LogMock.error.call_args_list, [
-                (("Couldn't validate fingerprint for ssh connection.",), {}),
-                (("Fingerprint doesn't match for localhost (got bar, expected foo)",), {}),
-                (('Is the instance finished starting up?',), {})])
+        assert LogMock.error.call_args_list == [
+            (("Couldn't validate fingerprint for ssh connection.",), {}),
+            (("Fingerprint doesn't match for localhost (got bar, expected foo)",), {}),
+            (('Is the instance finished starting up?',), {})]
 
     def testSSH(self):
         self._write_config('\n'.join([

@@ -2,7 +2,6 @@ from StringIO import StringIO
 from mock import patch
 from ploy.common import InstanceHooks, BaseInstance, StartupScriptMixin
 from ploy.config import Config, StartupScriptMassager
-from unittest2 import TestCase
 import os
 import pytest
 
@@ -26,7 +25,7 @@ class MockInstance(BaseInstance, StartupScriptMixin):
         self.hooks = InstanceHooks(self)
 
 
-class StartupScriptTests(TestCase):
+class TestStartupScript:
     @pytest.fixture(autouse=True)
     def setup_tempdir(self, tempdir):
         self.tempdir = tempdir
@@ -44,7 +43,7 @@ class StartupScriptTests(TestCase):
         config = self._create_config("[instance:foo]")
         instance.master = MockMaster(config)
         result = instance.startup_script()
-        self.assertMultiLineEqual(result, "")
+        assert result == ""
 
     def testMissingStartupScript(self):
         instance = MockInstance()
@@ -71,7 +70,7 @@ class StartupScriptTests(TestCase):
             path=self.directory)
         instance.master = MockMaster(config)
         result = instance.startup_script()
-        self.assertMultiLineEqual(result, "")
+        assert result == ""
 
     def testGzip(self):
         self.tempdir['foo'].fill("")
@@ -91,9 +90,9 @@ class StartupScriptTests(TestCase):
         payload = result[48:]
         header = payload[:10]
         body = payload[10:]
-        self.assertEqual(header[:4], "\x1f\x8b\x08\x00")  # magic + compression + flags
-        self.assertEqual(header[8:], "\x02\xff")  # extra flags + os
-        self.assertEqual(body, "\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+        assert header[:4] == "\x1f\x8b\x08\x00"  # magic + compression + flags
+        assert header[8:] == "\x02\xff"  # extra flags + os
+        assert body == "\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 
     def test_strip_hashcomments(self):
         self.tempdir['foo'].fill([
@@ -126,7 +125,7 @@ class StartupScriptTests(TestCase):
         instance.master = MockMaster(config)
         instance.max_startup_script_size = 10
         result = instance.startup_script()
-        self.assertMultiLineEqual(result, "")
+        assert result == ""
 
     def testMaxSizeExceeded(self):
         self.tempdir['foo'].fill("aaaaabbbbbccccc")

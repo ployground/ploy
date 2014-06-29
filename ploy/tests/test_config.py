@@ -1,12 +1,11 @@
 from StringIO import StringIO
 from mock import patch
 from ploy.config import Config
-from unittest2 import TestCase
 import os
 import pytest
 
 
-class ConfigTests(TestCase):
+class TestConfig:
     def testEmpty(self):
         contents = StringIO("")
         config = Config(contents).parse()
@@ -156,7 +155,7 @@ def test_value_asbool(value, expected):
     assert value_asbool(value) == expected
 
 
-class MassagerTests(TestCase):
+class TestMassagers:
     @pytest.fixture(autouse=True)
     def setup_dummyplugin(self):
         self.dummyplugin = DummyPlugin()
@@ -438,7 +437,7 @@ def test_valid_massagers_specs_in_config(description, massagers, expected):
     assert dict(config) == expected
 
 
-class MassagersFromConfigTests(TestCase):
+class TestMassagersFromConfig:
     def testInvalid(self):
         contents = StringIO("\n".join([
             "[section]",
@@ -447,10 +446,8 @@ class MassagersFromConfigTests(TestCase):
         with patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
-        self.assertEquals(
-            LogMock.error.call_args_list,
-            [
-                (("Invalid massager spec '%s' in section '%s:%s'.", 'foo', 'global', 'section'), {})])
+        assert LogMock.error.call_args_list == [
+            (("Invalid massager spec '%s' in section '%s:%s'.", 'foo', 'global', 'section'), {})]
 
     def testTooManyColonsInSpec(self):
         contents = StringIO("\n".join([
@@ -460,10 +457,8 @@ class MassagersFromConfigTests(TestCase):
         with patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
-        self.assertEquals(
-            LogMock.error.call_args_list,
-            [
-                (("Invalid massager spec '%s' in section '%s:%s'.", ':::foo=ploy.config.IntegerMassager', 'global', 'section'), {})])
+        assert LogMock.error.call_args_list == [
+            (("Invalid massager spec '%s' in section '%s:%s'.", ':::foo=ploy.config.IntegerMassager', 'global', 'section'), {})]
 
     def testUnknownModuleFor(self):
         contents = StringIO("\n".join([
@@ -473,10 +468,8 @@ class MassagersFromConfigTests(TestCase):
         with patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
-        self.assertEquals(
-            LogMock.error.call_args_list,
-            [
-                (("Can't import massager from '%s'.\n%s", 'bar', 'No module named bar'), {})])
+        assert LogMock.error.call_args_list == [
+            (("Can't import massager from '%s'.\n%s", 'bar', 'No module named bar'), {})]
 
     def testUnknownAttributeFor(self):
         contents = StringIO("\n".join([
@@ -486,13 +479,11 @@ class MassagersFromConfigTests(TestCase):
         with patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
-        self.assertEquals(
-            LogMock.error.call_args_list,
-            [
-                (("Can't import massager from '%s'.\n%s", 'ploy.foobar', "'module' object has no attribute 'foobar'"), {})])
+        assert LogMock.error.call_args_list == [
+            (("Can't import massager from '%s'.\n%s", 'ploy.foobar', "'module' object has no attribute 'foobar'"), {})]
 
 
-class ConfigExtendTests(TestCase):
+class TestConfigExtend:
     @pytest.fixture(autouse=True)
     def setup_tempdir(self, tempdir):
         self.tempdir = tempdir

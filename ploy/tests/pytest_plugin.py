@@ -1,3 +1,4 @@
+from mock import patch
 import pytest
 import os
 import shutil
@@ -46,3 +47,9 @@ def ployconf(tempdir):
     """ Returns a Configfile object which manages ploy.conf.
     """
     yield tempdir['etc/ploy.conf']
+
+
+@pytest.yield_fixture
+def os_execvp_mock():
+    with patch("os.execvp") as os_execvp_mock:
+        yield os_execvp_mock
