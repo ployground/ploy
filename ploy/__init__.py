@@ -408,7 +408,7 @@ class Controller(object):
                     for instance in self.get_instances(command='startup_script'):
                         print instance
                 elif args.command == 'list':
-                    for subcmd in ('snapshots',):
+                    for subcmd in sorted(self.list_cmds):
                         print subcmd
                 elif args.command != 'help':
                     for instance in sorted(self.get_instances(command=args.command)):
