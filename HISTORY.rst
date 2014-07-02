@@ -4,6 +4,8 @@ Changelog
 1.0rc10 - Unreleased
 --------------------
 
+* Python 3 compatibility.
+  [fschulze]
 
 
 1.0rc9 - 2014-06-29
