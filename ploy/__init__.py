@@ -141,10 +141,7 @@ class Controller(object):
         for master in self.masters.values():
             for instance_id in master.instances:
                 instance = master.instances[instance_id]
-                if hasattr(master, 'instance') and master.id == instance.id:
-                    key = instance.id
-                else:
-                    key = instance.uid
+                key = instance.uid
                 result[key] = instance
                 shortname_map.setdefault(instance_id, []).append(instance)
         for shortname, instances in shortname_map.items():

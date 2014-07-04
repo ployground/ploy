@@ -4,6 +4,8 @@ Changelog
 1.0rc11 - Unreleased
 --------------------
 
+* Fix uid method for master instances.
+  [fschulze]
 
 
 1.0rc10 - 2014-07-04

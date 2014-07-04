@@ -203,7 +203,11 @@ class BaseInstance(object):
 
     @property
     def uid(self):
-        return "%s-%s" % (self.master.id, self.id)
+        master_instance = getattr(self.master, 'instance', None)
+        if master_instance is self:
+            return self.id
+        else:
+            return "%s-%s" % (self.master.id, self.id)
 
     @property
     def config_id(self):
