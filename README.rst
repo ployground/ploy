@@ -1,6 +1,3 @@
-.. contents::
-
-
 Overview
 ========
 
@@ -9,6 +6,9 @@ What kind of server instances these are depends on the used plugins.
 There are plugins for EC2 (ploy_ec2), FreeBSD Jails (ploy_ezjail) and more.
 You can create, delete, monitor and ssh into instances while ploy handles the details like ssh fingerprint checking.
 Additional plugins provide advanced functionality like integrating Fabric (ploy_fabric) and Ansible (ploy_ansible).
+
+You can find the detailed documentation at http://ploy.readthedocs.org/en/latest/
+
 
 Installation
 ============
