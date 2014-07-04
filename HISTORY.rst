@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0rc10 - Unreleased
+1.0rc10 - 2014-07-04
 --------------------
 
 * Print plugin versions with ``-v`` and ``--versions``.
