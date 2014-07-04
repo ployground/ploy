@@ -4,6 +4,9 @@ Changelog
 1.0rc10 - Unreleased
 --------------------
 
+* Print plugin versions with ``-v`` and ``--versions``.
+  [fschulze]
+
 * Python 3 compatibility.
   [fschulze]
 

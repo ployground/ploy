@@ -22,6 +22,29 @@ except NameError:  # pragma: nocover
     unicode = str
 
 
+def versionaction_factory(ctrl):
+    class VersionAction(argparse.Action):
+        def __init__(self, *args, **kw):
+            kw['nargs'] = 0
+            argparse.Action.__init__(self, *args, **kw)
+
+        def __call__(self, parser, namespace, values, option_string=None):
+            import inspect
+            versions = [repr(pkg_resources.get_distribution("ploy"))]
+            for plugin in ctrl.plugins.values():
+                for item in plugin.values():
+                    module = inspect.getmodule(item)
+                    try:
+                        pkg = pkg_resources.get_distribution(module.__name__)
+                    except pkg_resources.DistributionNotFound:
+                        continue
+                    versions.append(repr(pkg))
+                    break
+            print('\n'.join(sorted(versions)))
+            sys.exit(0)
+    return VersionAction
+
+
 class LazyInstanceDict(dict):
     def __getitem__(self, key):
         cache = getattr(self, '_cache', None)
@@ -427,11 +450,9 @@ class Controller(object):
                             default=configfile,
                             help="Use the specified config file.")
 
-        version = pkg_resources.get_distribution("ploy").version
         parser.add_argument('-v', '--version',
-                            action='version',
-                            version='ploy %s' % version,
-                            help="Print version and exit")
+                            action=versionaction_factory(self),
+                            help="Print versions and exit")
 
         self.cmds = dict(
             (x[4:], getattr(self, x))
