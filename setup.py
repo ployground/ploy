@@ -20,7 +20,7 @@ except ImportError:
 
 setup(
     version=version,
-    description="A script allowing to setup Amazon EC2 instances through configuration files.",
+    description="A tool to manage servers through a central configuration. Plugins allow provisioning, configuration and other management tasks.",
     long_description=README + "\n\n" + HISTORY,
     name="ploy",
     author='Florian Schulze',
