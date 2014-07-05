@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0rc11 - Unreleased
+1.0rc11 - 2014-07-05
 --------------------
 
 * Fix uid method for master instances.
