@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0rc13 - Unreleased
+1.0rc13 - 2014-07-08
 --------------------
 
 * Better error message for instances missing because the plugin isn't installed.
