@@ -45,6 +45,4 @@ setup(
         ploy-ssh = ploy:ploy_ssh
         [ploy.plugins]
         plain = ploy.plain:plugin
-        [pytest11]
-        ploy = ploy.tests.pytest_plugin
     """)

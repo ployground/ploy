@@ -4,6 +4,8 @@ Changelog
 1.0rc12 - Unreleased
 --------------------
 
+* Use plain conftest.py instead of pytest plugin.
+  [fschulze]
 
 
 1.0rc11 - 2014-07-05
