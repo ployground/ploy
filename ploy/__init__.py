@@ -1,12 +1,13 @@
 from __future__ import print_function
 import pkg_resources
 from lazy import lazy
-from ploy.config import Config
+from ploy.config import Config, DictMixin
 from ploy import template
 import logging
 import argparse
 import os
 import sys
+import weakref
 
 
 # shutup pyflakes
@@ -45,20 +46,49 @@ def versionaction_factory(ctrl):
     return VersionAction
 
 
-class LazyInstanceDict(dict):
+class LazyInstanceDict(DictMixin):
+    def __init__(self, ctrl):
+        self._cache = dict()
+        self._dict = dict()
+        self.ctrl = weakref.ref(ctrl)
+
     def __getitem__(self, key):
-        cache = getattr(self, '_cache', None)
-        if cache is None:
-            cache = self._cache = {}
         if key in self._cache:
             return self._cache[key]
-        instance = dict.__getitem__(self, key)
+        try:
+            instance = self._dict[key]
+        except KeyError:
+            ctrl = self.ctrl()
+            candidates = []
+            for sectionname, section in ctrl.config.items():
+                if key in section:
+                    candidates.append("    %s:%s" % (sectionname, key))
+            if candidates:
+                log.error("Instance '%s' not found. Did you forget to install a plugin? The following sections might match:\n%s" % (
+                    key, "\n".join(candidates)))
+            raise
         for plugin in self.plugins.values():
             if 'augment_instance' not in plugin:
                 continue
             plugin['augment_instance'](instance)
         self._cache[key] = instance
         return instance
+
+    def __setitem__(self, key, value):
+        self._dict[key] = value
+
+    def __delitem__(self, key):
+        del self._dict[key]
+        self._cache.pop(key, None)
+
+    def keys(self):
+        return self._dict.keys()
+
+    def __len__(self):
+        return len(self._dict)
+
+    def __iter__(self):
+        return iter(self.keys())
 
 
 class Controller(object):
@@ -120,7 +150,7 @@ class Controller(object):
 
     @lazy
     def instances(self):
-        result = LazyInstanceDict()
+        result = LazyInstanceDict(self)
         for instance_id in self.config.get('instance', {}):
             iconfig = self.config['instance'][instance_id]
             if 'master' not in iconfig:

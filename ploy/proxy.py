@@ -1,6 +1,11 @@
 from lazy import lazy
 from ploy.common import BaseInstance
 from ploy.config import ConfigSection
+import logging
+import sys
+
+
+log = logging.getLogger('ploy')
 
 
 class ProxyConfigSection(ConfigSection):
@@ -34,10 +39,11 @@ class ProxyInstance(BaseInstance):
             raise AttributeError()
         instances = ctrl.instances
         if self._proxied_id not in instances:
-            raise ValueError(
+            log.error(
                 "The to be proxied instance '%s' for master '%s' wasn't found." % (
                     self._proxied_id,
                     self.master.id))
+            sys.exit(1)
         orig = instances[self._proxied_id]
         config = orig.config.copy()
         config.update(self.__dict__['config'])

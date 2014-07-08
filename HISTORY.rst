@@ -4,6 +4,9 @@ Changelog
 1.0rc13 - Unreleased
 --------------------
 
+* Better error message for instances missing because the plugin isn't installed.
+  [fschulze]
+
 * Fix tests when ploy itself isn't installed.
   [fschulze]
 
