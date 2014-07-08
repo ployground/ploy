@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0rc12 - Unreleased
+1.0rc12 - 2014-07-08
 --------------------
 
 * Use plain conftest.py instead of pytest plugin.
