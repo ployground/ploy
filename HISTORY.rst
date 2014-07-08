@@ -4,6 +4,8 @@ Changelog
 1.0rc13 - Unreleased
 --------------------
 
+* Fix tests when ploy itself isn't installed.
+  [fschulze]
 
 
 1.0rc12 - 2014-07-08

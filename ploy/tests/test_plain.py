@@ -15,8 +15,11 @@ except NameError:  # pragma: nocover
 class TestPlain:
     @pytest.fixture(autouse=True)
     def setup_ctrl(self, os_execvp_mock, paramiko, sshclient, sshconfig):
+        import ploy.plain
         self.directory = tempfile.mkdtemp()
         self.ctrl = Controller(self.directory)
+        self.ctrl.plugins = {
+            'plain': ploy.plain.plugin}
         self.paramiko = paramiko
         self.ssh_client_mock = sshclient
         self.os_execvp_mock = os_execvp_mock
@@ -92,10 +95,7 @@ class TestPlain:
             '[plain-instance:foo]',
             'host = localhost',
             'fingerprint = foo']))
-        try:
-            self.ctrl(['./bin/ploy', 'ssh', 'foo'])
-        except SystemExit:  # pragma: no cover - only if something is wrong
-            self.fail("SystemExit raised")
+        self.ctrl(['./bin/ploy', 'ssh', 'foo'])
         known_hosts = os.path.join(self.directory, 'known_hosts')
         self.os_execvp_mock.assert_called_with(
             'ssh',
@@ -130,6 +130,7 @@ def sshclient(paramiko):
 
 @pytest.fixture
 def instance(tempdir, sshconfig):
+    import ploy.plain
     configfile = os.path.join(tempdir, 'ploy.conf')
     with open(configfile, 'w') as f:
         f.write('\n'.join([
@@ -138,6 +139,8 @@ def instance(tempdir, sshconfig):
             'host=example.com',
             'fingerprint=master']))
     ctrl = Controller(tempdir)
+    ctrl.plugins = {
+        'plain': ploy.plain.plugin}
     ctrl.configfile = os.path.join(tempdir, 'ploy.conf')
     return ctrl.instances['foo']
 
