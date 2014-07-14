@@ -4,6 +4,7 @@ import getpass
 import logging
 import os
 import socket
+import subprocess
 import sys
 
 
@@ -67,6 +68,15 @@ class Instance(BaseInstance):
             fingerprint = self.master.master_config.get('fingerprint')
         if fingerprint is None:
             raise self.paramiko.SSHException("No fingerprint set in config.")
+        path = os.path.join(self.master.main_config.path, fingerprint)
+        if os.path.exists(path):
+            try:
+                result = subprocess.check_output(['ssh-keygen', '-lf', path])
+            except subprocess.CalledProcessError as e:
+                log.error("Couldn't get fingerprint from '%s':\n%s" % (path, e))
+                sys.exit(1)
+            else:
+                fingerprint = result.split()[1]
         return fingerprint
 
     @lazy

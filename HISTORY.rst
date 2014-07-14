@@ -4,6 +4,8 @@ Changelog
 1.0rc14 - Unreleased
 --------------------
 
+* Allow ``fingerprint`` to be set to a public host key file.
+  [fschulze]
 
 
 1.0rc13 - 2014-07-08

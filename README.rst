@@ -68,6 +68,7 @@ Options
   (**required**) The ssh fingerprint of the server.
   If set to ``ask`` then manual interactive verification is enabled.
   If set to ``ignore`` then no verification is performed at all!
+  You can also point this to a public ssh host key file to let the fingerprint be extracted automatically.
 
 ``password-fallback``
   If this boolean is true, then using a password as fallback is enabled if the
