@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0rc14 - Unreleased
+1.0rc14 - 2014-07-15
 --------------------
 
 * Allow ``fingerprint`` to be set to a public host key file.
