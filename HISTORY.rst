@@ -4,6 +4,9 @@ Changelog
 1.0rc15 - Unreleased
 --------------------
 
+* Only remove bad host key from known_hosts instead of clearing it completely.
+  [fschulze]
+
 * Removed support for ``proxyhost`` option. It caused hangs and failures on
   missing or invalid ssh fingerprints.
   [fschulze]

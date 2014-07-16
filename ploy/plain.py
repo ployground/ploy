@@ -42,7 +42,7 @@ def ServerHostKeyPolicy(*args, **kwarks):
             elif fingerprint == self.fingerprint or self.fingerprint.lower() == 'ignore':
                 if self.fingerprint.lower() == 'ignore':
                     log.warn("Fingerprint verification disabled!")
-                client._host_keys.add(hostname, key.get_name(), key)
+                client.get_host_keys().add(hostname, key.get_name(), key)
                 if client._host_keys_filename is not None:
                     client.save_host_keys(client._host_keys_filename)
                 return
@@ -167,10 +167,17 @@ class Instance(BaseInstance):
                 else:
                     password = getpass.getpass("Password for '%s@%s:%s': " % (user, host, port))
             except paramiko.BadHostKeyException:
+                host_keys = client.get_host_keys()
+                bad_key = host_keys.lookup(hostname)
+                keys = [x for x in host_keys.items() if x[1] != bad_key]
                 if os.path.exists(known_hosts):
                     os.remove(known_hosts)
                     open(known_hosts, 'w').close()
-                client.get_host_keys().clear()
+                host_keys.clear()
+                for name, key in keys:
+                    for subkey in key.values():
+                        host_keys.add(name, subkey.get_name(), subkey)
+                client.save_host_keys(known_hosts)
             except (paramiko.SSHException, socket.error):
                 log.error('Failed to connect to %s (%s)' % (self.config_id, hostname))
                 for option in ('username', 'password', 'port', 'key_filename', 'sock'):

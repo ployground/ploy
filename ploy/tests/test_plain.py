@@ -292,8 +292,9 @@ def test_missing_host_key(tempdir, sshclient):
     key.get_fingerprint.return_value = 'foo'
     key.get_name.return_value = 'ssh-rsa'
     shkp.missing_host_key(sshclient, 'localhost', key)
-    assert sshclient.method_calls == [
-        call._host_keys.add('localhost', 'ssh-rsa', key),
+    assert sshclient.mock_calls == [
+        call.get_host_keys(),
+        call.get_host_keys().add('localhost', 'ssh-rsa', key),
         call.save_host_keys(known_hosts)]
 
 
@@ -307,8 +308,9 @@ def test_missing_host_key_ignore(tempdir, sshclient):
     key.get_name.return_value = 'ssh-rsa'
     with patch('ploy.plain.log') as LogMock:
         shkp.missing_host_key(sshclient, 'localhost', key)
-    assert sshclient.method_calls == [
-        call._host_keys.add('localhost', 'ssh-rsa', key),
+    assert sshclient.mock_calls == [
+        call.get_host_keys(),
+        call.get_host_keys().add('localhost', 'ssh-rsa', key),
         call.save_host_keys(known_hosts)]
     assert LogMock.method_calls == [
         call.warn('Fingerprint verification disabled!')]
