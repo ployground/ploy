@@ -168,7 +168,11 @@ class Instance(BaseInstance):
                     password = getpass.getpass("Password for '%s@%s:%s': " % (user, host, port))
             except paramiko.BadHostKeyException:
                 host_keys = client.get_host_keys()
-                bad_key = host_keys.lookup(hostname)
+                if port == 22:
+                    key_hostname = hostname
+                else:
+                    key_hostname = "[%s]:%s" % (hostname, port)
+                bad_key = host_keys.lookup(key_hostname)
                 keys = [x for x in host_keys.items() if x[1] != bad_key]
                 if os.path.exists(known_hosts):
                     os.remove(known_hosts)

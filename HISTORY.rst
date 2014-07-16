@@ -4,6 +4,9 @@ Changelog
 1.0rc16 - Unreleased
 --------------------
 
+* Fix removal of bad host keys when using non standard ssh port.
+  [fschulze]
+
 * Renamed ``plain-master`` to ``plain``, so the uids of instances are nicer.
   [fschulze]
 
