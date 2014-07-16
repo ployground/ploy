@@ -139,8 +139,8 @@ class Instance(BaseInstance):
         client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint_func))
         known_hosts = self.master.known_hosts
         client.known_hosts = None
-        sock = self.get_proxy_sock(hostname, port)
         while 1:
+            sock = self.get_proxy_sock(hostname, port)
             if os.path.exists(known_hosts):
                 client.load_host_keys(known_hosts)
             try:
@@ -177,6 +177,8 @@ class Instance(BaseInstance):
                     if client_args[option] is not None:
                         log.error('%s: %r' % (option, client_args[option]))
                 raise
+            if sock is not None:
+                sock.close()
         client.save_host_keys(known_hosts)
         result = dict(
             user=user,
