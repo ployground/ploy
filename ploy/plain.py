@@ -11,6 +11,13 @@ import sys
 log = logging.getLogger('ploy')
 
 
+def get_key_fingerprint(key):
+    key_fingerprint = key.get_fingerprint()
+    if isinstance(key_fingerprint[0], int):
+        return ':'.join("%02x" % x for x in key_fingerprint)
+    return ':'.join("%02x" % ord(x) for x in key_fingerprint)
+
+
 def ServerHostKeyPolicy(*args, **kwarks):
     paramiko = import_paramiko()
 
@@ -24,11 +31,7 @@ def ServerHostKeyPolicy(*args, **kwarks):
             return self.fingerprint_func()
 
         def missing_host_key(self, client, hostname, key):
-            key_fingerprint = key.get_fingerprint()
-            if isinstance(key_fingerprint[0], int):
-                fingerprint = ':'.join("%02x" % x for x in key_fingerprint)
-            else:
-                fingerprint = ':'.join("%02x" % ord(x) for x in key_fingerprint)
+            fingerprint = get_key_fingerprint(key)
             if self.fingerprint.lower() == 'ask':
                 if not self.ask:
                     return
