@@ -213,7 +213,7 @@ def get_massagers():
 
 
 def get_masters(ctrl):
-    masters = ctrl.config.get('plain-master', {'plain-master': {}})
+    masters = ctrl.config.get('plain-master', {'plain': {}})
     for master, master_config in masters.items():
         yield Master(ctrl, master, master_config)
 

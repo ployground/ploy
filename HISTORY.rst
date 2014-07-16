@@ -4,6 +4,8 @@ Changelog
 1.0rc16 - Unreleased
 --------------------
 
+* Renamed ``plain-master`` to ``plain``, so the uids of instances are nicer.
+  [fschulze]
 
 
 1.0rc15 - 2014-07-16
