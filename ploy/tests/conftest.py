@@ -28,6 +28,10 @@ class File:
                 content = '\n'.join(content)
             f.write(content)
 
+    def content(self):
+        with open(self.path) as f:
+            return f.read()
+
 
 @pytest.yield_fixture
 def tempdir():
