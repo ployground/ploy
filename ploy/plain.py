@@ -104,6 +104,26 @@ class Instance(BaseInstance):
             d['path'] = self.master.main_config.path
             return proxy_command.format(**d)
 
+    def get_proxy_sock(self, hostname, port):
+        paramiko = self.paramiko
+        proxy_host = self.config.get('proxyhost', None)
+        proxy_command = self.proxy_command
+        if proxy_command and not proxy_host:
+            try:
+                sock = paramiko.ProxyCommand(proxy_command)
+            except Exception:
+                log.error("The following ProxyCommand failed:\n%s" % proxy_command)
+                raise
+        elif proxy_host:
+            proxy_instance = self.master.ctrl.instances[proxy_host]
+            sock = proxy_instance.conn.get_transport().open_channel(
+                'direct-tcpip',
+                (hostname, port),
+                ('127.0.0.1', 0))
+        else:
+            sock = None
+        return sock
+
     def init_ssh_key(self, user=None):
         paramiko = self.paramiko
         sshconfig = self.sshconfig
@@ -123,22 +143,7 @@ class Instance(BaseInstance):
         client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint_func))
         known_hosts = self.master.known_hosts
         client.known_hosts = None
-        proxy_host = self.config.get('proxyhost', None)
-        proxy_command = self.proxy_command
-        if proxy_command and not proxy_host:
-            try:
-                sock = paramiko.ProxyCommand(proxy_command)
-            except Exception:
-                log.error("The following ProxyCommand failed:\n%s" % proxy_command)
-                raise
-        elif proxy_host:
-            proxy_instance = self.master.ctrl.instances[proxy_host]
-            sock = proxy_instance.conn.get_transport().open_channel(
-                'direct-tcpip',
-                (hostname, port),
-                ('127.0.0.1', 0))
-        else:
-            sock = None
+        sock = self.get_proxy_sock(hostname, port)
         while 1:
             if os.path.exists(known_hosts):
                 client.load_host_keys(known_hosts)
@@ -183,8 +188,8 @@ class Instance(BaseInstance):
             port=port,
             client=client,
             UserKnownHostsFile=known_hosts)
-        if proxy_command:
-            result['ProxyCommand'] = proxy_command
+        if self.proxy_command:
+            result['ProxyCommand'] = self.proxy_command
         return result
 
 
