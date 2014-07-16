@@ -109,20 +109,13 @@ class Instance(BaseInstance):
 
     def get_proxy_sock(self, hostname, port):
         paramiko = self.paramiko
-        proxy_host = self.config.get('proxyhost', None)
         proxy_command = self.proxy_command
-        if proxy_command and not proxy_host:
+        if proxy_command:
             try:
                 sock = paramiko.ProxyCommand(proxy_command)
             except Exception:
                 log.error("The following ProxyCommand failed:\n%s" % proxy_command)
                 raise
-        elif proxy_host:
-            proxy_instance = self.master.ctrl.instances[proxy_host]
-            sock = proxy_instance.conn.get_transport().open_channel(
-                'direct-tcpip',
-                (hostname, port),
-                ('127.0.0.1', 0))
         else:
             sock = None
         return sock

@@ -84,10 +84,6 @@ Options
   from an `mfsBSD <http://mfsbsd.vx.sk/>`_ distribution where the password is
   fixed.
 
-``proxyhost``
-  The id of another instance declared in ploy.conf which is used to create a
-  tunnel to the ssh port of this instance.
-
 ``proxycommand``
   The command to use in the ProxyCommand option for ssh when using the ``ploy-ssh``
   command. There are some variables which can be used:

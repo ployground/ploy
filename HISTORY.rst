@@ -4,6 +4,10 @@ Changelog
 1.0rc15 - Unreleased
 --------------------
 
+* Removed support for ``proxyhost`` option. It caused hangs and failures on
+  missing or invalid ssh fingerprints.
+  [fschulze]
+
 * Allow empty ``startup_script`` option to mean use no startup script.
   [fschulze]
 

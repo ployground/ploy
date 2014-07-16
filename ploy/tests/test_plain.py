@@ -273,36 +273,6 @@ def test_proxycommand(instance, paramiko, sshclient, tempdir):
     assert ProxyCommandMock.call_args_list == [call(proxycommand)]
 
 
-def test_proxyhost(instance, paramiko, sshclient, tempdir):
-    with open(instance.master.known_hosts, 'w') as f:
-        f.write('foo')
-    instance.config['host'] = 'localhost'
-    instance.config['fingerprint'] = 'foo'
-    instance.config['proxyhost'] = 'master'
-    client = MagicMock()
-    master = MagicMock()
-    sshclient.side_effect = [client, master]
-    with patch("%s.ProxyCommand" % paramiko.__name__) as ProxyCommandMock:
-        info = instance.init_ssh_key()
-    assert 'ProxyCommand' not in info
-    assert not ProxyCommandMock.called
-    assert len(client.method_calls) == 4
-    assert client.method_calls[0][0] == 'set_missing_host_key_policy'
-    assert client.method_calls[1] == call.load_host_keys(instance.master.known_hosts)
-    assert client.method_calls[2][0] == 'connect'
-    assert client.method_calls[2][1] == ('localhost',)
-    assert client.method_calls[2][2].get('sock') is not None
-    kwargs_without_sock = dict((k, v) for k, v in client.method_calls[2][2].items() if k != 'sock')
-    assert kwargs_without_sock == dict(username='root', key_filename=None, password=None, port=22)
-    assert client.method_calls[3] == call.save_host_keys(instance.master.known_hosts)
-    assert len(master.method_calls) == 5
-    assert master.method_calls[0][0] == 'set_missing_host_key_policy'
-    assert master.method_calls[1] == call.load_host_keys(instance.master.known_hosts)
-    assert master.method_calls[2] == call.connect('example.com', username='root', key_filename=None, password=None, sock=None, port=22)
-    assert master.method_calls[3] == call.save_host_keys(instance.master.known_hosts)
-    assert master.method_calls[4] == call.get_transport()
-
-
 def test_missing_host_key_mismatch(paramiko, sshclient):
     from ploy.plain import ServerHostKeyPolicy
     shkp = ServerHostKeyPolicy(lambda: '66:6f:6f')  # that's 'foo' as hex
