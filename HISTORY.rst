@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0rc15 - Unreleased
+1.0rc15 - 2014-07-16
 --------------------
 
 * Only remove bad host key from known_hosts instead of clearing it completely.
