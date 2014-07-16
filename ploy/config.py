@@ -100,6 +100,8 @@ class HooksMassager(BaseMassager):
 class StartupScriptMassager(BaseMassager):
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
+        if not value:
+            return
         result = dict()
         if value.startswith('gzip:'):
             value = value[5:]

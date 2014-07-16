@@ -4,6 +4,8 @@ Changelog
 1.0rc15 - Unreleased
 --------------------
 
+* Allow empty ``startup_script`` option to mean use no startup script.
+  [fschulze]
 
 
 1.0rc14 - 2014-07-15
