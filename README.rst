@@ -13,7 +13,8 @@ You can find the detailed documentation at http://ploy.readthedocs.org/en/latest
 Installation
 ============
 
-ploy is best installed with easy_install, pip or with zc.recipe.egg in a buildout. It installs two scripts, ``ploy`` and ``ploy-ssh``.
+ploy is best installed with easy_install, pip or with zc.recipe.egg in a buildout.
+It installs two scripts, ``ploy`` and ``ploy-ssh``.
 
 With zc.recipe.egg you can set a custom configfile location like this::
 
@@ -45,6 +46,7 @@ Support for backends and further functionality is implemented by plugins. One pl
 ``plain``
   For regular servers accessible via ssh.
 
+You can see which plugins are available in your current installation with ``ploy -v``.
 
 Plain
 -----
@@ -119,17 +121,33 @@ elastic IPs.
 The easiest scenario is simply to create an SSH session with an instance. You
 can either use the ssh subcommand of the ploy tool like so::
 
-  ploy ssh SERVERNAME
+  ploy ssh INSTANCENAME
 
 Alternatively you can use the ploy-ssh command directly, like so::
 
-  ploy-ssh SERVERNAME
+  ploy-ssh INSTANCENAME
 
 The latter has been provided to support scp and rsync. Here are some
 examples, you get the idea::
 
   scp -S `pwd`/bin/ploy-ssh some.file demo-server:/some/path/
   rsync -e "bin/ploy-ssh" some/path fschulze@demo-server:/some/path
+
+
+Instance names
+==============
+
+Instances have an **id** which is the part after the colon in the configuration.
+They also have a **unique id** which has the form ``[masterid]-[instanceid]``.
+The ``[masterid]`` depends on the plugin.
+For plain instances it is ``plain``.
+The ``[instanceid]`` is the **id** of the instance.
+So, if you have the following config::
+
+  [plain-instance:foo]
+  ...
+
+Then the **unique id** of the instance is ``plain-foo``.
 
 
 Macro expansion
