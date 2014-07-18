@@ -149,9 +149,7 @@ files. That looks like this::
   [ec2-securitygroup:demo-server2]
   <= demo-server
 
-All the options from the specified macro are copied with some important exceptions depending on the backend:
-
-  * For instances the ``ip`` and ``volumes`` options aren't copied.
+All the options from the specified macro are copied with some exceptions depending on the backend plugin.
 
 If you want to copy data from some other kind of options, you can add a colon
 in the macro name. This is useful if you want to have a base for instances
