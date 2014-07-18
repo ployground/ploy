@@ -2,7 +2,6 @@ Overview
 ========
 
 Ploy is a commandline-tool to provision, manage and control server instances.
-What kind of server instances these are depends on the used plugins.
 There are plugins for EC2 (ploy_ec2), FreeBSD Jails (ploy_ezjail) and more.
 You can create, delete, monitor and ssh into instances while ploy handles the details like ssh fingerprint checking.
 Additional plugins provide advanced functionality like integrating Fabric (ploy_fabric) and Ansible (ploy_ansible).
@@ -15,21 +14,6 @@ Installation
 
 ploy is best installed with easy_install, pip or with zc.recipe.egg in a buildout.
 It installs two scripts, ``ploy`` and ``ploy-ssh``.
-
-With zc.recipe.egg you can set a custom configfile location like this::
-
-  [ploy]
-  recipe = zc.recipe.egg
-  eggs = ploy
-  arguments = configpath="${buildout:directory}/etc/", configname="servers.cfg"
-
-As of this writing the pycrypto package is throwing some deprecation warnings, you might want to disable them by adding an initialization option to the ploy part like this::
-
-  initialization =
-      import warnings
-      warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Hash\.MD5", 6)
-      warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Hash\.SHA", 6)
-      warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Util\.randpool", 40)
 
 
 Configuration
@@ -48,10 +32,12 @@ Support for backends and further functionality is implemented by plugins. One pl
 
 You can see which plugins are available in your current installation with ``ploy -v``.
 
+
 Plain
 -----
 
 With plain instances you can put infos about servers into the configuration to benefit from some ploy features like ssh fingerprint checking and plugins like the Fabric integration.
+
 
 Options
 ~~~~~~~
@@ -220,3 +206,24 @@ The parts have the following meaning:
   ``[section]``
     The name of the section to which this massager is applied.
     If empty, the current section is used.
+
+
+Buildout specifics
+==================
+
+With zc.recipe.egg you can set a custom configfile location like this::
+
+  [ploy]
+  recipe = zc.recipe.egg
+  eggs = ploy
+  arguments = configpath="${buildout:directory}/etc/", configname="servers.cfg"
+
+As of this writing the pycrypto package is throwing some deprecation warnings, you might want to disable them by adding an initialization option to the ploy part like this::
+
+  initialization =
+      import warnings
+      warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Hash\.MD5", 6)
+      warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Hash\.SHA", 6)
+      warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Util\.randpool", 40)
+
+
