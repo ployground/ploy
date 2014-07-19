@@ -1,8 +1,8 @@
 Changelog
 =========
 
-1.0rc16 - Unreleased
---------------------
+1.0.0 - 2014-07-19
+------------------
 
 * Fix removal of bad host keys when using non standard ssh port.
   [fschulze]
