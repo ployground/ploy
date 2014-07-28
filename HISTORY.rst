@@ -4,6 +4,8 @@ Changelog
 1.0.1 - Unreleased
 ------------------
 
+* Fix error output for plain instances on ssh connection failures.
+  [fschulze]
 
 
 1.0.0 - 2014-07-19

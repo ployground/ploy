@@ -60,6 +60,8 @@ class InstanceFormattingWrapper(object):
 
 
 class Instance(BaseInstance):
+    sectiongroupname = 'plain-instance'
+
     def get_host(self):
         if 'host' not in self.config:
             return self.config['ip']
