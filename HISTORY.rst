@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0.1 - Unreleased
+1.0.1 - 2014-08-13
 ------------------
 
 * Fix error output for plain instances on ssh connection failures.
