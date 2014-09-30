@@ -4,6 +4,8 @@ Changelog
 1.0.2 - Unreleased
 ------------------
 
+* Add helpers to setup proxycommand in plugins.
+  [fschulze]
 
 
 1.0.1 - 2014-08-13

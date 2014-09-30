@@ -7,6 +7,10 @@ except ImportError:  # pragma: no cover
         from StringIO import StringIO as BytesIO
     except ImportError:
         from io import BytesIO
+try:
+    from shlex import quote as shquote
+except ImportError:
+    from pipes import quote as shquote
 import gzip
 import logging
 import re
@@ -94,6 +98,10 @@ def yesno(question, default=None, all=False):
             print("You have to answer with y, yes, n, no, a or all.", file=sys.stderr)
         else:
             print("You have to answer with y, yes, n or no.", file=sys.stderr)
+
+
+def shjoin(args):
+    return ' '.join(shquote(x) for x in args)
 
 
 class StartupScriptMixin(object):
@@ -253,6 +261,14 @@ class BaseInstance(object):
             additional_args.append('-i')
             additional_args.append(self.config.get('ssh-key-filename'))
         return additional_args
+
+    def proxycommand_with_instance(self, instance):
+        instance_ssh_info = instance.init_ssh_key()
+        instance_ssh_args = instance.ssh_args_from_info(instance_ssh_info)
+        ssh_args = ['nohup', 'ssh']
+        ssh_args.extend(instance_ssh_args)
+        ssh_args.extend(['-W', '%s:%s' % (self.get_host(), self.get_port())])
+        return shjoin(ssh_args)
 
 
 class Hooks(object):

@@ -67,6 +67,9 @@ class Instance(BaseInstance):
             return self.config['ip']
         return self.config['host']
 
+    def get_port(self):
+        return self.config.get('port', 22)
+
     def get_fingerprint(self):
         fingerprint = self.config.get('fingerprint')
         if fingerprint is None:
@@ -129,10 +132,7 @@ class Instance(BaseInstance):
             host = self.get_host()
         except KeyError:
             raise paramiko.SSHException("No host or ip set in config.")
-        port = 22
-        if hasattr(self, 'get_port'):
-            port = self.get_port()
-        port = self.config.get('port', port)
+        port = self.get_port()
         hostname = sshconfig.lookup(host).get('hostname', host)
         port = sshconfig.lookup(host).get('port', port)
         password = None
