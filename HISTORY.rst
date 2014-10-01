@@ -4,6 +4,9 @@ Changelog
 1.0.2 - Unreleased
 ------------------
 
+* Add option to log debug output.
+  [fschulze]
+
 * Add helpers to setup proxycommand in plugins.
   [fschulze]
 

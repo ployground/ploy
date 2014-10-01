@@ -481,6 +481,10 @@ class Controller(object):
                             action=versionaction_factory(self),
                             help="Print versions and exit")
 
+        parser.add_argument('-d', '--debug',
+                            action="store_true",
+                            help="Enable debug logging")
+
         self.cmds = dict(
             (x[4:], getattr(self, x))
             for x in dir(self) if x.startswith('cmd_'))
@@ -511,6 +515,8 @@ class Controller(object):
         sub_argv = argv[len(main_argv):]
         args = parser.parse_args(main_argv[1:])
         self.configfile = args.configfile
+        if args.debug:
+            logging.root.setLevel(logging.DEBUG)
         args.func(sub_argv, args.func.__doc__)
 
 
