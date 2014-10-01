@@ -239,6 +239,11 @@ class BaseInstance(object):
         self._conn = ssh_info['client']
         return self._conn
 
+    def close_conn(self):
+        if getattr(self, '_conn', None) is not None:
+            if self._conn.get_transport() is not None:
+                self._conn.close()
+
     def get_config(self, overrides=None):
         return self.master.main_config.get_section_with_overrides(
             self.sectiongroupname, self.id, overrides)

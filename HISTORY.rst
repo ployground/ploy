@@ -4,6 +4,10 @@ Changelog
 1.0.2 - Unreleased
 ------------------
 
+* Close all connections before exiting. This prevents hangs caused by open
+  proxy command threads.
+  [fschulze]
+
 * Add option to log debug output.
   [fschulze]
 

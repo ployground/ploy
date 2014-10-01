@@ -84,6 +84,10 @@ class LazyInstanceDict(DictMixin):
     def keys(self):
         return self._dict.keys()
 
+    def close_connections(self):
+        for instance_id in self._cache:
+            self[instance_id].close_conn()
+
     def __len__(self):
         return len(self._dict)
 
@@ -151,8 +155,12 @@ class Controller(object):
     @lazy
     def instances(self):
         result = LazyInstanceDict(self)
-        for instance_id in self.config.get('instance', {}):
-            iconfig = self.config['instance'][instance_id]
+        try:
+            config = self.config
+        except SystemExit:
+            return result
+        for instance_id in config.get('instance', {}):
+            iconfig = config['instance'][instance_id]
             if 'master' not in iconfig:
                 log.error("Instance 'instance:%s' has no master set." % instance_id)
                 sys.exit(1)
@@ -518,6 +526,7 @@ class Controller(object):
         if args.debug:
             logging.root.setLevel(logging.DEBUG)
         args.func(sub_argv, args.func.__doc__)
+        self.instances.close_connections()
 
 
 def ploy(configpath=None, configname=None, progname=None):  # pragma: no cover
