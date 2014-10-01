@@ -28,6 +28,7 @@ class ProxyInstance(BaseInstance):
         _config.update(config)
         if isinstance(instance, BaseInstance):
             self.__dict__['_proxied_instance'] = instance
+            _config._proxied = instance.config
         else:
             self._proxied_id = instance
         BaseInstance.__init__(self, master, sid, _config)

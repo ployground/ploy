@@ -54,6 +54,23 @@ def test_proxy_nonexisting_instance(capsys, ctrl, monkeypatch, ployconf):
         call("The to be proxied instance 'bar' for master 'foo' wasn't found.")]
 
 
+def test_proxy_config_values_passed_on_with_default_instance_object(ctrl, ployconf):
+    ployconf.fill([
+        '[dummy-master:foo]',
+        'ham = 1'])
+    proxy = ctrl.instances['foo']
+    proxied = proxy._proxied_instance
+    assert proxy is not proxied
+    assert proxy.config == {'ham': '1'}
+    assert proxied.config == {'ham': '1'}
+    del proxy.config['ham']
+    assert proxy.config == {}
+    assert proxied.config == {}
+    proxy.config['egg'] = 'spam'
+    assert proxy.config == {'egg': 'spam'}
+    assert proxied.config == {'egg': 'spam'}
+
+
 def test_proxy_config_values_passed_on(ctrl, ployconf):
     ployconf.fill([
         '[plain-instance:bar]',

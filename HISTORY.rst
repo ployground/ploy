@@ -4,6 +4,9 @@ Changelog
 1.0.2 - Unreleased
 ------------------
 
+* Fix config setting propagation in some cases of proxied instances.
+  [fschulze]
+
 * Close all connections before exiting. This prevents hangs caused by open
   proxy command threads.
   [fschulze]

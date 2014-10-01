@@ -200,6 +200,9 @@ class ConfigSection(DictMixin):
         new._config = self._config
         return new
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, dict(self))
+
 
 class Config(ConfigSection):
     def _expand(self, sectiongroupname, sectionname, section, seen):
