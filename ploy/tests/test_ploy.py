@@ -348,21 +348,25 @@ class TestTerminateCommand:
         assert 'usage: ploy terminate' in output
         assert "argument instance: invalid choice: 'foo'" in output
 
-    def testCallWithExistingInstance(self):
+    def testCallWithExistingInstance(self, yesno_mock):
         import ploy.tests.dummy_plugin
         self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]']))
+        yesno_mock.expected = [
+            ("Are you sure you want to terminate 'dummy-instance:foo'?", True)]
         with patch('ploy.tests.dummy_plugin.log') as LogMock:
             self.ctrl(['./bin/ploy', 'terminate', 'foo'])
         LogMock.info.assert_called_with('terminate: %s', 'foo')
 
-    def testHook(self):
+    def testHook(self, yesno_mock):
         import ploy.tests.dummy_plugin
         self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
             '[dummy-instance:foo]',
             'hooks = ploy.tests.test_ploy.DummyHooks']))
+        yesno_mock.expected = [
+            ("Are you sure you want to terminate 'dummy-instance:foo'?", True)]
         with patch('ploy.tests.test_ploy.log') as LogMock:
             self.ctrl(['./bin/ploy', 'terminate', 'foo'])
         assert LogMock.info.call_args_list == [(('after_terminate',), {})]

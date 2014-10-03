@@ -228,6 +228,7 @@ class Controller(object):
 
     def cmd_terminate(self, argv, help):
         """Terminates the instance"""
+        from ploy.common import yesno
         parser = argparse.ArgumentParser(
             prog="%s terminate" % self.progname,
             description=help,
@@ -239,6 +240,8 @@ class Controller(object):
                             choices=sorted(instances))
         args = parser.parse_args(argv)
         instance = instances[args.instance[0]]
+        if not yesno("Are you sure you want to terminate '%s'?" % instance.config_id):
+            return
         instance.hooks.before_terminate(instance)
         instance.terminate()
         instance.hooks.after_terminate(instance)

@@ -4,6 +4,9 @@ Changelog
 1.0.2 - Unreleased
 ------------------
 
+* Ask before terminating an instance.
+  [fschulze]
+
 * Fix config setting propagation in some cases of proxied instances.
   [fschulze]
 

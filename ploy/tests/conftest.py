@@ -1,3 +1,4 @@
+from __future__ import print_function
 from mock import patch
 import pytest
 import os
@@ -46,6 +47,15 @@ def tempdir():
     shutil.rmtree(directory)
 
 
+@pytest.fixture(scope="session")
+def mock():
+    try:
+        from unittest import mock
+    except ImportError:
+        import mock
+    return mock
+
+
 @pytest.yield_fixture
 def ployconf(tempdir):
     """ Returns a Configfile object which manages ploy.conf.
@@ -57,3 +67,23 @@ def ployconf(tempdir):
 def os_execvp_mock():
     with patch("os.execvp") as os_execvp_mock:
         yield os_execvp_mock
+
+
+@pytest.fixture
+def yesno_mock(mock, monkeypatch):
+    yesno = mock.Mock()
+
+    def _yesno(question):
+        try:
+            expected = yesno.expected.pop(0)
+        except IndexError:  # pragma: nocover
+            expected = '', False
+        cmd, result = expected
+        assert question == cmd
+        print(question)
+        return result
+
+    yesno.side_effect = _yesno
+    yesno.expected = []
+    monkeypatch.setattr('ploy.common.yesno', yesno)
+    return yesno
