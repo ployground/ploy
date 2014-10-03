@@ -525,8 +525,10 @@ class Controller(object):
         self.configfile = args.configfile
         if args.debug:
             logging.root.setLevel(logging.DEBUG)
-        args.func(sub_argv, args.func.__doc__)
-        self.instances.close_connections()
+        try:
+            args.func(sub_argv, args.func.__doc__)
+        finally:
+            self.instances.close_connections()
 
 
 def ploy(configpath=None, configname=None, progname=None):  # pragma: no cover
