@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0.2 - Unreleased
+1.0.2 - 2014-10-04
 ------------------
 
 * Ask before terminating an instance.
