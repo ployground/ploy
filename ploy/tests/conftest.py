@@ -51,7 +51,7 @@ def tempdir():
 def mock():
     try:
         from unittest import mock
-    except ImportError:
+    except ImportError:  # pragma: nocover
         import mock
     return mock
 

@@ -1,7 +1,7 @@
 from ploy.common import Hooks
 try:
     from configparser import RawConfigParser
-except ImportError:
+except ImportError:  # pragma: nocover
     from ConfigParser import RawConfigParser
 try:
     from collections import MutableMapping as DictMixin

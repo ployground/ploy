@@ -9,7 +9,7 @@ except ImportError:  # pragma: no cover
         from io import BytesIO
 try:
     from shlex import quote as shquote
-except ImportError:
+except ImportError:  # pragma: nocover
     from pipes import quote as shquote
 import gzip
 import logging
