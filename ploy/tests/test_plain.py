@@ -2,8 +2,6 @@ from mock import MagicMock, call, patch
 from ploy import Controller
 import os
 import pytest
-import tempfile
-import shutil
 
 
 try:
@@ -14,9 +12,9 @@ except NameError:  # pragma: nocover
 
 class TestPlain:
     @pytest.fixture(autouse=True)
-    def setup_ctrl(self, os_execvp_mock, paramiko, sshclient, sshconfig):
+    def setup_ctrl(self, os_execvp_mock, paramiko, sshclient, sshconfig, tempdir):
         import ploy.plain
-        self.directory = tempfile.mkdtemp()
+        self.directory = tempdir.directory
         self.ctrl = Controller(self.directory)
         self.ctrl.plugins = {
             'plain': ploy.plain.plugin}
@@ -102,13 +100,6 @@ class TestPlain:
             ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
 
 
-@pytest.yield_fixture
-def tempdir():
-    directory = tempfile.mkdtemp()
-    yield directory
-    shutil.rmtree(directory)
-
-
 @pytest.fixture
 def paramiko():
     from ploy.common import import_paramiko
@@ -129,19 +120,28 @@ def sshclient(paramiko):
 
 
 @pytest.fixture
-def instance(tempdir, sshconfig):
+def ployconf(tempdir):
+    configfile = tempdir['ploy.conf']
+    configfile.fill('\n'.join([
+        '[plain-instance:foo]',
+        '[plain-instance:master]',
+        'host=example.com',
+        'fingerprint=master']))
+    return configfile
+
+
+@pytest.fixture
+def ctrl(ployconf, tempdir, sshconfig):
     import ploy.plain
-    configfile = os.path.join(tempdir, 'ploy.conf')
-    with open(configfile, 'w') as f:
-        f.write('\n'.join([
-            '[plain-instance:foo]',
-            '[plain-instance:master]',
-            'host=example.com',
-            'fingerprint=master']))
-    ctrl = Controller(tempdir)
+    ctrl = Controller(tempdir.directory)
     ctrl.plugins = {
         'plain': ploy.plain.plugin}
-    ctrl.configfile = os.path.join(tempdir, 'ploy.conf')
+    ctrl.configfile = ployconf.path
+    return ctrl
+
+
+@pytest.fixture
+def instance(ctrl):
     return ctrl.instances['foo']
 
 
@@ -268,9 +268,45 @@ def test_proxycommand(instance, paramiko, sshclient, tempdir):
     instance.config['proxycommand'] = 'nohup {path}/../bin/ploy-ssh {instances[foo].host} -o UserKnownHostsFile={known_hosts}'
     with patch("%s.ProxyCommand" % paramiko.__name__) as ProxyCommandMock:
         info = instance.init_ssh_key()
-    proxycommand = 'nohup %s/../bin/ploy-ssh localhost -o UserKnownHostsFile=%s' % (tempdir, instance.master.known_hosts)
+    proxycommand = 'nohup %s/../bin/ploy-ssh localhost -o UserKnownHostsFile=%s' % (tempdir.directory, instance.master.known_hosts)
     assert info['ProxyCommand'] == proxycommand
     assert ProxyCommandMock.call_args_list == [call(proxycommand)]
+
+
+def test_proxycommand_with_instance(ctrl, paramiko, sshclient):
+    master = ctrl.instances['master']
+    instance = ctrl.instances['foo']
+    with open(instance.master.known_hosts, 'w') as f:
+        f.write('foo')
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'foo'
+    instance.config['proxycommand'] = instance.proxycommand_with_instance(master)
+    with patch("%s.ProxyCommand" % paramiko.__name__) as ProxyCommandMock:
+        info = instance.init_ssh_key()
+    proxycommand = 'nohup ssh -o UserKnownHostsFile=%s -l root -p 22 example.com -W localhost:22' % instance.master.known_hosts
+    assert info['ProxyCommand'] == proxycommand
+    assert ProxyCommandMock.call_args_list == [call(proxycommand)]
+
+
+def test_proxycommand_through_instance(ctrl, ployconf, paramiko, sshclient):
+    ployconf.append('[plain-instance:bar]')
+    master = ctrl.instances['master']
+    instance = ctrl.instances['foo']
+    instance2 = ctrl.instances['bar']
+    with open(instance.master.known_hosts, 'w') as f:
+        f.write('foo')
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'foo'
+    instance.config['proxycommand'] = instance.proxycommand_with_instance(master)
+    instance2.config['host'] = 'bar.example.com'
+    instance2.config['fingerprint'] = 'foo'
+    instance2.config['proxycommand'] = instance2.proxycommand_with_instance(instance)
+    with patch("%s.ProxyCommand" % paramiko.__name__) as ProxyCommandMock:
+        info = instance2.init_ssh_key()
+    proxycommand = 'nohup ssh -o UserKnownHostsFile=%s -l root -p 22 example.com -W localhost:22' % instance.master.known_hosts
+    proxycommand2 = "nohup ssh -o 'ProxyCommand=%s' -o UserKnownHostsFile=%s -l root -p 22 localhost -W bar.example.com:22" % (proxycommand, instance.master.known_hosts)
+    assert info['ProxyCommand'] == proxycommand2
+    assert ProxyCommandMock.call_args_list == [call(proxycommand2)]
 
 
 def test_missing_host_key_mismatch(paramiko, sshclient):
@@ -285,7 +321,7 @@ def test_missing_host_key_mismatch(paramiko, sshclient):
 
 def test_missing_host_key(tempdir, sshclient):
     from ploy.plain import ServerHostKeyPolicy
-    known_hosts = os.path.join(tempdir, 'known_hosts')
+    known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
     shkp = ServerHostKeyPolicy(lambda: '66:6f:6f')  # that's 'foo' as hex
     key = MagicMock()
@@ -300,7 +336,7 @@ def test_missing_host_key(tempdir, sshclient):
 
 def test_missing_host_key_ignore(tempdir, sshclient):
     from ploy.plain import ServerHostKeyPolicy
-    known_hosts = os.path.join(tempdir, 'known_hosts')
+    known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
     shkp = ServerHostKeyPolicy(lambda: 'ignore')
     key = MagicMock()
@@ -318,7 +354,7 @@ def test_missing_host_key_ignore(tempdir, sshclient):
 
 def test_missing_host_key_ask_answer_no(tempdir, sshclient):
     from ploy.plain import ServerHostKeyPolicy
-    known_hosts = os.path.join(tempdir, 'known_hosts')
+    known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
     shkp = ServerHostKeyPolicy(lambda: 'ask')
     key = MagicMock()
@@ -332,7 +368,7 @@ def test_missing_host_key_ask_answer_no(tempdir, sshclient):
 
 def test_missing_host_key_ask_answer_yes(tempdir, sshclient):
     from ploy.plain import ServerHostKeyPolicy
-    known_hosts = os.path.join(tempdir, 'known_hosts')
+    known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
     shkp = ServerHostKeyPolicy(lambda: 'ask')
     key = MagicMock()
@@ -346,7 +382,7 @@ def test_missing_host_key_ask_answer_yes(tempdir, sshclient):
 
 def test_missing_host_key_ask_answer_yes_and_try_again(tempdir, sshclient):
     from ploy.plain import ServerHostKeyPolicy
-    known_hosts = os.path.join(tempdir, 'known_hosts')
+    known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
     shkp = ServerHostKeyPolicy(lambda: 'ask')
     key = MagicMock()

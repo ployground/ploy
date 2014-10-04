@@ -29,6 +29,11 @@ class File:
                 content = '\n'.join(content)
             f.write(content)
 
+    def append(self, content):
+        if isinstance(content, (list, tuple)):
+            content = '\n'.join(content)
+        self.fill("%s\n%s" % (self.content(), content))
+
     def content(self):
         with open(self.path) as f:
             return f.read()
