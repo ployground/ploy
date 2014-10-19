@@ -97,7 +97,7 @@ class TestPlain:
         known_hosts = os.path.join(self.directory, 'known_hosts')
         self.os_execvp_mock.assert_called_with(
             'ssh',
-            ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
+            ['ssh', '-o', 'StrictHostKeyChecking=yes', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
 
 
 @pytest.fixture
@@ -283,7 +283,7 @@ def test_proxycommand_with_instance(ctrl, paramiko, sshclient):
     instance.config['proxycommand'] = instance.proxycommand_with_instance(master)
     with patch("%s.ProxyCommand" % paramiko.__name__) as ProxyCommandMock:
         info = instance.init_ssh_key()
-    proxycommand = 'nohup ssh -o UserKnownHostsFile=%s -l root -p 22 example.com -W localhost:22' % instance.master.known_hosts
+    proxycommand = 'nohup ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile=%s -l root -p 22 example.com -W localhost:22' % instance.master.known_hosts
     assert info['ProxyCommand'] == proxycommand
     assert ProxyCommandMock.call_args_list == [call(proxycommand)]
 
@@ -303,8 +303,8 @@ def test_proxycommand_through_instance(ctrl, ployconf, paramiko, sshclient):
     instance2.config['proxycommand'] = instance2.proxycommand_with_instance(instance)
     with patch("%s.ProxyCommand" % paramiko.__name__) as ProxyCommandMock:
         info = instance2.init_ssh_key()
-    proxycommand = 'nohup ssh -o UserKnownHostsFile=%s -l root -p 22 example.com -W localhost:22' % instance.master.known_hosts
-    proxycommand2 = "nohup ssh -o 'ProxyCommand=%s' -o UserKnownHostsFile=%s -l root -p 22 localhost -W bar.example.com:22" % (proxycommand, instance.master.known_hosts)
+    proxycommand = 'nohup ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile=%s -l root -p 22 example.com -W localhost:22' % instance.master.known_hosts
+    proxycommand2 = "nohup ssh -o 'ProxyCommand=%s' -o StrictHostKeyChecking=yes -o UserKnownHostsFile=%s -l root -p 22 localhost -W bar.example.com:22" % (proxycommand, instance.master.known_hosts)
     assert info['ProxyCommand'] == proxycommand2
     assert ProxyCommandMock.call_args_list == [call(proxycommand2)]
 

@@ -4,6 +4,9 @@ Changelog
 1.0.3 - Unreleased
 ------------------
 
+* Set ``StrictHostKeyChecking=yes`` for all ssh connections to prevent
+  interactive asking.
+  [fschulze]
 
 
 1.0.2 - 2014-10-04

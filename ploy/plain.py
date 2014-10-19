@@ -198,7 +198,8 @@ class Instance(BaseInstance):
             host=host,
             port=port,
             client=client,
-            UserKnownHostsFile=known_hosts)
+            UserKnownHostsFile=known_hosts,
+            StrictHostKeyChecking="yes")
         if self.proxy_command:
             result['ProxyCommand'] = self.proxy_command
         return result
