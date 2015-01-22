@@ -4,6 +4,10 @@ Changelog
 1.0.3 - Unreleased
 ------------------
 
+* Drop bad entries from our ``known_hosts`` file to prevent failures
+  in paramiko.
+  [fschulze]
+
 * Set ``StrictHostKeyChecking=yes`` for all ssh connections to prevent
   interactive asking.
   [fschulze]

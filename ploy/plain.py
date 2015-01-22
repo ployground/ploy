@@ -125,6 +125,21 @@ class Instance(BaseInstance):
             sock = None
         return sock
 
+    def _fix_known_hosts(self, known_hosts):
+        lines = []
+        with open(known_hosts, 'r') as f:
+            for lineno, line in enumerate(f):
+                line = line.strip()
+                if (len(line) == 0) or (line[0] == '#'):
+                    continue
+                try:
+                    self.paramiko.hostkeys.HostKeyEntry.from_line(line, lineno)
+                except self.paramiko.hostkeys.InvalidHostKey:
+                    continue
+                lines.append(line + '\n')
+        with open(known_hosts, 'w') as f:
+            f.writelines(lines)
+
     def init_ssh_key(self, user=None):
         paramiko = self.paramiko
         sshconfig = self.sshconfig
@@ -144,6 +159,7 @@ class Instance(BaseInstance):
         while 1:
             sock = self.get_proxy_sock(hostname, port)
             if os.path.exists(known_hosts):
+                self._fix_known_hosts(known_hosts)
                 client.load_host_keys(known_hosts)
             try:
                 if user is None:
