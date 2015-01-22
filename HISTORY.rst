@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0.3 - Unreleased
+1.0.3 - 2015-01-22
 ------------------
 
 * Drop bad entries from our ``known_hosts`` file to prevent failures
