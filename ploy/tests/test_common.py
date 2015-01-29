@@ -86,17 +86,35 @@ class TestStartupScript:
             path=self.directory)
         instance.master = MockMaster(config)
         result = instance.startup_script()
-        assert result[:48] == b"\n".join([
+        expected = b"\n".join([
             b"#!/bin/sh",
-            b"tail -n+4 $0 | gunzip -c | sh",
+            b"tail -n+4 $0 | gunzip -c | /bin/sh",
             b"exit $?",
             b""])
-        payload = result[48:]
+        assert result[:len(expected)] == expected
+        payload = result[len(expected):]
         header = payload[:10]
         body = payload[10:]
         assert header[:4] == b"\x1f\x8b\x08\x00"  # magic + compression + flags
         assert header[8:] == b"\x02\xff"  # extra flags + os
         assert body == b"\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+
+    def testGzipCustomShebang(self):
+        self.tempdir['foo'].fill("#!/usr/bin/env python")
+        instance = MockInstance()
+        config = self._create_config(
+            "\n".join([
+                "[instance:foo]",
+                "startup_script = gzip:foo"]),
+            path=self.directory)
+        instance.master = MockMaster(config)
+        result = instance.startup_script()
+        expected = b"\n".join([
+            b"#!/bin/sh",
+            b"tail -n+4 $0 | gunzip -c | /usr/bin/env python",
+            b"exit $?",
+            b""])
+        assert result[:len(expected)] == expected
 
     def test_strip_hashcomments(self):
         self.tempdir['foo'].fill([

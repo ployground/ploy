@@ -128,9 +128,12 @@ class StartupScriptMixin(object):
         self.hooks.startup_script_options(config)
         result = dict(original=startup_script(**config))
         if startup_script_path.get('gzip', False):
+            shebang = "#!/bin/sh"
+            if result['original'].startswith('#!'):
+                shebang = result['original'].splitlines()[0]
             result['raw'] = b"\n".join([
                 b"#!/bin/sh",
-                b"tail -n+4 $0 | gunzip -c | sh",
+                b"tail -n+4 $0 | gunzip -c | %s" % shebang[2:],
                 b"exit $?",
                 gzip_string(result['original'])
             ])

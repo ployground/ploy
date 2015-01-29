@@ -4,6 +4,8 @@ Changelog
 1.0.4 - Unreleased
 ------------------
 
+* Allow custom shebang in gzipped startup scripts.
+  [fschulze]
 
 
 1.0.3 - 2015-01-22
