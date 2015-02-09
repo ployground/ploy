@@ -4,6 +4,10 @@ Changelog
 1.0.4 - Unreleased
 ------------------
 
+* Add ``annotate`` command to print the configuration with the source of each
+  setting.
+  [fschulze]
+
 * Allow custom shebang in gzipped startup scripts.
   [fschulze]
 

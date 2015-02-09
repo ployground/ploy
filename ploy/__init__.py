@@ -287,6 +287,23 @@ class Controller(object):
             return
         instance.status()
 
+    def cmd_annotate(self, argv, help):
+        """Prints annotated config"""
+        parser = argparse.ArgumentParser(
+            prog="%s annotate" % self.progname,
+            description=help,
+        )
+        parser.parse_args(argv)
+        list(self.instances.values())  # trigger instance augmentation
+        for global_section in sorted(self.config):
+            for sectionname in sorted(self.config[global_section]):
+                print("[%s:%s]" % (global_section, sectionname))
+                section = self.config[global_section][sectionname]
+                for option, value in sorted(section._dict.items()):
+                    print("%s = %s" % (option, value.value))
+                    print("    %s" % value.src)
+                print()
+
     def cmd_debug(self, argv, help):
         """Prints some debug info for this script"""
         parser = argparse.ArgumentParser(

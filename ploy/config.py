@@ -122,16 +122,55 @@ class UserMassager(BaseMassager):
 
 
 class ConfigValue(object):
-    __slots__ = ('path', 'value')
+    __slots__ = ('path', 'value', 'src')
 
-    def __init__(self, path, value):
+    def __init__(self, path, value, src=None):
         self.path = path
         self.value = value
+        self.src = src
+
+
+def get_package_name(module):
+    f = getattr(module, '__file__', '')
+    if (('__init__.py' in f) or ('__init__$py' in f)):  # empty at >>>
+        # Module is a package
+        return module.__name__
+    else:
+        return module.__name__.rsplit('.', 1)[0]
+
+
+def get_caller_src():
+    skip = frozenset([
+        ('_abcoll', 'setdefault'),
+        ('_abcoll', 'update'),
+        ('ploy.config', '__init__'),
+        ('ploy.proxy', '__setitem__')])
+    stop = frozenset([
+        ('ploy.proxy', '__init__'),
+        ('ploy.proxy', '_proxied_instance')])
+    frame = sys._getframe(2)
+    while frame.f_back is not None:
+        f_code = frame.f_code
+        lineno = frame.f_lineno
+        module_globals = frame.f_globals
+        frame = frame.f_back
+        module_name = module_globals.get('__name__') or '__main__'
+        if (module_name, f_code.co_name) in skip:
+            continue
+        if (module_name, f_code.co_name) in stop:
+            return
+        package_name = get_package_name(sys.modules[module_name])
+        f = getattr(sys.modules[package_name], '__file__', '')
+        path = os.path.relpath(f_code.co_filename, os.path.dirname(f))
+        return "%s:%s:%s" % (package_name, path, lineno)
+    sys.exit(0)
 
 
 class ConfigSection(DictMixin):
     def __init__(self, *args, **kw):
-        self._dict = dict(*args, **kw)
+        self._dict = {}
+        for k, v in dict(*args, **kw).items():
+            self[k] = v
         self.sectionname = None
         self.sectiongroupname = None
         self._config = None
@@ -179,7 +218,10 @@ class ConfigSection(DictMixin):
 
     def __setitem__(self, key, value):
         if not isinstance(value, ConfigValue):
-            value = ConfigValue(None, value)
+            src = None
+            if not isinstance(value, ConfigSection):
+                src = get_caller_src()
+            value = ConfigValue(None, value, src=src)
         self._dict[key] = value
 
     def keys(self):
@@ -248,6 +290,9 @@ class Config(ConfigSection):
         stack = [config]
         while 1:
             config = stack.pop()
+            src = None
+            if isinstance(config, (str, unicode)):
+                src = os.path.relpath(config)
             _config = RawConfigParser()
             _config.optionxform = lambda s: s
             if getattr(config, 'read', None) is not None:
@@ -261,8 +306,8 @@ class Config(ConfigSection):
                 path = os.path.dirname(config)
             for section in reversed(_config.sections()):
                 for key, value in reversed(_config.items(section)):
-                    result.append((path, section, key, value))
-                result.append((path, section, None, None))
+                    result.append((src, path, section, key, value))
+                result.append((src, path, section, None, None))
             if _config.has_option('global', 'extends'):
                 extends = _config.get('global', 'extends').split()
             elif _config.has_option('global:global', 'extends'):
@@ -286,7 +331,7 @@ class Config(ConfigSection):
 
     def parse(self):
         _config = self.read_config(self.config)
-        for path, configsection, key, value in _config:
+        for src, path, configsection, key, value in _config:
             if ':' in configsection:
                 sectiongroupname, sectionname = configsection.split(':')
             else:
@@ -342,7 +387,7 @@ class Config(ConfigSection):
                                 sectiongroupname, massager_sectionname)
                             massager_section.add_massager(massager)
                 else:
-                    sectiongroup[sectionname][key] = ConfigValue(path, value)
+                    sectiongroup[sectionname][key] = ConfigValue(path, value, src=src)
         if 'plugin' in self:  # pragma: no cover
             warnings.warn("The 'plugin' section isn't used anymore.")
             del self['plugin']
