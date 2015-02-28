@@ -92,6 +92,13 @@ Options
 
     proxycommand = {path}/../bin/ploy-ssh vm-master -W {ip}:22
 
+``ssh-extra-args``
+  A list of settings separated by newlines passed on to ssh.
+
+  Example::
+
+    ssh-extra-args = ForwardAgent yes
+
 
 SSH integration
 ===============

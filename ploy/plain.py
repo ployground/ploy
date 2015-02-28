@@ -216,6 +216,9 @@ class Instance(BaseInstance):
             client=client,
             UserKnownHostsFile=known_hosts,
             StrictHostKeyChecking="yes")
+        for arg in self.config.get('ssh-extra-args', '').splitlines():
+            (key, value) = arg.split(None, 1)
+            result[key.title()] = value
         if self.proxy_command:
             result['ProxyCommand'] = self.proxy_command
         return result

@@ -4,6 +4,9 @@ Changelog
 1.0.4 - Unreleased
 ------------------
 
+* Add ``ssh-extra-args`` option.
+  [fschulze]
+
 * Add ``annotate`` command to print the configuration with the source of each
   setting.
   [fschulze]

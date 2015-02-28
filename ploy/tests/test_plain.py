@@ -99,6 +99,18 @@ class TestPlain:
             'ssh',
             ['ssh', '-o', 'StrictHostKeyChecking=yes', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
 
+    def testSSHExtraArgs(self):
+        self._write_config('\n'.join([
+            '[plain-instance:foo]',
+            'host = localhost',
+            'fingerprint = foo',
+            'ssh-extra-args = forwardagent yes']))
+        self.ctrl(['./bin/ploy', 'ssh', 'foo'])
+        known_hosts = os.path.join(self.directory, 'known_hosts')
+        self.os_execvp_mock.assert_called_with(
+            'ssh',
+            ['ssh', '-o', 'Forwardagent=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
+
 
 @pytest.fixture
 def paramiko():
