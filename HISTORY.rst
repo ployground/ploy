@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0.4 - Unreleased
+1.1.0 - 2015-02-28
 ------------------
 
 * Add ``ssh-extra-args`` option.
