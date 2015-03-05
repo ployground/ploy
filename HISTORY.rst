@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.1.1 - Unreleased
+1.2.0 - 2015-03-05
 ------------------
 
 * Add ``Executor`` helper to handle local and remote command execution. It's
