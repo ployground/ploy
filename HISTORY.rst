@@ -4,6 +4,10 @@ Changelog
 1.1.1 - Unreleased
 ------------------
 
+* Add ``Executor`` helper to handle local and remote command execution. It's
+  also handling ssh agent forwarding enabled by either the users ssh config
+  or the ``ssh-extra-args`` option.
+
 
 1.1.0 - 2015-02-28
 ------------------

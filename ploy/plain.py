@@ -88,20 +88,10 @@ class Instance(BaseInstance):
         return fingerprint
 
     @lazy
-    def sshconfig(self):
-        sshconfig = self.paramiko.SSHConfig()
-        path = os.path.expanduser('~/.ssh/config')
-        if not os.path.exists(path):
-            return sshconfig
-        with open(path) as f:
-            sshconfig.parse(f)
-        return sshconfig
-
-    @lazy
     def proxy_command(self):
         proxy_command = self.config.get('proxycommand', None)
         if proxy_command is None:
-            return self.sshconfig.lookup(self.get_host()).get('proxycommand', None)
+            return self.sshconfig.get('proxycommand', None)
         else:
             d = dict(
                 instances=dict(
@@ -142,14 +132,13 @@ class Instance(BaseInstance):
 
     def init_ssh_key(self, user=None):
         paramiko = self.paramiko
-        sshconfig = self.sshconfig
         try:
             host = self.get_host()
         except KeyError:
             raise paramiko.SSHException("No host or ip set in config.")
         port = self.get_port()
-        hostname = sshconfig.lookup(host).get('hostname', host)
-        port = sshconfig.lookup(host).get('port', port)
+        hostname = self.sshconfig.get('hostname', host)
+        port = self.sshconfig.get('port', port)
         password = None
         client = paramiko.SSHClient()
         fingerprint_func = self.get_fingerprint
@@ -163,7 +152,7 @@ class Instance(BaseInstance):
                 client.load_host_keys(known_hosts)
             try:
                 if user is None:
-                    user = sshconfig.lookup(host).get('user', 'root')
+                    user = self.sshconfig.get('user', 'root')
                     user = self.config.get('user', user)
                 client_args = dict(
                     port=int(port),

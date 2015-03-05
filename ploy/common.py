@@ -13,7 +13,9 @@ except ImportError:  # pragma: nocover
     from pipes import quote as shquote
 import gzip
 import logging
+import os
 import re
+import subprocess
 import sys
 
 
@@ -228,6 +230,20 @@ class BaseInstance(object):
     def paramiko(self):
         return import_paramiko()
 
+    @lazy
+    def _sshconfig(self):
+        sshconfig = self.paramiko.SSHConfig()
+        path = os.path.expanduser('~/.ssh/config')
+        if not os.path.exists(path):
+            return sshconfig
+        with open(path) as f:
+            sshconfig.parse(f)
+        return sshconfig
+
+    @lazy
+    def sshconfig(self):
+        return self._sshconfig.lookup(self.get_host())
+
     @property
     def conn(self):
         if getattr(self, '_conn', None) is not None:
@@ -240,6 +256,13 @@ class BaseInstance(object):
             log.error(unicode(e))
             sys.exit(1)
         self._conn = ssh_info['client']
+        ssh_options = dict(
+            (k.lower(), v)
+            for k, v in ssh_info.items()
+            if k[0].isupper())
+        config_agent = self.sshconfig.get('forwardagent', 'no').lower() == 'yes'
+        forward_agent = ssh_options.get('forwardagent', 'no').lower() == 'yes'
+        self._conn._ploy_forward_agent = forward_agent or config_agent
         return self._conn
 
     def close_conn(self):
@@ -277,6 +300,84 @@ class BaseInstance(object):
         ssh_args.extend(instance_ssh_args)
         ssh_args.extend(['-W', '%s:%s' % (self.get_host(), self.get_port())])
         return shjoin(ssh_args)
+
+
+class Executor:
+    def __init__(self, instance=None, prefix_args=(), splitlines=False):
+        self.instance = instance
+        self.prefix_args = tuple(prefix_args)
+        self.splitlines = splitlines
+
+    def __call__(self, *cmd_args, **kw):
+        args = self.prefix_args + cmd_args
+        rc = kw.pop('rc', None)
+        out = kw.pop('out', None)
+        err = kw.pop('err', None)
+        stdin = kw.pop('stdin', None)
+        if self.instance is None:
+            log.debug('Executing locally:\n%s', args)
+            popen_kw = dict(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if stdin is not None:
+                popen_kw['stdin'] = subprocess.PIPE
+            proc = subprocess.Popen(args, **popen_kw)
+            _out, _err = proc.communicate(input=stdin)
+            _rc = proc.returncode
+        else:
+            cmd = shjoin(args)
+            log.debug('Executing on instance %s:\n%s', self.instance.uid, cmd)
+            chan = self.instance.conn.get_transport().open_session()
+            if stdin is not None:
+                rin = chan.makefile('wb', -1)
+            rout = chan.makefile('rb', -1)
+            rerr = chan.makefile_stderr('rb', -1)
+            forward = None
+            if self.instance.conn._ploy_forward_agent:
+                forward = self.instance.paramiko.agent.AgentRequestHandler(chan)
+            chan.exec_command(cmd)
+            if stdin is not None:
+                rin.write(stdin)
+                rin.flush()
+                chan.shutdown_write()
+            _out = rout.read()
+            _err = rerr.read()
+            _rc = chan.recv_exit_status()
+            chan.close()
+            if forward is not None:
+                forward.close()
+        result = []
+        if rc is None:
+            result.append(_rc)
+        else:
+            try:
+                if not any(x == _rc for x in rc):
+                    raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
+            except TypeError:
+                pass
+            if rc != _rc:
+                raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
+        if out is None:
+            if self.splitlines:
+                _out = _out.splitlines()
+            result.append(_out)
+        else:
+            if out != _out:
+                if _rc == 0:
+                    log.error(_out)
+                raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
+        if err is None:
+            if self.splitlines:
+                _err = _err.splitlines()
+            result.append(_err)
+        else:
+            if err != _err:
+                if _rc == 0:
+                    log.error(_err)
+                raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
+        if len(result) == 0:
+            return
+        elif len(result) == 1:
+            return result[0]
+        return tuple(result)
 
 
 class Hooks(object):
