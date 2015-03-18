@@ -4,6 +4,8 @@ Changelog
 1.2.1 - Unreleased
 ------------------
 
+* Allow to specify multiple masters per instance.
+  [fschulze]
 
 
 1.2.0 - 2015-03-05
@@ -12,6 +14,7 @@ Changelog
 * Add ``Executor`` helper to handle local and remote command execution. It's
   also handling ssh agent forwarding enabled by either the users ssh config
   or the ``ssh-extra-args`` option.
+  [fschulze]
 
 
 1.1.0 - 2015-02-28
