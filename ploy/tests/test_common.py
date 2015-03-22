@@ -179,36 +179,6 @@ class TestStartupScript:
             LogMock.error.assert_called_with('Startup script too big (%s > %s).', 15, 10)
 
 
-class TestBaseMaster:
-    @pytest.yield_fixture
-    def ctrl(self, ployconf):
-        from ploy import Controller
-        import ploy.tests.dummy_plugin
-        ployconf.fill([
-            '[dummy-master:warden]',
-            '[dummy-master:master]',
-            '[dummy-master:another]',
-            '[dummy-instance:foo]',
-            'master = warden',
-            '[dummy-instance:bar]',
-            'master = master',
-            '[dummy-instance:ham]',
-            'master = warden master',
-            '[dummy-instance:egg]'])
-        ctrl = Controller(configpath=ployconf.directory)
-        ctrl.plugins = {
-            'dummy': ploy.tests.dummy_plugin.plugin}
-        ctrl.configfile = ployconf.path
-        yield ctrl
-
-    def test_master_association(self, ctrl):
-        assert sorted(ctrl.instances) == sorted([
-            'warden-foo', 'foo',
-            'master-bar', 'bar',
-            'warden-ham', 'master-ham',
-            'warden-egg', 'master-egg', 'another-egg'])
-
-
 @pytest.mark.parametrize("default, all, question, answer, expected", [
     (None, False, 'Foo [yes/no] ', ['y'], True),
     (None, False, 'Foo [yes/no] ', ['yes'], True),

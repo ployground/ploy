@@ -167,10 +167,9 @@ class BaseMaster(object):
                 self.sectiongroupname: self.instance_class}
         for sectiongroupname, instance_class in self.section_info.items():
             for sid, config in self.main_config.get(sectiongroupname, {}).items():
-                masters = config.get('master', self.id).split()
-                if self.id not in masters:
+                if self.id != config.get('master', self.id):
                     continue
-                self.instances[sid] = instance_class(self, sid, config.copy())
+                self.instances[sid] = instance_class(self, sid, config)
                 self.instances[sid].sectiongroupname = sectiongroupname
 
 

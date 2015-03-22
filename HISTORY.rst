@@ -4,8 +4,6 @@ Changelog
 1.2.1 - Unreleased
 ------------------
 
-* Allow to specify multiple masters per instance.
-  [fschulze]
 
 
 1.2.0 - 2015-03-05
