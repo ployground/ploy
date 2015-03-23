@@ -1,6 +1,6 @@
 from __future__ import print_function
 from ploy.common import BaseInstance, BaseMaster, StartupScriptMixin
-from ploy.config import HooksMassager
+from ploy.config import BaseMassager, HooksMassager
 from ploy.config import StartupScriptMassager
 import logging
 
@@ -78,8 +78,16 @@ def list_dummy(argv, help):
     print("list_dummy")
 
 
+class DummyMassager(BaseMassager):
+    def __call__(self, config, sectionname):
+        value = BaseMassager.__call__(self, config, sectionname)
+        return "%s massaged" % value
+
+
 def get_instance_massagers(sectiongroupname='instance'):
     return [
+        DummyMassager(sectiongroupname, 'dummy_value'),
+        DummyMassager(sectiongroupname, 'dummy_augmented'),
         HooksMassager(sectiongroupname, 'hooks'),
         StartupScriptMassager(sectiongroupname, 'startup_script')]
 
@@ -98,7 +106,13 @@ def get_masters(ctrl):
         yield Master(ctrl, master, master_config)
 
 
+def augment_instance(instance):
+    if instance.sectiongroupname == 'dummy-instance':
+        instance.config['dummy_augmented'] = 'augmented'
+
+
 plugin = dict(
+    augment_instance=augment_instance,
     get_list_commands=get_list_commands,
     get_massagers=get_massagers,
     get_masters=get_masters)

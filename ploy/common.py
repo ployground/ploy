@@ -173,7 +173,7 @@ class BaseMaster(object):
                 masters = config.get('master', self.id).split()
                 if self.id not in masters:
                     continue
-                self.instances[sid] = instance_class(self, sid, config.copy())
+                self.instances[sid] = instance_class(self, sid, config)
                 self.instances[sid].sectiongroupname = sectiongroupname
 
 
