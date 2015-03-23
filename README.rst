@@ -92,6 +92,9 @@ Options
 
     proxycommand = {path}/../bin/ploy-ssh vm-master -W {ip}:22
 
+``ssh-key-filename``
+  Location of private ssh key to use.
+
 ``ssh-extra-args``
   A list of settings separated by newlines passed on to ssh.
 
