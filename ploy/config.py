@@ -178,7 +178,13 @@ class ConfigSection(DictMixin):
 
     def add_massager(self, massager):
         key = (massager.sectiongroupname, massager.key)
-        if key in self.massagers:
+        existing = self.massagers.get(key)
+        if existing is not None:
+            equal_class = massager.__class__ == existing.__class__
+            equal_vars = vars(massager) == vars(existing)
+            if equal_class and equal_vars:
+                # massager is same as existing
+                return
             raise ValueError("Massager for option '%s' in section group '%s' already registered." % (massager.key, massager.sectiongroupname))
         self.massagers[key] = massager
 
