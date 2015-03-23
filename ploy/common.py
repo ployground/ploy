@@ -202,9 +202,6 @@ class BaseInstance(object):
         self.master = master
         self.config = config
         self.hooks = InstanceHooks(self)
-        get_massagers = getattr(self, 'get_massagers', lambda: [])
-        for massager in get_massagers():
-            self.config.add_massager(massager)
 
     _id_regexp = re.compile('^[a-zA-Z0-9-_]+$')
 
