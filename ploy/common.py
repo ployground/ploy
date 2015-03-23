@@ -206,6 +206,11 @@ class BaseInstance(object):
         self.config = config
         self.hooks = InstanceHooks(self)
 
+    def __repr__(self):
+        return "<%s.%s uid=%r>" % (
+            self.__class__.__module__, self.__class__.__name__,
+            self.uid)
+
     _id_regexp = re.compile('^[a-zA-Z0-9-_]+$')
 
     def validate_id(self, sid):
