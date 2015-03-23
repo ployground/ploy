@@ -154,10 +154,13 @@ class StartupScriptMixin(object):
 
 class BaseMaster(object):
     def __init__(self, ctrl, id, master_config):
+        from ploy.config import ConfigSection  # avoid circular import
         self.id = id
         self.ctrl = ctrl
         assert self.ctrl.__class__.__name__ == 'Controller'
         self.main_config = self.ctrl.config
+        if not isinstance(master_config, ConfigSection):
+            master_config = ConfigSection(master_config)
         self.master_config = master_config
         self.known_hosts = self.ctrl.known_hosts
         self.instances = {}
