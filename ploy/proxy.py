@@ -55,6 +55,6 @@ class ProxyInstance(BaseInstance):
         return instance
 
     def __getattr__(self, name):
-        if '_proxied_instance' not in self.__dict__ and name in frozenset(('validate_id', 'get_massagers')):
+        if '_proxied_instance' not in self.__dict__ and name == 'validate_id':
             raise AttributeError(name)
         return getattr(self._proxied_instance, name)

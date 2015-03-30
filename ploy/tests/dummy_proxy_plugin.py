@@ -1,4 +1,5 @@
-from ploy.tests.dummy_plugin import Master as BaseMaster, get_instance_massagers
+from ploy.tests.dummy_plugin import Master as BaseMaster
+from ploy.tests.dummy_plugin import augment_instance, get_massagers
 from ploy.proxy import ProxyInstance
 
 
@@ -10,12 +11,8 @@ class Master(BaseMaster):
         else:
             instance = self.master_config['instance']
         self.instance = ProxyInstance(self, self.id, self.master_config, instance)
-        self.instance.sectiongroupname = self.sectiongroupname
+        self.instance.sectiongroupname = 'dummy-master'
         self.instances[self.id] = self.instance
-
-
-def get_massagers():
-    return get_instance_massagers('dummy-instance')
 
 
 def get_masters(ctrl):
@@ -25,5 +22,6 @@ def get_masters(ctrl):
 
 
 plugin = dict(
+    augment_instance=augment_instance,
     get_massagers=get_massagers,
     get_masters=get_masters)

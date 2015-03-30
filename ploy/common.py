@@ -154,10 +154,13 @@ class StartupScriptMixin(object):
 
 class BaseMaster(object):
     def __init__(self, ctrl, id, master_config):
+        from ploy.config import ConfigSection  # avoid circular import
         self.id = id
         self.ctrl = ctrl
         assert self.ctrl.__class__.__name__ == 'Controller'
         self.main_config = self.ctrl.config
+        if not isinstance(master_config, ConfigSection):
+            master_config = ConfigSection(master_config)
         self.master_config = master_config
         self.known_hosts = self.ctrl.known_hosts
         self.instances = {}
@@ -167,7 +170,8 @@ class BaseMaster(object):
                 self.sectiongroupname: self.instance_class}
         for sectiongroupname, instance_class in self.section_info.items():
             for sid, config in self.main_config.get(sectiongroupname, {}).items():
-                if self.id != config.get('master', self.id):
+                masters = config.get('master', self.id).split()
+                if self.id not in masters:
                     continue
                 self.instances[sid] = instance_class(self, sid, config)
                 self.instances[sid].sectiongroupname = sectiongroupname
@@ -202,9 +206,11 @@ class BaseInstance(object):
         self.master = master
         self.config = config
         self.hooks = InstanceHooks(self)
-        get_massagers = getattr(self, 'get_massagers', lambda: [])
-        for massager in get_massagers():
-            self.config.add_massager(massager)
+
+    def __repr__(self):
+        return "<%s.%s uid=%r>" % (
+            self.__class__.__module__, self.__class__.__name__,
+            self.uid)
 
     _id_regexp = re.compile('^[a-zA-Z0-9-_]+$')
 

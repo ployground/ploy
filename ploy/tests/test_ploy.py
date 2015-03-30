@@ -127,6 +127,44 @@ class TestPloy:
                 ctrl(['./bin/ploy', 'ssh', 'bar'])
         LogMock.error.assert_called_with("Invalid instance name 'fo o'. An instance name may only contain letters, numbers, dashes and underscores.")
 
+    def testInstanceAugmentation(self):
+        import ploy.tests.dummy_plugin
+        self.configfile.fill([
+            '[dummy-instance:foo]'])
+        ctrl = Controller(configpath=self.directory)
+        ctrl.configfile = self.configfile.path
+        ctrl.plugins = {
+            'dummy': ploy.tests.dummy_plugin.plugin}
+        assert 'dummy_augmented' in ctrl.instances['foo'].config
+        assert ctrl.instances['foo'].config['dummy_augmented'] == 'augmented massaged'
+
+    def testInstanceAugmentationProxiedMaster(self):
+        import ploy.tests.dummy_proxy_plugin
+        import ploy.plain
+        self.configfile.fill([
+            '[plain-instance:foo]',
+            'somevalue = ham',
+            '[dummy-master:master]',
+            'instance = foo',
+            '[dummy-instance:bar]',
+            'dummy_value = egg'])
+        ctrl = Controller(configpath=self.directory)
+        ctrl.configfile = self.configfile.path
+        ctrl.plugins = {
+            'dummy': ploy.tests.dummy_proxy_plugin.plugin,
+            'plain': ploy.plain.plugin}
+        # trigger augmentation of all instances
+        instances = dict(ctrl.instances)
+        # check the proxied value, which is only accessible through the instance config
+        assert 'somevalue' in instances['master'].config
+        assert instances['master'].config['somevalue'] == 'ham'
+        # we check that the main config is updated for the remaining values,
+        # not only the individual instance configs
+        assert 'dummy_value' in ctrl.config['dummy-instance']['bar']
+        assert ctrl.config['dummy-instance']['bar']['dummy_value'] == 'egg massaged'
+        assert 'dummy_augmented' in ctrl.config['dummy-instance']['bar']
+        assert ctrl.config['dummy-instance']['bar']['dummy_augmented'] == 'augmented massaged'
+
 
 class TestStartCommand:
     @pytest.fixture(autouse=True)

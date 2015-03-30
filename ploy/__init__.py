@@ -68,6 +68,9 @@ class LazyInstanceDict(DictMixin):
                 log.error("Instance '%s' not found. Did you forget to install a plugin? The following sections might match:\n%s" % (
                     key, "\n".join(candidates)))
             raise
+        get_massagers = getattr(instance, 'get_massagers', lambda: [])
+        for massager in get_massagers():
+            instance.config.add_massager(massager)
         for plugin in self.plugins.values():
             if 'augment_instance' not in plugin:
                 continue
