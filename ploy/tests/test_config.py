@@ -620,3 +620,61 @@ class TestYAMLConversion:
                 instance:
                     foo: {}
                 """)}
+
+    def testComments(self, make_file_content, make_config_obj, tempdir, yaml_dumper):
+        config = make_config_obj(u"""\
+            # starting comment
+            REM a comment
+
+            [global]
+
+            # macros
+
+            [macros:bar]
+
+            # instances
+
+            # foo
+
+            [instance:foo]
+            #section comment
+            ham1 = bar1; not an option comment
+            ham2 = bar2# not an option comment
+            ham3 = bar3 # not an option comment
+            ham = bar ; option comment
+            remark = not a comment
+
+            # bar
+
+            [instance:bar]
+            ham = foo
+
+            ; ending comment
+            rem another comment
+            """)
+        config._dump_yaml(yaml_dumper)
+        assert list(yaml_dumper.output.keys()) == ['ploy.yml']
+        assert yaml_dumper.output['ploy.yml'] == make_file_content(u"""\
+            global:
+                # starting comment
+                # a comment
+                global: {}
+            macros:
+                # macros
+                bar: {}
+            instance:
+                # instances
+                # foo
+                foo:
+                    #section comment
+                    ham1: bar1; not an option comment
+                    ham2: bar2# not an option comment
+                    ham3: 'bar3 # not an option comment'
+                    ham: bar  # option comment
+                    remark: not a comment
+                # bar
+                bar:
+                    ham: foo
+            # ending comment
+            # another comment
+            """)

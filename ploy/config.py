@@ -137,6 +137,7 @@ class ConfigValue(object):
     path = attr.ib()
     value = attr.ib()
     src = attr.ib(default=None)
+    comment = attr.ib(default=None)
 
 
 def get_package_name(module):
@@ -282,6 +283,128 @@ class _RawConfigValue(object):
     section = attr.ib()
     key = attr.ib()
     value = attr.ib()
+    comments = attr.ib(default=(None, None))
+
+
+class _ConfigDict(configparser._default_dict):
+    prefix_comment = None
+    key_prefix_comments = None
+    key_comments = None
+
+    def set_prefix_comment(self, value):
+        self.prefix_comment = value
+
+    def set_key_prefix_comment(self, key, value):
+        if self.key_prefix_comments is None:
+            self.key_prefix_comments = dict()
+        self.key_prefix_comments[key] = value
+
+    def set_key_comment(self, key, value):
+        if self.key_comments is None:
+            self.key_comments = dict()
+        self.key_comments[key] = value
+
+
+class CommentedConfigParser(configparser.RawConfigParser):
+    def _read(self, fp, fpname):
+        self._dict = _ConfigDict
+        cursect = None                        # None, or a dictionary
+        optname = None
+        lineno = 0
+        e = None                              # None, or an exception
+        comments = []
+        while True:
+            line = fp.readline()
+            if not line:
+                if comments:
+                    self.comments = comments
+                break
+            lineno = lineno + 1
+            # blank line?
+            if line.strip() == '':
+                continue
+            # comment?
+            if line[0] in '#;':
+                comments.append((line[0:1], line[1:]))
+                continue
+            if line.split(None, 1)[0].lower() == 'rem' and line[0] in "rR":
+                comments.append((line[0:3], line[3:]))
+                # no leading whitespace
+                continue
+            # continuation line?
+            if line[0].isspace() and cursect is not None and optname:
+                value = line.strip()
+                if value:
+                    cursect[optname].append(value)
+            # a section header or option header?
+            else:
+                # is it a section header?
+                mo = self.SECTCRE.match(line)
+                if mo:
+                    sectname = mo.group('header')
+                    if sectname in self._sections:
+                        cursect = self._sections[sectname]
+                    elif sectname == configparser.DEFAULTSECT:
+                        cursect = self._defaults
+                    else:
+                        cursect = self._dict()
+                        cursect['__name__'] = sectname
+                        self._sections[sectname] = cursect
+                    if comments:
+                        cursect.set_prefix_comment(comments)
+                        comments = []
+                    # So sections can't start with a continuation line
+                    optname = None
+                # no section header in the file?
+                elif cursect is None:
+                    raise configparser.MissingSectionHeaderError(fpname, lineno, line)
+                # an option line?
+                else:
+                    mo = self._optcre.match(line)
+                    if mo:
+                        optname, vi, optval = mo.group('option', 'vi', 'value')
+                        optname = optname.rstrip()
+                        if comments:
+                            cursect.set_key_prefix_comment(optname, comments)
+                            comments = []
+                        # This check is fine because the OPTCRE cannot
+                        # match if it would set optval to None
+                        if optval is not None:
+                            if vi in ('=', ':') and ';' in optval:
+                                # ';' is a comment delimiter only if it follows
+                                # a spacing character
+                                pos = optval.find(';')
+                                if pos != -1 and optval[pos - 1].isspace():
+                                    cursect.set_key_comment(
+                                        optname, [(optval[pos:pos + 1], optval[pos + 1:])])
+                                    optval = optval[:pos]
+                            optval = optval.strip()
+                            # allow empty values
+                            if optval == '""':
+                                optval = ''
+                            cursect[optname] = [optval]
+                        else:
+                            # valueless option handling
+                            cursect[optname] = optval
+                    else:
+                        # a non-fatal parsing error occurred.  set up the
+                        # exception but keep going. the exception will be
+                        # raised at the end of the file and will contain a
+                        # list of all bogus lines
+                        if not e:
+                            e = configparser.ParsingError(fpname)
+                        e.append(lineno, repr(line))
+        # if any parsing errors occurred, raise an exception
+        if e:
+            raise e
+
+        # join the multi-line values collected while reading
+        all_sections = [self._defaults]
+        all_sections.extend(self._sections.values())
+        for options in all_sections:
+            for name, val in options.items():
+                if isinstance(val, list):
+                    options[name] = '\n'.join(val)
 
 
 def _read_config(config, path, parser, shallow=False):
@@ -297,29 +420,52 @@ def _read_config(config, path, parser, shallow=False):
         src = None
         if isinstance(config, basestring):
             src = os.path.relpath(config)
-        _config = parser()
+        try:
+            _config = parser(
+                comment_prefixes=('#', ';', 'REM ', 'rem ', 'REm ', 'ReM ', 'rEM ', 'Rem ', 'rEm ', 'reM '),
+                inline_comment_prefixes=(';',))
+        except TypeError:
+            _config = parser()
         if getattr(config, 'read', None) is not None:
             _config.readfp(config)
+            config.seek(0)
         else:
             if not os.path.exists(config):
                 log.error("Config file '%s' doesn't exist.", config)
                 sys.exit(1)
             _config.read(config)
             path = os.path.dirname(config)
-        for section in reversed(_config.sections()):
-            for key, value in reversed(_config.items(section)):
-                result.append(_RawConfigValue(
-                    src=src,
-                    path=path,
-                    section=section,
-                    key=key,
-                    value=value))
+        comments = getattr(_config, 'comments', None)
+        if comments is not None:
+            assert not isinstance(_config, ConfigParser)
             result.append(_RawConfigValue(
                 src=src,
                 path=path,
-                section=section,
+                section=None,
                 key=None,
-                value=None))
+                value=None,
+                comments=(comments, None)))
+        for sectionname, section in reversed(list(_config._sections.items())):
+            key_comments = getattr(section, 'key_comments', None) or {}
+            key_prefix_comments = getattr(section, 'key_prefix_comments', None) or {}
+            for key, value in reversed(list(section.items())):
+                if key == '__name__':
+                    continue
+                result.append(_RawConfigValue(
+                    src=src,
+                    path=path,
+                    section=sectionname,
+                    key=key,
+                    value=value,
+                    comments=(key_prefix_comments.get(key), key_comments.get(key))))
+            prefix_comment = getattr(section, 'prefix_comment', None)
+            result.append(_RawConfigValue(
+                src=src,
+                path=path,
+                section=sectionname,
+                key=None,
+                value=None,
+                comments=(prefix_comment, None)))
         if _config.has_option('global', 'extends'):
             extends = _config.get('global', 'extends').split()
         elif _config.has_option('global:global', 'extends'):
@@ -331,11 +477,21 @@ def _read_config(config, path, parser, shallow=False):
         stack[0:0] = [
             os.path.abspath(os.path.join(path, x))
             for x in reversed(extends)]
-    return reversed(result)
+    return list(reversed(result))
 
 
 def read_config(config, path, shallow=False):
-    _config = _read_config(config, path, ConfigParser, shallow=shallow)
+    _control_config = _read_config(config, path, ConfigParser, shallow=shallow)
+    _config = _read_config(config, path, CommentedConfigParser, shallow=shallow)
+    index = 0
+    for item in _config:
+        if item.section is None:
+            assert item.key is None
+            assert item.value is None
+            continue
+        if _control_config[index].comments != (None, None):
+            assert _control_config[index].comments == item.comments
+        index += 1
     return _config
 
 
@@ -394,6 +550,18 @@ def read_yml_config(config, path):
     return reversed(result)
 
 
+def _make_comment(value, indent):
+    from ruamel import yaml
+    result = []
+    for item in value.split('\n'):
+        result.append(
+            yaml.tokens.CommentToken(
+                "#%s" % item,
+                yaml.error.CommentMark(indent),
+                yaml.error.CommentMark(0)))
+    return result
+
+
 class Config(ConfigSection):
     def _expand(self, sectiongroupname, sectionname, section, seen):
         if (sectiongroupname, sectionname) in seen:
@@ -447,19 +615,19 @@ class Config(ConfigSection):
     def _parse(self, _config):
         for info in _config:
             if info.section is None:
-                self._values.append((None, None, None, ConfigValue(info.path, None, src=info.src)))
+                self._values.append((None, None, None, ConfigValue(info.path, None, src=info.src, comment=info.comments)))
                 continue
             if ':' in info.section:
                 sectiongroupname, sectionname = info.section.split(':')
             else:
                 sectiongroupname, sectionname = 'global', info.section
             if sectiongroupname == 'global' and sectionname == 'global' and info.key == 'extends':
-                self._values.append((sectiongroupname, sectionname, info.key, ConfigValue(info.path, info.value, src=info.src)))
+                self._values.append((sectiongroupname, sectionname, info.key, ConfigValue(info.path, info.value, src=info.src, comment=info.comments)))
                 continue
             sectiongroup = self.setdefault(sectiongroupname, ConfigSection())
             self.get_section(sectiongroupname, sectionname)
             if info.key is None:
-                self._values.append((sectiongroupname, sectionname, info.key, ConfigValue(info.path, info.value, src=info.src)))
+                self._values.append((sectiongroupname, sectionname, info.key, ConfigValue(info.path, info.value, src=info.src, comment=info.comments)))
             else:
                 if info.key == 'massagers':
                     for spec in info.value.splitlines():
@@ -508,7 +676,7 @@ class Config(ConfigSection):
                             massager_section.add_massager(massager)
                 else:
                     sectiongroup[sectionname][info.key] = ConfigValue(
-                        info.path, info.value, src=info.src)
+                        info.path, info.value, src=info.src, comment=info.comments)
         if 'plugin' in self:  # pragma: no cover
             warnings.warn("The 'plugin' section isn't used anymore.")
             del self['plugin']
@@ -541,6 +709,14 @@ class Config(ConfigSection):
         sectiongroup = None
         section = None
         for sectiongroupname, sectionname, key, value in self._values:
+            if value.comment:
+                (prefix_comment, comment) = value.comment
+            else:
+                (prefix_comment, comment) = (None, None)
+            if prefix_comment:
+                prefix_comment = "\n".join(x[1].rstrip() for x in prefix_comment)
+            if comment:
+                comment = "\n".join(x[1][1:].rstrip() for x in comment)
             if value.path:
                 conf_key = os.path.abspath(value.src)
             else:
@@ -548,6 +724,10 @@ class Config(ConfigSection):
             conf = configs.setdefault(conf_key, CommentedMap())
             if sectiongroupname is None:
                 assert sectionname is None
+                if prefix_comment:
+                    conf._yaml_add_comment([None, None])
+                    conf.yaml_end_comment_extend(_make_comment(prefix_comment, 0))
+                    pass
                 continue
             sectiongroup = conf.setdefault(sectiongroupname, CommentedMap())
             section = sectiongroup.setdefault(sectionname, CommentedMap())
@@ -580,6 +760,13 @@ class Config(ConfigSection):
                         if isinstance(item, list):
                             out_value[index] = CommentedSeq(item)
                 section[key] = out_value
+                if prefix_comment:
+                    section._yaml_add_comment([None, _make_comment(prefix_comment, 8)], key=key)
+                if comment:
+                    section.yaml_add_eol_comment(comment, key=key)
+            else:
+                if prefix_comment:
+                    sectiongroup._yaml_add_comment([None, _make_comment(prefix_comment, 4)], key=sectionname)
         for conf in configs:
             if conf is None:
                 dirname = None
