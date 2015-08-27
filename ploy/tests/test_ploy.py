@@ -46,7 +46,9 @@ class TestPloy:
         ctrl(['./bin/ploy', 'help'])
         assert ctrl.configfile == 'etc/ploy.conf'
 
-    def testDirectoryAsConfig(self, ployconf):
+    def testDirectoryAsConfig(self, confext, ployconf):
+        if confext == '.yml':
+            pytest.skip("Default is .conf, so we don't check with .yml")
         ctrl = Controller(configpath=ployconf.directory)
         ctrl(['./bin/ploy', 'help'])
         assert ctrl.configfile == ployconf.path

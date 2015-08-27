@@ -115,8 +115,9 @@ class Controller(object):
 
     @lazy
     def hook(self):
-        from .config import ConfigPlugin
+        from .config import ConfigPlugin, YamlConfigPlugin
         self.pm.register(ConfigPlugin())
+        self.pm.register(YamlConfigPlugin())
         for pluginname, plugin in self.plugins.items():
             pass
         self.pm.check_pending()

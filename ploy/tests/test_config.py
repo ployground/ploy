@@ -512,7 +512,7 @@ class TestConfigExtend:
                 'global': {
                     'foo': 'bar', 'ham': 'egg'}}}
 
-    def testCircularExtend(self, confmaker, mock):
+    def testCircularExtend(self, confext, confmaker, mock):
         ployconf = confmaker('ploy.conf')
         ployconf.fill(
             '\n'.join([
@@ -527,8 +527,10 @@ class TestConfigExtend:
         with mock.patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(ployconf.path).parse()
+        path = os.path.join(ployconf.directory, 'foo.conf')
+        path = path.replace('.conf', confext)
         assert LogMock.error.call_args_list == [
-            (("Circular config file extension on '%s'.", os.path.join(ployconf.directory, 'foo.conf')), {})]
+            (("Circular config file extension on '%s'.", path), {})]
 
     def testDoubleExtend(self, confmaker):
         ployconf = confmaker('ploy.conf')
@@ -577,7 +579,7 @@ class TestConfigExtend:
                     'foo': os.path.join(ployconf.directory, 'bar', 'blubber'),
                     'ham': os.path.join(ployconf.directory, 'egg')}}}
 
-    def testExtendFromMissingFile(self, confmaker, mock):
+    def testExtendFromMissingFile(self, confext, confmaker, mock):
         ployconf = confmaker('ploy.conf')
         ployconf.fill(
             '\n'.join([
@@ -587,5 +589,34 @@ class TestConfigExtend:
         with mock.patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(ployconf.path).parse()
+        path = os.path.join(ployconf.directory, 'foo.conf')
+        path = path.replace('.conf', confext)
         assert LogMock.error.call_args_list == [
-            (("Config file '%s' doesn't exist.", os.path.join(ployconf.directory, 'foo.conf')), {})]
+            (("Config file '%s' doesn't exist.", path), {})]
+
+
+class TestYAMLConversion:
+    @pytest.fixture
+    def make_config_obj(self, tempdir):
+
+        def make_config_obj(content, name='ploy.conf'):
+            tempdir[name].fill(content, allow_conf=True)
+            config = Config(tempdir[name].path)
+            config.parse()
+            return config
+
+        return make_config_obj
+
+    def testEmpty(self, make_config_obj, tempdir, yaml_dumper):
+        config = make_config_obj(u"")
+        config._dump_yaml(yaml_dumper)
+        assert yaml_dumper.output == {}
+
+    def testEmptySection(self, make_file_content, make_config_obj, tempdir, yaml_dumper):
+        config = make_config_obj(u"[instance:foo]")
+        config._dump_yaml(yaml_dumper)
+        assert yaml_dumper.output == {
+            'ploy.yml': make_file_content(u"""\
+                instance:
+                    foo: {}
+                """)}

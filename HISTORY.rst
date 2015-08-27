@@ -4,6 +4,9 @@ Changelog
 2.0.0 - Unreleased
 ------------------
 
+* Support YAML configuration files.
+  [fschulze]
+
 * Dropped support ``ssh`` lib, only ``paramiko`` is supported.
   [fschulze]
 

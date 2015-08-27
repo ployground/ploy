@@ -12,6 +12,7 @@ install_requires = [
     'lazy',
     'paramiko',
     'pluggy',
+    'ruamel.yaml',
     'setuptools']
 
 setup(

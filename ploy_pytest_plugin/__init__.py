@@ -29,7 +29,9 @@ class File:
         if not os.path.exists(self.directory):
             os.makedirs(self.directory)
 
-    def fill(self, content):
+    def fill(self, content, allow_conf=False):
+        if self.path.endswith('.conf') and not allow_conf:
+            raise ValueError
         self.makedirs()
         with open(self.path, 'w') as f:
             f.write(make_file_content()(content))
@@ -86,10 +88,36 @@ def make_file_io(make_file_content):
     return make_file_io
 
 
+class Writer:
+    def __init__(self):
+        self.full_output = dict()
+        self.output = dict()
+
+    def __call__(self, dirname, basename, value):
+        if basename is not None:
+            basename = basename.replace('.conf', '.yml')
+        self.full_output.setdefault((dirname, basename), []).append(value)
+        self.output[basename] = value.decode('ascii')
+
+
 @pytest.fixture
-def confmaker(request, tempdir):
+def yaml_dumper():
+    return Writer()
+
+
+@pytest.fixture(params=[".conf", ".yml"])
+def confext(request):
+    return request.param
+
+
+@pytest.fixture
+def confmaker(request, tempdir, confext):
+    from io import StringIO
+    from ploy.config import Config, read_config
+
     class Confmaker:
         def __init__(self, conf):
+            conf = conf.replace('.conf', confext)
             self.conf = tempdir[conf]
             self.directory = self.conf.directory
             self.path = self.conf.path
@@ -113,7 +141,16 @@ def confmaker(request, tempdir):
         def _write(self):
             self.makedirs()
             content = self._content
-            with open(self.path, 'w') as f:
+            if confext == '.yml' and content:
+                config = Config(StringIO(content))
+                _config = read_config(config.config, config.path, shallow=True)
+                config._parse(_config)
+                writer = Writer()
+                config._dump_yaml(writer)
+                (content,) = writer.full_output[(None, None)]
+            with open(self.path, 'wb') as f:
+                if isinstance(content, str):
+                    content = content.encode('ascii')
                 f.write(content)
 
     return Confmaker

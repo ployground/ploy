@@ -5,6 +5,8 @@ try:
 except ImportError:  # pragma: nocover
     import ConfigParser as configparser  # for Python 2.7
 from collections import MutableMapping
+from io import BytesIO
+from ploy.common import split_option
 from pluggy import HookimplMarker
 from weakref import proxy
 import attr
@@ -75,6 +77,8 @@ def expand_path(value, base):
 
 
 class PathMassager(BaseMassager):
+    _massage_for_yaml = False
+
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
         return expand_path(value, self.path(config, sectionname))
@@ -90,6 +94,8 @@ def resolve_dotted_name(value):
 
 
 class HooksMassager(BaseMassager):
+    _massage_for_yaml = False
+
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
         hooks = Hooks()
@@ -99,6 +105,8 @@ class HooksMassager(BaseMassager):
 
 
 class StartupScriptMassager(BaseMassager):
+    _massage_for_yaml = False
+
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
         if not value:
@@ -114,6 +122,8 @@ class StartupScriptMassager(BaseMassager):
 
 
 class UserMassager(BaseMassager):
+    _massage_for_yaml = False
+
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
         if value == "*":
@@ -196,11 +206,7 @@ class ConfigSection(MutableMapping):
                 return default
         return self._dict[key].path
 
-    def __getitem__(self, key):
-        if key == '__groupname__':
-            return self.sectiongroupname
-        if key == '__name__':
-            return self.sectionname
+    def _get_massager(self, key):
         if key in self._dict:
             if self._config is not None:
                 massage = self._config.massagers.get((self.sectiongroupname, key))
@@ -208,14 +214,24 @@ class ConfigSection(MutableMapping):
                     massage = self._config.massagers.get((None, key))
                     if callable(massage):
                         if len(inspect.getargspec(massage.__call__).args) == 3:
-                            return massage(self, self.sectionname)
+                            return (massage, (self.sectionname,))
                         else:
-                            return massage(self, self.sectiongroupname, self.sectionname)
+                            return (massage, (self.sectiongroupname, self.sectionname))
                 else:
-                    return massage(self, self.sectionname)
+                    return (massage, (self.sectionname,))
             massage = self.massagers.get((self.sectiongroupname, key))
             if callable(massage):
-                return massage(self, self.sectionname)
+                return (massage, (self.sectionname, ))
+        return (None, None)
+
+    def __getitem__(self, key):
+        if key == '__groupname__':
+            return self.sectiongroupname
+        if key == '__name__':
+            return self.sectionname
+        (massager, args) = self._get_massager(key)
+        if massager is not None:
+            return massager(self, *args)
         value = self._dict[key]
         if isinstance(value, ConfigValue):
             return value.value
@@ -228,6 +244,9 @@ class ConfigSection(MutableMapping):
                 src = get_caller_src()
             value = ConfigValue(None, value, src=src)
         self._dict[key] = value
+        if self._config is not None:
+            self._config._values.append(
+                (self.sectiongroupname, self.sectionname, key, value))
 
     def keys(self):
         return self._dict.keys()
@@ -265,7 +284,7 @@ class _RawConfigValue(object):
     value = attr.ib()
 
 
-def _read_config(config, path, parser):
+def _read_config(config, path, parser, shallow=False):
     result = []
     stack = [config]
     seen = set()
@@ -307,15 +326,72 @@ def _read_config(config, path, parser):
             extends = _config.get('global:global', 'extends').split()
         else:
             break
+        if shallow:
+            break
         stack[0:0] = [
             os.path.abspath(os.path.join(path, x))
             for x in reversed(extends)]
     return reversed(result)
 
 
-def read_config(config, path):
-    _config = _read_config(config, path, ConfigParser)
+def read_config(config, path, shallow=False):
+    _config = _read_config(config, path, ConfigParser, shallow=shallow)
     return _config
+
+
+def read_yml_config(config, path):
+    from ruamel.yaml import YAML
+    result = []
+    stack = [config]
+    seen = set()
+    while 1:
+        config = stack.pop()
+        if config in seen:
+            log.error("Circular config file extension on '%s'.", config)
+            sys.exit(1)
+        seen.add(config)
+        yaml = YAML(typ='rt')
+        if getattr(config, 'read', None) is not None:
+            _config = yaml.load(config)
+        else:
+            if not os.path.exists(config):
+                log.error("Config file '%s' doesn't exist.", config)
+                sys.exit(1)
+            with open(config, 'r') as f:
+                _config = yaml.load(f)
+            path = os.path.dirname(config)
+        if not _config:
+            _config = {}
+        src = None
+        if isinstance(config, basestring):
+            src = os.path.relpath(config)
+        for sectiongroupname in reversed(list(_config.keys())):
+            for sectionname in reversed(list(_config[sectiongroupname].keys())):
+                for key, value in reversed(list(_config[sectiongroupname][sectionname].items())):
+                    result.append(_RawConfigValue(
+                        src=src,
+                        path=path,
+                        section="%s:%s" % (sectiongroupname, sectionname),
+                        key=key,
+                        value=value))
+                result.append(_RawConfigValue(
+                    src=src,
+                    path=path,
+                    section="%s:%s" % (sectiongroupname, sectionname),
+                    key=None,
+                    value=None))
+        extends = None
+        if 'global' in _config:
+            if 'extends' in _config['global']:
+                extends = _config['global']['extends'].split()
+            elif 'global' in _config['global'] and 'extends' in _config['global']['global']:
+                extends = _config['global']['global']['extends'].split()
+        if not extends:
+            break
+        stack[0:0] = [
+            os.path.abspath(os.path.join(path, x))
+            for x in reversed(extends)]
+    return reversed(result)
 
 
 class Config(ConfigSection):
@@ -344,6 +420,7 @@ class Config(ConfigSection):
 
     def __init__(self, config, path=None, plugins=None):
         ConfigSection.__init__(self)
+        self._values = []
         self.config = config
         if path is None:
             if getattr(config, 'read', None) is None:
@@ -367,18 +444,23 @@ class Config(ConfigSection):
             sectiongroup[sectionname] = section
         return sectiongroup[sectionname]
 
-    def parse(self):
-        _config = read_config(self.config, self.path)
+    def _parse(self, _config):
         for info in _config:
+            if info.section is None:
+                self._values.append((None, None, None, ConfigValue(info.path, None, src=info.src)))
+                continue
             if ':' in info.section:
                 sectiongroupname, sectionname = info.section.split(':')
             else:
                 sectiongroupname, sectionname = 'global', info.section
             if sectiongroupname == 'global' and sectionname == 'global' and info.key == 'extends':
+                self._values.append((sectiongroupname, sectionname, info.key, ConfigValue(info.path, info.value, src=info.src)))
                 continue
             sectiongroup = self.setdefault(sectiongroupname, ConfigSection())
             self.get_section(sectiongroupname, sectionname)
-            if info.key is not None:
+            if info.key is None:
+                self._values.append((sectiongroupname, sectionname, info.key, ConfigValue(info.path, info.value, src=info.src)))
+            else:
                 if info.key == 'massagers':
                     for spec in info.value.splitlines():
                         spec = spec.strip()
@@ -439,11 +521,76 @@ class Config(ConfigSection):
                     self._expand(sectiongroupname, sectionname, section, seen)
         return self
 
+    def parse(self):
+        if isinstance(self.config, basestring) and self.config.endswith('.yml'):
+            _config = read_yml_config(self.config, self.path)
+        else:
+            _config = read_config(self.config, self.path)
+        return self._parse(_config)
+
     def get_section_with_overrides(self, sectiongroupname, sectionname, overrides):
         config = self[sectiongroupname][sectionname].copy()
         if overrides is not None:
             config._dict.update(overrides)
         return config
+
+    def _dump_yaml(self, writer):
+        from ruamel.yaml import YAML
+        from ruamel.yaml.comments import CommentedMap, CommentedSeq
+        configs = dict()
+        sectiongroup = None
+        section = None
+        for sectiongroupname, sectionname, key, value in self._values:
+            if value.path:
+                conf_key = os.path.abspath(value.src)
+            else:
+                conf_key = None
+            conf = configs.setdefault(conf_key, CommentedMap())
+            if sectiongroupname is None:
+                assert sectionname is None
+                continue
+            sectiongroup = conf.setdefault(sectiongroupname, CommentedMap())
+            section = sectiongroup.setdefault(sectionname, CommentedMap())
+            if key is not None:
+                configsection = self[sectiongroupname][sectionname]
+                out_value = value.value
+                _get_massager = getattr(configsection, '_get_massager', None)
+                if _get_massager is not None:
+                    (massager, args) = configsection._get_massager(key)
+                    _massage_for_yaml = getattr(massager, '_massage_for_yaml', True)
+                    if _massage_for_yaml:
+                        try:
+                            out_value = configsection[key]
+                        except KeyError:
+                            pass
+                if isinstance(out_value, basestring):
+                    if key == 'extends':
+                        out_value = out_value.replace('.conf', '.yml')
+                    if '\n' in out_value:
+                        out_value = split_option(out_value)
+                if isinstance(out_value, (tuple, set)):
+                    out_value = list(out_value)
+                if isinstance(out_value, list):
+                    for index, item in enumerate(out_value):
+                        if isinstance(item, dict):
+                            out_value[index] = CommentedMap(item.items())
+                        if isinstance(item, tuple):
+                            out_value[index] = CommentedSeq(item)
+                            out_value[index].fa.set_flow_style()
+                        if isinstance(item, list):
+                            out_value[index] = CommentedSeq(item)
+                section[key] = out_value
+        for conf in configs:
+            if conf is None:
+                dirname = None
+                basename = None
+            else:
+                dirname, basename = os.path.split(conf)
+            yaml = YAML(typ='rt')
+            content = BytesIO()
+            yaml.indent(mapping=4, sequence=4, offset=2)
+            yaml.dump(configs[conf], content)
+            writer(dirname, basename, content.getvalue())
 
 
 class ConfigPlugin:
@@ -457,5 +604,23 @@ class ConfigPlugin:
         if not fn.endswith('.conf'):
             return
         config = Config(fn, plugins=plugins)
-        config.parse()
+        _config = read_config(config.config, config.path)
+        config._parse(_config)
+        return config
+
+
+class YamlConfigPlugin:
+    @hookimpl
+    def ploy_locate_config(self, fn):
+        fn = os.path.splitext(fn)[0] + '.yml'
+        if fn.endswith('.yml') and os.path.exists(fn):
+            return fn
+
+    @hookimpl
+    def ploy_load_config(self, fn, plugins):
+        if not fn.endswith('.yml'):
+            return
+        config = Config(fn, plugins=plugins)
+        _config = read_yml_config(config.config, config.path)
+        config._parse(_config)
         return config
