@@ -779,6 +779,17 @@ class Config(ConfigSection):
             yaml.dump(configs[conf], content)
             writer(dirname, basename, content.getvalue())
 
+    def dump_yaml(self):
+        def writer(dirname, basename, value):
+            if dirname is None:
+                return
+            filename = os.path.join(dirname, basename.replace('.conf', '.yml'))
+            with open(filename, 'w') as f:
+                f.write(value)
+            log.info('Wrote %s', os.path.relpath(filename))
+        self._dump_yaml(writer)
+        sys.exit(0)
+
 
 class ConfigPlugin:
     @hookimpl

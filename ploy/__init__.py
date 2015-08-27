@@ -327,6 +327,16 @@ class Controller(object):
                     print("    %s" % value.src)
                 print()
 
+    def cmd_conf2yaml(self, argv, help):
+        """Prints annotated config"""
+        parser = argparse.ArgumentParser(
+            prog="%s annotate" % self.progname,
+            description=help,
+        )
+        parser.parse_args(argv)
+        list(self.instances.values())  # trigger instance augmentation
+        self.config.dump_yaml()
+
     def cmd_debug(self, argv, help):
         """Prints some debug info for this script"""
         parser = argparse.ArgumentParser(
