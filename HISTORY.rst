@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.2.1 - Unreleased
+1.2.1 - 2015-08-27
 ------------------
 
 * Allow to specify multiple masters per instance.
