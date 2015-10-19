@@ -264,7 +264,8 @@ def test_bad_hostkey(instance, paramiko):
     instance.config['fingerprint'] = 'foo'
     with patch("%s.SSHClient.connect" % paramiko.__name__) as connect_mock:
         connect_mock.side_effect = [
-            paramiko.BadHostKeyException('localhost', 'bar', 'foo'),
+            paramiko.BadHostKeyException(
+                'localhost', paramiko.PKey('bar'), paramiko.PKey('foo')),
             None]
         instance.init_ssh_key()
     assert os.path.exists(instance.master.known_hosts)
