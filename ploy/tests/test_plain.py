@@ -1,6 +1,7 @@
 from mock import MagicMock, call, patch
 from ploy import Controller
 import os
+import paramiko
 import pytest
 
 
@@ -12,13 +13,12 @@ except NameError:  # pragma: nocover
 
 class TestPlain:
     @pytest.fixture(autouse=True)
-    def setup_ctrl(self, os_execvp_mock, paramiko, sshclient, sshconfig, tempdir):
+    def setup_ctrl(self, os_execvp_mock, sshclient, sshconfig, tempdir):
         import ploy.plain
         self.directory = tempdir.directory
         self.ctrl = Controller(self.directory)
         self.ctrl.plugins = {
             'plain': ploy.plain.plugin}
-        self.paramiko = paramiko
         self.ssh_client_mock = sshclient
         self.os_execvp_mock = os_execvp_mock
 
@@ -78,7 +78,7 @@ class TestPlain:
             '[plain-instance:foo]',
             'host = localhost',
             'fingerprint = foo']))
-        self.ssh_client_mock().connect.side_effect = self.paramiko.SSHException(
+        self.ssh_client_mock().connect.side_effect = paramiko.SSHException(
             "Fingerprint doesn't match for localhost (got bar, expected foo)")
         with patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
@@ -112,22 +112,16 @@ class TestPlain:
             ['ssh', '-o', 'Forwardagent=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
 
 
-@pytest.fixture
-def paramiko():
-    from ploy.common import import_paramiko
-    return import_paramiko()
-
-
 @pytest.yield_fixture
-def sshconfig(paramiko):
-    with patch("%s.SSHConfig" % paramiko.__name__) as ssh_config_mock:
+def sshconfig():
+    with patch("paramiko.SSHConfig") as ssh_config_mock:
         ssh_config_mock().lookup.return_value = {}
         yield ssh_config_mock
 
 
 @pytest.yield_fixture
-def sshclient(paramiko):
-    with patch("%s.SSHClient" % paramiko.__name__) as ssh_client_mock:
+def sshclient():
+    with patch("paramiko.SSHClient") as ssh_client_mock:
         yield ssh_client_mock
 
 
@@ -176,7 +170,7 @@ def test_conn_no_fingerprint(instance):
         (("No fingerprint set in config.",), {})]
 
 
-def test_conn_fingerprint_mismatch(instance, paramiko, sshclient):
+def test_conn_fingerprint_mismatch(instance, sshclient):
     instance.config['host'] = 'localhost'
     instance.config['fingerprint'] = 'foo'
     sshclient().connect.side_effect = paramiko.SSHException(
@@ -257,12 +251,12 @@ def test_conn_cached_closed(instance, sshclient):
     assert second_client.method_calls[2] == call.save_host_keys(instance.master.known_hosts)
 
 
-def test_bad_hostkey(instance, paramiko):
+def test_bad_hostkey(instance):
     with open(instance.master.known_hosts, 'w') as f:
         f.write('foo')
     instance.config['host'] = 'localhost'
     instance.config['fingerprint'] = 'foo'
-    with patch("%s.SSHClient.connect" % paramiko.__name__) as connect_mock:
+    with patch("paramiko.SSHClient.connect") as connect_mock:
         connect_mock.side_effect = [
             paramiko.BadHostKeyException(
                 'localhost', paramiko.PKey('bar'), paramiko.PKey('foo')),
@@ -273,20 +267,20 @@ def test_bad_hostkey(instance, paramiko):
         assert f.read() == ''
 
 
-def test_proxycommand(instance, paramiko, sshclient, tempdir):
+def test_proxycommand(instance, sshclient, tempdir):
     with open(instance.master.known_hosts, 'w') as f:
         f.write('foo')
     instance.config['host'] = 'localhost'
     instance.config['fingerprint'] = 'foo'
     instance.config['proxycommand'] = 'nohup {path}/../bin/ploy-ssh {instances[foo].host} -o UserKnownHostsFile={known_hosts}'
-    with patch("%s.ProxyCommand" % paramiko.__name__) as ProxyCommandMock:
+    with patch("paramiko.ProxyCommand") as ProxyCommandMock:
         info = instance.init_ssh_key()
     proxycommand = 'nohup %s/../bin/ploy-ssh localhost -o UserKnownHostsFile=%s' % (tempdir.directory, instance.master.known_hosts)
     assert info['ProxyCommand'] == proxycommand
     assert ProxyCommandMock.call_args_list == [call(proxycommand)]
 
 
-def test_proxycommand_with_instance(ctrl, paramiko, sshclient):
+def test_proxycommand_with_instance(ctrl, sshclient):
     master = ctrl.instances['master']
     instance = ctrl.instances['foo']
     with open(instance.master.known_hosts, 'w') as f:
@@ -294,14 +288,14 @@ def test_proxycommand_with_instance(ctrl, paramiko, sshclient):
     instance.config['host'] = 'localhost'
     instance.config['fingerprint'] = 'foo'
     instance.config['proxycommand'] = instance.proxycommand_with_instance(master)
-    with patch("%s.ProxyCommand" % paramiko.__name__) as ProxyCommandMock:
+    with patch("paramiko.ProxyCommand") as ProxyCommandMock:
         info = instance.init_ssh_key()
     proxycommand = 'nohup ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile=%s -l root -p 22 example.com -W localhost:22' % instance.master.known_hosts
     assert info['ProxyCommand'] == proxycommand
     assert ProxyCommandMock.call_args_list == [call(proxycommand)]
 
 
-def test_proxycommand_through_instance(ctrl, ployconf, paramiko, sshclient):
+def test_proxycommand_through_instance(ctrl, ployconf, sshclient):
     ployconf.append('[plain-instance:bar]')
     master = ctrl.instances['master']
     instance = ctrl.instances['foo']
@@ -314,7 +308,7 @@ def test_proxycommand_through_instance(ctrl, ployconf, paramiko, sshclient):
     instance2.config['host'] = 'bar.example.com'
     instance2.config['fingerprint'] = 'foo'
     instance2.config['proxycommand'] = instance2.proxycommand_with_instance(instance)
-    with patch("%s.ProxyCommand" % paramiko.__name__) as ProxyCommandMock:
+    with patch("paramiko.ProxyCommand") as ProxyCommandMock:
         info = instance2.init_ssh_key()
     proxycommand = 'nohup ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile=%s -l root -p 22 example.com -W localhost:22' % instance.master.known_hosts
     proxycommand2 = "nohup ssh -o 'ProxyCommand=%s' -o StrictHostKeyChecking=yes -o UserKnownHostsFile=%s -l root -p 22 localhost -W bar.example.com:22" % (proxycommand, instance.master.known_hosts)
@@ -322,7 +316,7 @@ def test_proxycommand_through_instance(ctrl, ployconf, paramiko, sshclient):
     assert ProxyCommandMock.call_args_list == [call(proxycommand2)]
 
 
-def test_missing_host_key_mismatch(paramiko, sshclient):
+def test_missing_host_key_mismatch(sshclient):
     from ploy.plain import ServerHostKeyPolicy
     shkp = ServerHostKeyPolicy(lambda: '66:6f:6f')  # that's 'foo' as hex
     key = MagicMock()

@@ -1,8 +1,9 @@
 from lazy import lazy
-from ploy.common import BaseMaster, BaseInstance, import_paramiko, yesno
+from ploy.common import BaseMaster, BaseInstance, yesno
 import getpass
 import logging
 import os
+import paramiko
 import socket
 import subprocess
 import sys
@@ -19,8 +20,6 @@ def get_key_fingerprint(key):
 
 
 def ServerHostKeyPolicy(*args, **kwarks):
-    paramiko = import_paramiko()
-
     class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
         def __init__(self, fingerprint_func):
             self.fingerprint_func = fingerprint_func
@@ -75,7 +74,7 @@ class Instance(BaseInstance):
         if fingerprint is None:
             fingerprint = self.master.master_config.get('fingerprint')
         if fingerprint is None:
-            raise self.paramiko.SSHException("No fingerprint set in config.")
+            raise paramiko.SSHException("No fingerprint set in config.")
         path = os.path.join(self.master.main_config.path, fingerprint)
         if os.path.exists(path):
             try:
@@ -103,7 +102,6 @@ class Instance(BaseInstance):
             return proxy_command.format(**d)
 
     def get_proxy_sock(self, hostname, port):
-        paramiko = self.paramiko
         proxy_command = self.proxy_command
         if proxy_command:
             try:
@@ -123,15 +121,14 @@ class Instance(BaseInstance):
                 if (len(line) == 0) or (line[0] == '#'):
                     continue
                 try:
-                    self.paramiko.hostkeys.HostKeyEntry.from_line(line, lineno)
-                except self.paramiko.hostkeys.InvalidHostKey:
+                    paramiko.hostkeys.HostKeyEntry.from_line(line, lineno)
+                except paramiko.hostkeys.InvalidHostKey:
                     continue
                 lines.append(line + '\n')
         with open(known_hosts, 'w') as f:
             f.writelines(lines)
 
     def init_ssh_key(self, user=None):
-        paramiko = self.paramiko
         try:
             host = self.get_host()
         except KeyError:
