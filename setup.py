@@ -1,7 +1,7 @@
 from setuptools import setup
 import os
 
-version = "1.5.1"
+version = "2.0.0.dev0"
 
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
@@ -30,7 +30,6 @@ setup(
     classifiers=[
         'Environment :: Console',
         'Intended Audience :: System Administrators',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
@@ -42,6 +41,7 @@ setup(
     zip_safe=False,
     packages=['ploy', 'ploy.tests'],
     install_requires=install_requires,
+    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*',
     entry_points="""
         [console_scripts]
         ploy = ploy:ploy
