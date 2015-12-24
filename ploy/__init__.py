@@ -121,7 +121,14 @@ class Controller(object):
         plugins = {}
         group = 'ploy.plugins'
         for entrypoint in pkg_resources.iter_entry_points(group=group):
-            plugin = entrypoint.load()
+            try:
+                plugin = entrypoint.load()
+            except pkg_resources.DistributionNotFound:
+                continue
+            except pkg_resources.VersionConflict as e:
+                log.error(
+                    "Plugin %r could not be loaded: %s" % (entrypoint.name, e))
+                continue
             plugins[entrypoint.name] = plugin
         return plugins
 
