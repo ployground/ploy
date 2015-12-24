@@ -1,8 +1,5 @@
 from __future__ import print_function
-try:
-    from StringIO import StringIO
-except ImportError:  # pragma: nocover
-    from io import StringIO
+from io import StringIO
 from mock import patch
 from ploy.common import InstanceHooks, BaseInstance, StartupScriptMixin
 from ploy.config import Config, StartupScriptMassager
@@ -44,7 +41,7 @@ class TestStartupScript:
 
     def testNoStartupScript(self):
         instance = MockInstance()
-        config = self._create_config("[instance:foo]")
+        config = self._create_config(u"[instance:foo]")
         instance.master = MockMaster(config)
         result = instance.startup_script()
         assert result == ""
@@ -52,7 +49,7 @@ class TestStartupScript:
     def testMissingStartupScript(self):
         instance = MockInstance()
         config = self._create_config(
-            "\n".join([
+            u"\n".join([
                 "[instance:foo]",
                 "startup_script = foo"]),
             path=self.directory)
@@ -68,7 +65,7 @@ class TestStartupScript:
         self.tempdir['foo'].fill("")
         instance = MockInstance()
         config = self._create_config(
-            "\n".join([
+            u"\n".join([
                 "[instance:foo]",
                 "startup_script = foo"]),
             path=self.directory)
@@ -80,7 +77,7 @@ class TestStartupScript:
         self.tempdir['foo'].fill("")
         instance = MockInstance()
         config = self._create_config(
-            "\n".join([
+            u"\n".join([
                 "[instance:foo]",
                 "startup_script = gzip:foo"]),
             path=self.directory)
@@ -103,7 +100,7 @@ class TestStartupScript:
         self.tempdir['foo'].fill("#!/usr/bin/env python")
         instance = MockInstance()
         config = self._create_config(
-            "\n".join([
+            u"\n".join([
                 "[instance:foo]",
                 "startup_script = gzip:foo"]),
             path=self.directory)
@@ -125,7 +122,7 @@ class TestStartupScript:
             "and another command"])
         instance = MockInstance()
         config = self._create_config(
-            "\n".join([
+            u"\n".join([
                 "[instance:foo]",
                 "startup_script = foo"]),
             path=self.directory)
@@ -140,7 +137,7 @@ class TestStartupScript:
         self.tempdir['foo'].fill("")
         instance = MockInstance()
         config = self._create_config(
-            "\n".join([
+            u"\n".join([
                 "[instance:foo]",
                 "startup_script = foo"]),
             path=self.directory)
@@ -153,7 +150,7 @@ class TestStartupScript:
         self.tempdir['foo'].fill("aaaaabbbbbccccc")
         instance = MockInstance()
         config = self._create_config(
-            "\n".join([
+            u"\n".join([
                 "[instance:foo]",
                 "startup_script = foo"]),
             path=self.directory)
@@ -168,7 +165,7 @@ class TestStartupScript:
         self.tempdir['foo'].fill("aaaaabbbbbccccc")
         instance = MockInstance()
         config = self._create_config(
-            "\n".join([
+            u"\n".join([
                 "[instance:foo]",
                 "startup_script = foo"]),
             path=self.directory)
