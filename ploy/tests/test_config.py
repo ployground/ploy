@@ -1,6 +1,5 @@
 from __future__ import print_function
 from io import StringIO
-from mock import patch
 from ploy.config import Config
 import os
 import pytest
@@ -444,34 +443,34 @@ def test_valid_massagers_specs_in_config(description, massagers, expected):
 
 
 class TestMassagersFromConfig:
-    def testInvalid(self):
+    def testInvalid(self, mock):
         contents = StringIO(u"\n".join([
             "[section]",
             "massagers = foo",
             "value = 1"]))
-        with patch('ploy.config.log') as LogMock:
+        with mock.patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
         assert LogMock.error.call_args_list == [
             (("Invalid massager spec '%s' in section '%s:%s'.", 'foo', 'global', 'section'), {})]
 
-    def testTooManyColonsInSpec(self):
+    def testTooManyColonsInSpec(self, mock):
         contents = StringIO(u"\n".join([
             "[section]",
             "massagers = :::foo=ploy.config.IntegerMassager",
             "value = 1"]))
-        with patch('ploy.config.log') as LogMock:
+        with mock.patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
         assert LogMock.error.call_args_list == [
             (("Invalid massager spec '%s' in section '%s:%s'.", ':::foo=ploy.config.IntegerMassager', 'global', 'section'), {})]
 
-    def testUnknownModuleFor(self):
+    def testUnknownModuleFor(self, mock):
         contents = StringIO(u"\n".join([
             "[section]",
             "massagers = foo=bar",
             "value = 1"]))
-        with patch('ploy.config.log') as LogMock:
+        with mock.patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
         assert len(LogMock.error.call_args_list) == 1
@@ -480,12 +479,12 @@ class TestMassagersFromConfig:
         assert LogMock.error.call_args_list[0][0][2].startswith('No module named')
         assert 'bar' in LogMock.error.call_args_list[0][0][2]
 
-    def testUnknownAttributeFor(self):
+    def testUnknownAttributeFor(self, mock):
         contents = StringIO(u"\n".join([
             "[section]",
             "massagers = foo=ploy.foobar",
             "value = 1"]))
-        with patch('ploy.config.log') as LogMock:
+        with mock.patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
         assert len(LogMock.error.call_args_list) == 1
@@ -577,7 +576,7 @@ class TestConfigExtend:
                     'foo': os.path.join(self.directory, 'bar', 'blubber'),
                     'ham': os.path.join(self.directory, 'egg')}}}
 
-    def testExtendFromMissingFile(self):
+    def testExtendFromMissingFile(self, mock):
         ployconf = 'ploy.conf'
         self._write_config(
             ployconf,
@@ -585,7 +584,7 @@ class TestConfigExtend:
                 '[global:global]',
                 'extends = foo.conf',
                 'ham = egg']))
-        with patch('ploy.config.log') as LogMock:
+        with mock.patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(os.path.join(self.directory, ployconf)).parse()
         assert LogMock.error.call_args_list == [
