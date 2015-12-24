@@ -1,6 +1,5 @@
 from __future__ import print_function
 from io import StringIO
-from mock import patch
 from ploy.common import InstanceHooks, BaseInstance, StartupScriptMixin
 from ploy.config import Config, StartupScriptMassager
 import os
@@ -46,7 +45,7 @@ class TestStartupScript:
         result = instance.startup_script()
         assert result == ""
 
-    def testMissingStartupScript(self):
+    def testMissingStartupScript(self, mock):
         instance = MockInstance()
         config = self._create_config(
             u"\n".join([
@@ -54,7 +53,7 @@ class TestStartupScript:
                 "startup_script = foo"]),
             path=self.directory)
         instance.master = MockMaster(config)
-        with patch('ploy.common.log') as CommonLogMock:
+        with mock.patch('ploy.common.log') as CommonLogMock:
             with pytest.raises(SystemExit):
                 instance.startup_script()
         CommonLogMock.error.assert_called_with(
@@ -146,7 +145,7 @@ class TestStartupScript:
         result = instance.startup_script()
         assert result == ""
 
-    def testMaxSizeExceeded(self):
+    def testMaxSizeExceeded(self, mock):
         self.tempdir['foo'].fill("aaaaabbbbbccccc")
         instance = MockInstance()
         config = self._create_config(
@@ -156,12 +155,12 @@ class TestStartupScript:
             path=self.directory)
         instance.master = MockMaster(config)
         instance.max_startup_script_size = 10
-        with patch('ploy.common.log') as LogMock:
+        with mock.patch('ploy.common.log') as LogMock:
             with pytest.raises(SystemExit):
                 instance.startup_script()
             LogMock.error.assert_called_with('Startup script too big (%s > %s).', 15, 10)
 
-    def testMaxSizeExceededDebug(self):
+    def testMaxSizeExceededDebug(self, mock):
         self.tempdir['foo'].fill("aaaaabbbbbccccc")
         instance = MockInstance()
         config = self._create_config(
@@ -171,7 +170,7 @@ class TestStartupScript:
             path=self.directory)
         instance.master = MockMaster(config)
         instance.max_startup_script_size = 10
-        with patch('ploy.common.log') as LogMock:
+        with mock.patch('ploy.common.log') as LogMock:
             instance.startup_script(debug=True)
             LogMock.error.assert_called_with('Startup script too big (%s > %s).', 15, 10)
 
@@ -225,7 +224,7 @@ class TestBaseMaster:
     (True, False, 'Foo [Yes/no] ', [''], True),
     (False, False, 'Foo [yes/No] ', [''], False),
     ('all', True, 'Foo [yes/no/All] ', [''], 'all')])
-def test_yesno(default, all, question, answer, expected):
+def test_yesno(default, mock, all, question, answer, expected):
     from ploy.common import yesno
     raw_input_values = answer
 
@@ -235,7 +234,7 @@ def test_yesno(default, all, question, answer, expected):
         print(q, repr(a))
         return a
 
-    with patch('ploy.common.get_input') as RawInput:
+    with mock.patch('ploy.common.get_input') as RawInput:
         RawInput.side_effect = get_input_result
         try:
             assert yesno('Foo', default, all) == expected

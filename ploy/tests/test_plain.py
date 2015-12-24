@@ -1,4 +1,3 @@
-from mock import MagicMock, call, patch
 from ploy import Controller
 import os
 import paramiko
@@ -26,46 +25,46 @@ class TestPlain:
         with open(os.path.join(self.directory, 'ploy.conf'), 'w') as f:
             f.write(content)
 
-    def testInstanceHasNoStatus(self):
+    def testInstanceHasNoStatus(self, mock):
         self._write_config('\n'.join([
             '[plain-instance:foo]']))
-        with patch('sys.stderr') as StdErrMock:
+        with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
                 self.ctrl(['./bin/ploy', 'status', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert "invalid choice: 'foo'" in output
 
-    def testInstanceCantBeStarted(self):
+    def testInstanceCantBeStarted(self, mock):
         self._write_config('\n'.join([
             '[plain-instance:foo]']))
-        with patch('sys.stderr') as StdErrMock:
+        with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
                 self.ctrl(['./bin/ploy', 'start', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert "invalid choice: 'foo'" in output
 
-    def testInstanceCantBeStopped(self):
+    def testInstanceCantBeStopped(self, mock):
         self._write_config('\n'.join([
             '[plain-instance:foo]']))
-        with patch('sys.stderr') as StdErrMock:
+        with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
                 self.ctrl(['./bin/ploy', 'stop', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert "invalid choice: 'foo'" in output
 
-    def testInstanceCantBeTerminated(self):
+    def testInstanceCantBeTerminated(self, mock):
         self._write_config('\n'.join([
             '[plain-instance:foo]']))
-        with patch('sys.stderr') as StdErrMock:
+        with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
                 self.ctrl(['./bin/ploy', 'stop', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert "invalid choice: 'foo'" in output
 
-    def testSSHWithNoHost(self):
+    def testSSHWithNoHost(self, mock):
         self._write_config('\n'.join([
             '[plain-instance:foo]']))
-        with patch('ploy.log') as LogMock:
+        with mock.patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
                 self.ctrl(['./bin/ploy', 'ssh', 'foo'])
         assert LogMock.error.call_args_list == [
@@ -73,14 +72,14 @@ class TestPlain:
             (("No host or ip set in config.",), {}),
             (('Is the instance finished starting up?',), {})]
 
-    def testSSHWithFingerprintMismatch(self):
+    def testSSHWithFingerprintMismatch(self, mock):
         self._write_config('\n'.join([
             '[plain-instance:foo]',
             'host = localhost',
             'fingerprint = foo']))
         self.ssh_client_mock().connect.side_effect = paramiko.SSHException(
             "Fingerprint doesn't match for localhost (got bar, expected foo)")
-        with patch('ploy.log') as LogMock:
+        with mock.patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
                 self.ctrl(['./bin/ploy', 'ssh', 'foo'])
         assert LogMock.error.call_args_list == [
@@ -113,15 +112,15 @@ class TestPlain:
 
 
 @pytest.yield_fixture
-def sshconfig():
-    with patch("paramiko.SSHConfig") as ssh_config_mock:
+def sshconfig(mock):
+    with mock.patch("paramiko.SSHConfig") as ssh_config_mock:
         ssh_config_mock().lookup.return_value = {}
         yield ssh_config_mock
 
 
 @pytest.yield_fixture
-def sshclient():
-    with patch("paramiko.SSHClient") as ssh_client_mock:
+def sshclient(mock):
+    with mock.patch("paramiko.SSHClient") as ssh_client_mock:
         yield ssh_client_mock
 
 
@@ -151,8 +150,8 @@ def instance(ctrl):
     return ctrl.instances['foo']
 
 
-def test_conn_no_host(instance):
-    with patch('ploy.common.log') as LogMock:
+def test_conn_no_host(instance, mock):
+    with mock.patch('ploy.common.log') as LogMock:
         with pytest.raises(SystemExit):
             instance.conn
     assert LogMock.error.call_args_list == [
@@ -160,9 +159,9 @@ def test_conn_no_host(instance):
         (("No host or ip set in config.",), {})]
 
 
-def test_conn_no_fingerprint(instance):
+def test_conn_no_fingerprint(instance, mock):
     instance.config['host'] = 'localhost'
-    with patch('ploy.common.log') as LogMock:
+    with mock.patch('ploy.common.log') as LogMock:
         with pytest.raises(SystemExit):
             instance.conn
     assert LogMock.error.call_args_list == [
@@ -170,13 +169,13 @@ def test_conn_no_fingerprint(instance):
         (("No fingerprint set in config.",), {})]
 
 
-def test_conn_fingerprint_mismatch(instance, sshclient):
+def test_conn_fingerprint_mismatch(instance, mock, sshclient):
     instance.config['host'] = 'localhost'
     instance.config['fingerprint'] = 'foo'
     sshclient().connect.side_effect = paramiko.SSHException(
         "Fingerprint doesn't match for localhost (got bar, expected foo)")
-    with patch('ploy.common.log') as CommonLogMock:
-        with patch('ploy.plain.log') as PlainLogMock:
+    with mock.patch('ploy.common.log') as CommonLogMock:
+        with mock.patch('ploy.plain.log') as PlainLogMock:
             with pytest.raises(SystemExit):
                 instance.conn
     assert CommonLogMock.error.call_args_list == [
@@ -188,21 +187,23 @@ def test_conn_fingerprint_mismatch(instance, sshclient):
         (("port: 22",), {})]
 
 
-def test_conn(instance, sshclient):
+def test_conn(instance, mock, sshclient):
     instance.config['host'] = 'localhost'
     instance.config['fingerprint'] = 'foo'
     conn = instance.conn
     assert len(conn.method_calls) == 3
     assert conn.method_calls[0][0] == 'set_missing_host_key_policy'
-    assert conn.method_calls[1] == call.connect('localhost', username='root', key_filename=None, password=None, sock=None, port=22)
-    assert conn.method_calls[2] == call.save_host_keys(instance.master.known_hosts)
+    assert conn.method_calls[1] == mock.call.connect(
+        'localhost', username='root', key_filename=None, password=None, sock=None, port=22)
+    assert conn.method_calls[2] == mock.call.save_host_keys(
+        instance.master.known_hosts)
 
 
-def test_conn_cached(instance, sshclient):
+def test_conn_cached(instance, mock, sshclient):
     instance.config['host'] = 'localhost'
     instance.config['fingerprint'] = 'foo'
-    first_client = MagicMock()
-    second_client = MagicMock()
+    first_client = mock.MagicMock()
+    second_client = mock.MagicMock()
     sshclient.side_effect = [first_client, second_client]
     conn = instance.conn
     assert len(first_client.method_calls) == 3
@@ -222,12 +223,12 @@ def test_conn_cached(instance, sshclient):
         'get_transport']
 
 
-def test_conn_cached_closed(instance, sshclient):
+def test_conn_cached_closed(instance, mock, sshclient):
     instance.config['host'] = 'localhost'
     instance.config['fingerprint'] = 'foo'
-    first_client = MagicMock()
+    first_client = mock.MagicMock()
     first_client.get_transport.return_value = None
-    second_client = MagicMock()
+    second_client = mock.MagicMock()
     sshclient.side_effect = [first_client, second_client]
     conn = instance.conn
     assert len(first_client.method_calls) == 3
@@ -247,16 +248,18 @@ def test_conn_cached_closed(instance, sshclient):
         'get_transport']
     assert len(second_client.method_calls) == 3
     assert second_client.method_calls[0][0] == 'set_missing_host_key_policy'
-    assert second_client.method_calls[1] == call.connect('localhost', username='root', key_filename=None, password=None, sock=None, port=22)
-    assert second_client.method_calls[2] == call.save_host_keys(instance.master.known_hosts)
+    assert second_client.method_calls[1] == mock.call.connect(
+        'localhost', username='root', key_filename=None, password=None, sock=None, port=22)
+    assert second_client.method_calls[2] == mock.call.save_host_keys(
+        instance.master.known_hosts)
 
 
-def test_bad_hostkey(instance):
+def test_bad_hostkey(instance, mock):
     with open(instance.master.known_hosts, 'w') as f:
         f.write('foo')
     instance.config['host'] = 'localhost'
     instance.config['fingerprint'] = 'foo'
-    with patch("paramiko.SSHClient.connect") as connect_mock:
+    with mock.patch("paramiko.SSHClient.connect") as connect_mock:
         connect_mock.side_effect = [
             paramiko.BadHostKeyException(
                 'localhost', paramiko.PKey('bar'), paramiko.PKey('foo')),
@@ -267,20 +270,20 @@ def test_bad_hostkey(instance):
         assert f.read() == ''
 
 
-def test_proxycommand(instance, sshclient, tempdir):
+def test_proxycommand(instance, mock, sshclient, tempdir):
     with open(instance.master.known_hosts, 'w') as f:
         f.write('foo')
     instance.config['host'] = 'localhost'
     instance.config['fingerprint'] = 'foo'
     instance.config['proxycommand'] = 'nohup {path}/../bin/ploy-ssh {instances[foo].host} -o UserKnownHostsFile={known_hosts}'
-    with patch("paramiko.ProxyCommand") as ProxyCommandMock:
+    with mock.patch("paramiko.ProxyCommand") as ProxyCommandMock:
         info = instance.init_ssh_key()
     proxycommand = 'nohup %s/../bin/ploy-ssh localhost -o UserKnownHostsFile=%s' % (tempdir.directory, instance.master.known_hosts)
     assert info['ProxyCommand'] == proxycommand
-    assert ProxyCommandMock.call_args_list == [call(proxycommand)]
+    assert ProxyCommandMock.call_args_list == [mock.call(proxycommand)]
 
 
-def test_proxycommand_with_instance(ctrl, sshclient):
+def test_proxycommand_with_instance(ctrl, mock, sshclient):
     master = ctrl.instances['master']
     instance = ctrl.instances['foo']
     with open(instance.master.known_hosts, 'w') as f:
@@ -288,14 +291,14 @@ def test_proxycommand_with_instance(ctrl, sshclient):
     instance.config['host'] = 'localhost'
     instance.config['fingerprint'] = 'foo'
     instance.config['proxycommand'] = instance.proxycommand_with_instance(master)
-    with patch("paramiko.ProxyCommand") as ProxyCommandMock:
+    with mock.patch("paramiko.ProxyCommand") as ProxyCommandMock:
         info = instance.init_ssh_key()
     proxycommand = 'nohup ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile=%s -l root -p 22 example.com -W localhost:22' % instance.master.known_hosts
     assert info['ProxyCommand'] == proxycommand
-    assert ProxyCommandMock.call_args_list == [call(proxycommand)]
+    assert ProxyCommandMock.call_args_list == [mock.call(proxycommand)]
 
 
-def test_proxycommand_through_instance(ctrl, ployconf, sshclient):
+def test_proxycommand_through_instance(ctrl, mock, ployconf, sshclient):
     ployconf.append('[plain-instance:bar]')
     master = ctrl.instances['master']
     instance = ctrl.instances['foo']
@@ -308,94 +311,94 @@ def test_proxycommand_through_instance(ctrl, ployconf, sshclient):
     instance2.config['host'] = 'bar.example.com'
     instance2.config['fingerprint'] = 'foo'
     instance2.config['proxycommand'] = instance2.proxycommand_with_instance(instance)
-    with patch("paramiko.ProxyCommand") as ProxyCommandMock:
+    with mock.patch("paramiko.ProxyCommand") as ProxyCommandMock:
         info = instance2.init_ssh_key()
     proxycommand = 'nohup ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile=%s -l root -p 22 example.com -W localhost:22' % instance.master.known_hosts
     proxycommand2 = "nohup ssh -o 'ProxyCommand=%s' -o StrictHostKeyChecking=yes -o UserKnownHostsFile=%s -l root -p 22 localhost -W bar.example.com:22" % (proxycommand, instance.master.known_hosts)
     assert info['ProxyCommand'] == proxycommand2
-    assert ProxyCommandMock.call_args_list == [call(proxycommand2)]
+    assert ProxyCommandMock.call_args_list == [mock.call(proxycommand2)]
 
 
-def test_missing_host_key_mismatch(sshclient):
+def test_missing_host_key_mismatch(mock, sshclient):
     from ploy.plain import ServerHostKeyPolicy
     shkp = ServerHostKeyPolicy(lambda: '66:6f:6f')  # that's 'foo' as hex
-    key = MagicMock()
+    key = mock.MagicMock()
     key.get_fingerprint.return_value = 'bar'
     with pytest.raises(paramiko.SSHException) as e:
         shkp.missing_host_key(sshclient, 'localhost', key)
     assert unicode(e.value) == "Fingerprint doesn't match for localhost (got 62:61:72, expected 66:6f:6f)"
 
 
-def test_missing_host_key(tempdir, sshclient):
+def test_missing_host_key(mock, tempdir, sshclient):
     from ploy.plain import ServerHostKeyPolicy
     known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
     shkp = ServerHostKeyPolicy(lambda: '66:6f:6f')  # that's 'foo' as hex
-    key = MagicMock()
+    key = mock.MagicMock()
     key.get_fingerprint.return_value = 'foo'
     key.get_name.return_value = 'ssh-rsa'
     shkp.missing_host_key(sshclient, 'localhost', key)
     assert sshclient.mock_calls == [
-        call.get_host_keys(),
-        call.get_host_keys().add('localhost', 'ssh-rsa', key),
-        call.save_host_keys(known_hosts)]
+        mock.call.get_host_keys(),
+        mock.call.get_host_keys().add('localhost', 'ssh-rsa', key),
+        mock.call.save_host_keys(known_hosts)]
 
 
-def test_missing_host_key_ignore(tempdir, sshclient):
+def test_missing_host_key_ignore(mock, tempdir, sshclient):
     from ploy.plain import ServerHostKeyPolicy
     known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
     shkp = ServerHostKeyPolicy(lambda: 'ignore')
-    key = MagicMock()
+    key = mock.MagicMock()
     key.get_fingerprint.return_value = 'foo'
     key.get_name.return_value = 'ssh-rsa'
-    with patch('ploy.plain.log') as LogMock:
+    with mock.patch('ploy.plain.log') as LogMock:
         shkp.missing_host_key(sshclient, 'localhost', key)
     assert sshclient.mock_calls == [
-        call.get_host_keys(),
-        call.get_host_keys().add('localhost', 'ssh-rsa', key),
-        call.save_host_keys(known_hosts)]
+        mock.call.get_host_keys(),
+        mock.call.get_host_keys().add('localhost', 'ssh-rsa', key),
+        mock.call.save_host_keys(known_hosts)]
     assert LogMock.method_calls == [
-        call.warn('Fingerprint verification disabled!')]
+        mock.call.warn('Fingerprint verification disabled!')]
 
 
-def test_missing_host_key_ask_answer_no(tempdir, sshclient):
+def test_missing_host_key_ask_answer_no(mock, tempdir, sshclient):
     from ploy.plain import ServerHostKeyPolicy
     known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
     shkp = ServerHostKeyPolicy(lambda: 'ask')
-    key = MagicMock()
+    key = mock.MagicMock()
     key.get_fingerprint.return_value = 'foo'
     key.get_name.return_value = 'ssh-rsa'
-    with patch("ploy.plain.yesno") as yesno_mock:
+    with mock.patch("ploy.plain.yesno") as yesno_mock:
         yesno_mock.return_value = False
         with pytest.raises(SystemExit):
             shkp.missing_host_key(sshclient, 'localhost', key)
 
 
-def test_missing_host_key_ask_answer_yes(tempdir, sshclient):
+def test_missing_host_key_ask_answer_yes(mock, tempdir, sshclient):
     from ploy.plain import ServerHostKeyPolicy
     known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
     shkp = ServerHostKeyPolicy(lambda: 'ask')
-    key = MagicMock()
+    key = mock.MagicMock()
     key.get_fingerprint.return_value = 'foo'
     key.get_name.return_value = 'ssh-rsa'
-    with patch("ploy.plain.yesno") as yesno_mock:
+    with mock.patch("ploy.plain.yesno") as yesno_mock:
         yesno_mock.return_value = True
         shkp.missing_host_key(sshclient, 'localhost', key)
     assert sshclient.method_calls == []
 
 
-def test_missing_host_key_ask_answer_yes_and_try_again(tempdir, sshclient):
+def test_missing_host_key_ask_answer_yes_and_try_again(mock, tempdir, sshclient):
     from ploy.plain import ServerHostKeyPolicy
     known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
     shkp = ServerHostKeyPolicy(lambda: 'ask')
-    key = MagicMock()
+    key = mock.MagicMock()
     key.get_fingerprint.return_value = 'foo'
     key.get_name.return_value = 'ssh-rsa'
-    with patch("ploy.plain.yesno") as yesno_mock:
+    with mock.patch("ploy.plain.yesno") as yesno_mock:
         # if yesno is called twice, it throws an error
         yesno_mock.side_effect = [True, RuntimeError]
         shkp.missing_host_key(sshclient, 'localhost', key)

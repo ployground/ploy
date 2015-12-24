@@ -1,5 +1,4 @@
 from __future__ import print_function
-from mock import patch
 import pytest
 import os
 import shutil
@@ -57,7 +56,7 @@ def mock():
     try:
         from unittest import mock
     except ImportError:  # pragma: nocover
-        import mock
+        import mock  # for Python 2.7
     return mock
 
 
@@ -69,8 +68,8 @@ def ployconf(tempdir):
 
 
 @pytest.yield_fixture
-def os_execvp_mock():
-    with patch("os.execvp") as os_execvp_mock:
+def os_execvp_mock(mock):
+    with mock.patch("os.execvp") as os_execvp_mock:
         yield os_execvp_mock
 
 
