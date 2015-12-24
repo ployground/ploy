@@ -491,8 +491,14 @@ class TestMassagersFromConfig:
         with patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
-        assert LogMock.error.call_args_list == [
-            (("Can't import massager from '%s'.\n%s", 'ploy.foobar', "'module' object has no attribute 'foobar'"), {})]
+        assert len(LogMock.error.call_args_list) == 1
+        assert LogMock.error.call_args_list[0][0][:2] == (
+            "Can't import massager from '%s'.\n%s", 'ploy.foobar')
+        msg = LogMock.error.call_args_list[0][0][2]
+        assert "'module'" in msg or "'ploy'" in msg
+        assert "no attribute" in msg
+        assert "'foobar'" in msg
+        assert LogMock.error.call_args_list[0][1] == {}
 
 
 class TestConfigExtend:
