@@ -1,7 +1,7 @@
 from setuptools import setup
 import os
 
-version = "1.2.1"
+version = "2.0.0.dev0"
 
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
@@ -11,12 +11,6 @@ install_requires = [
     'lazy',
     'paramiko',
     'setuptools']
-
-try:
-    import argparse
-    argparse    # make pyflakes happy...
-except ImportError:
-    install_requires.append('argparse >= 1.1')
 
 setup(
     version=version,
@@ -30,9 +24,10 @@ setup(
     classifiers=[
         'Environment :: Console',
         'Intended Audience :: System Administrators',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
         'Topic :: System :: Installation/Setup',
         'Topic :: System :: Systems Administration'],
     include_package_data=True,

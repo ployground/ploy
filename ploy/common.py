@@ -1,19 +1,14 @@
 from __future__ import print_function
 from lazy import lazy
-try:
-    from cStringIO import StringIO as BytesIO
-except ImportError:  # pragma: no cover
-    try:
-        from StringIO import StringIO as BytesIO
-    except ImportError:
-        from io import BytesIO
+from io import BytesIO
 try:
     from shlex import quote as shquote
 except ImportError:  # pragma: nocover
-    from pipes import quote as shquote
+    from pipes import quote as shquote  # for Python 2.7
 import gzip
 import logging
 import os
+import paramiko
 import re
 import subprocess
 import sys
@@ -31,14 +26,6 @@ try:
     get_input = raw_input
 except NameError:  # pragma: nocover
     get_input = input
-
-
-def import_paramiko():  # pragma: no cover - we support both
-    try:
-        import paramiko
-    except ImportError:
-        import ssh as paramiko
-    return paramiko
 
 
 def gzip_string(value):
@@ -201,6 +188,8 @@ class InstanceHooks(object):
 
 
 class BaseInstance(object):
+    paramiko = paramiko
+
     def __init__(self, master, sid, config):
         self.id = self.validate_id(sid)
         self.master = master
@@ -231,10 +220,6 @@ class BaseInstance(object):
     @property
     def config_id(self):
         return "%s:%s" % (self.sectiongroupname, self.id)
-
-    @lazy
-    def paramiko(self):
-        return import_paramiko()
 
     @lazy
     def _sshconfig(self):
