@@ -1,8 +1,5 @@
 from __future__ import print_function
-try:
-    from StringIO import StringIO
-except ImportError:  # pragma: nocover
-    from io import StringIO
+from io import StringIO
 from mock import patch
 from ploy.config import Config
 import os
@@ -17,22 +14,22 @@ except NameError:  # pragma: nocover
 
 class TestConfig:
     def testEmpty(self):
-        contents = StringIO("")
+        contents = StringIO(u"")
         config = Config(contents).parse()
         assert config == {}
 
     def testPlainSection(self):
-        contents = StringIO("[foo]")
+        contents = StringIO(u"[foo]")
         config = Config(contents).parse()
         assert config == {'global': {'foo': {}}}
 
     def testGroupSection(self):
-        contents = StringIO("[bar:foo]")
+        contents = StringIO(u"[bar:foo]")
         config = Config(contents).parse()
         config == {'bar': {'foo': {}}}
 
     def testMixedSections(self):
-        contents = StringIO("[bar:foo]\n[baz]")
+        contents = StringIO(u"[bar:foo]\n[baz]")
         config = Config(contents).parse()
         assert config == {
             'bar': {'foo': {}},
@@ -40,7 +37,7 @@ class TestConfig:
 
     def testMacroExpansion(self):
         from ploy.config import ConfigValue
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[macro]",
             "macrovalue=1",
             "[baz]",
@@ -55,7 +52,7 @@ class TestConfig:
         assert isinstance(config['global']['baz']._dict['bazvalue'], ConfigValue)
 
     def testGroupMacroExpansion(self):
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[group:macro]",
             "macrovalue=1",
             "[baz]",
@@ -69,7 +66,7 @@ class TestConfig:
                 'macro': {'macrovalue': '1'}}}
 
     def testCircularMacroExpansion(self):
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[macro]",
             "<=macro",
             "macrovalue=1"]))
@@ -87,7 +84,7 @@ class TestConfig:
                 del macro['cleanvalue']
 
         dummyplugin.macro_cleaners = {'global': cleaner}
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[group:macro]",
             "macrovalue=1",
             "cleanvalue=3",
@@ -102,7 +99,7 @@ class TestConfig:
                 'macro': {'macrovalue': '1', 'cleanvalue': '3'}}}
 
     def testOverrides(self):
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section]",
             "value=1"]))
         config = Config(contents).parse()
@@ -130,7 +127,7 @@ class TestConfig:
         assert config == {'global': {'section': {'value': '1'}}}
 
     def testSpecialKeys(self):
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section]",
             "value=1"]))
         config = Config(contents).parse()
@@ -177,7 +174,7 @@ class TestMassagers:
         from ploy.config import BaseMassager
 
         self.dummyplugin.massagers.append(BaseMassager('section', 'value'))
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section:foo]",
             "value=1"]))
         config = Config(contents, plugins=self.plugins).parse()
@@ -201,12 +198,12 @@ class TestMassagers:
             ('off', False),
             ('Off', False))
         for value, expected in test_values:
-            contents = StringIO("\n".join([
+            contents = StringIO(u"\n".join([
                 "[section:foo]",
                 "value=%s" % value]))
             config = Config(contents, plugins=self.plugins).parse()
             assert config['section'] == {'foo': {'value': expected}}
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section:foo]",
             "value=foo"]))
         config = Config(contents, plugins=self.plugins).parse()
@@ -217,12 +214,12 @@ class TestMassagers:
         from ploy.config import IntegerMassager
 
         self.dummyplugin.massagers.append(IntegerMassager('section', 'value'))
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section:foo]",
             "value=1"]))
         config = Config(contents, plugins=self.plugins).parse()
         assert config['section'] == {'foo': {'value': 1}}
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section:foo]",
             "value=foo"]))
         config = Config(contents, plugins=self.plugins).parse()
@@ -234,7 +231,7 @@ class TestMassagers:
 
         self.dummyplugin.massagers.append(PathMassager('section', 'value1'))
         self.dummyplugin.massagers.append(PathMassager('section', 'value2'))
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section:foo]",
             "value1=foo",
             "value2=/foo"]))
@@ -251,7 +248,7 @@ class TestMassagers:
         self.dummyplugin.massagers.append(StartupScriptMassager('section', 'value2'))
         self.dummyplugin.massagers.append(StartupScriptMassager('section', 'value3'))
         self.dummyplugin.massagers.append(StartupScriptMassager('section', 'value4'))
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section:foo]",
             "value1=gzip:foo",
             "value2=foo",
@@ -271,7 +268,7 @@ class TestMassagers:
 
         self.dummyplugin.massagers.append(UserMassager('section', 'value1'))
         self.dummyplugin.massagers.append(UserMassager('section', 'value2'))
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section:foo]",
             "value1=*",
             "value2=foo"]))
@@ -290,7 +287,7 @@ class TestMassagers:
                 return int(value)
 
         self.dummyplugin.massagers.append(DummyMassager('section', 'value'))
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section:foo]",
             "value=1"]))
         config = Config(contents, plugins=self.plugins).parse()
@@ -305,7 +302,7 @@ class TestMassagers:
                 return (sectiongroupname, value)
 
         self.dummyplugin.massagers.append(DummyMassager(None, 'value'))
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section1:foo]",
             "value=1",
             "[section2:bar]",
@@ -320,7 +317,7 @@ class TestMassagers:
     def testConflictingMassagerRegistration(self):
         from ploy.config import BooleanMassager, IntegerMassager
 
-        config = Config(StringIO('')).parse()
+        config = Config(StringIO(u"")).parse()
         config.add_massager(BooleanMassager('section', 'value'))
         with pytest.raises(ValueError) as e:
             config.add_massager(IntegerMassager('section', 'value'))
@@ -331,7 +328,7 @@ class TestMassagers:
 
         self.dummyplugin.massagers.append(IntegerMassager('global', 'value'))
         self.dummyplugin.massagers.append(IntegerMassager('global', 'value2'))
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section]",
             "value=1"]))
         config = Config(contents, plugins=self.plugins).parse()
@@ -361,7 +358,7 @@ class TestMassagers:
     def testSectionMassagedOverrides(self):
         from ploy.config import IntegerMassager
 
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section]",
             "value=1"]))
         config = Config(contents, plugins=self.plugins).parse()
@@ -392,7 +389,7 @@ class TestMassagers:
 
 
 def _make_config(massagers):
-    return Config(StringIO("\n".join([
+    return Config(StringIO(u"\n".join([
         "[section1]",
         "massagers = %s" % massagers,
         "value = 1",
@@ -448,7 +445,7 @@ def test_valid_massagers_specs_in_config(description, massagers, expected):
 
 class TestMassagersFromConfig:
     def testInvalid(self):
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section]",
             "massagers = foo",
             "value = 1"]))
@@ -459,7 +456,7 @@ class TestMassagersFromConfig:
             (("Invalid massager spec '%s' in section '%s:%s'.", 'foo', 'global', 'section'), {})]
 
     def testTooManyColonsInSpec(self):
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section]",
             "massagers = :::foo=ploy.config.IntegerMassager",
             "value = 1"]))
@@ -470,7 +467,7 @@ class TestMassagersFromConfig:
             (("Invalid massager spec '%s' in section '%s:%s'.", ':::foo=ploy.config.IntegerMassager', 'global', 'section'), {})]
 
     def testUnknownModuleFor(self):
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section]",
             "massagers = foo=bar",
             "value = 1"]))
@@ -484,7 +481,7 @@ class TestMassagersFromConfig:
         assert 'bar' in LogMock.error.call_args_list[0][0][2]
 
     def testUnknownAttributeFor(self):
-        contents = StringIO("\n".join([
+        contents = StringIO(u"\n".join([
             "[section]",
             "massagers = foo=ploy.foobar",
             "value = 1"]))

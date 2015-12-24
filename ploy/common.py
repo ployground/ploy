@@ -1,16 +1,10 @@
 from __future__ import print_function
 from lazy import lazy
-try:
-    from cStringIO import StringIO as BytesIO
-except ImportError:  # pragma: no cover
-    try:
-        from StringIO import StringIO as BytesIO
-    except ImportError:
-        from io import BytesIO
+from io import BytesIO
 try:
     from shlex import quote as shquote
 except ImportError:  # pragma: nocover
-    from pipes import quote as shquote
+    from pipes import quote as shquote  # for Python 2.7
 import binascii
 import gzip
 import hashlib

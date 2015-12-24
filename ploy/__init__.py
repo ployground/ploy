@@ -1,7 +1,8 @@
 from __future__ import print_function
 import pkg_resources
+from collections import MutableMapping
 from lazy import lazy
-from ploy.config import Config, DictMixin
+from ploy.config import Config
 from ploy import template
 import logging
 import argparse
@@ -48,7 +49,7 @@ def versionaction_factory(ctrl):
     return VersionAction
 
 
-class LazyInstanceDict(DictMixin):
+class LazyInstanceDict(MutableMapping):
     def __init__(self, ctrl):
         self._cache = dict()
         self._dict = dict()
