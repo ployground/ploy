@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.0.0 - Unreleased
+------------------
+
+* Dropped support for Python 2.6.
+  [fschulze]
+
+
 1.2.1 - 2015-08-27
 ------------------
 
