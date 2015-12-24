@@ -6,12 +6,12 @@ from ploy.common import SSHKeyFingerprintAsk
 from ploy.common import SSHKeyFingerprintIgnore
 from ploy.common import SSHKeyFingerprintInstance
 from ploy.common import SSHKeyInfo
-from ploy.common import import_paramiko
 from ploy.common import parse_fingerprint, parse_ssh_keygen
 import getpass
 import hashlib
 import logging
 import os
+import paramiko
 import re
 import socket
 import subprocess
@@ -22,8 +22,6 @@ log = logging.getLogger('ploy')
 
 
 def ServerHostKeyPolicy(*args, **kwarks):
-    paramiko = import_paramiko()
-
     class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
         def __init__(self, fingerprints_func):
             self.fingerprints_func = fingerprints_func
@@ -76,15 +74,15 @@ class Instance(BaseInstance):
 
     def get_ssh_pub_host_keys(self):
         key_types_map = {
-            'ssh-dss': self.paramiko.DSSKey,
-            'ssh-rsa': self.paramiko.RSAKey}
-        if hasattr(self.paramiko, 'Ed25519Key'):
-            key_types_map['ssh-ed25519'] = self.paramiko.Ed25519Key
-        if hasattr(self.paramiko.ECDSAKey, 'supported_key_format_identifiers'):
-            for key_type in self.paramiko.ECDSAKey.supported_key_format_identifiers():
-                key_types_map[key_type] = partial(self.paramiko.ECDSAKey, validate_point=False)
+            'ssh-dss': paramiko.DSSKey,
+            'ssh-rsa': paramiko.RSAKey}
+        if hasattr(paramiko, 'Ed25519Key'):
+            key_types_map['ssh-ed25519'] = paramiko.Ed25519Key
+        if hasattr(paramiko.ECDSAKey, 'supported_key_format_identifiers'):
+            for key_type in paramiko.ECDSAKey.supported_key_format_identifiers():
+                key_types_map[key_type] = partial(paramiko.ECDSAKey, validate_point=False)
         else:
-            key_types_map['ecdsa-sha2-nistp256'] = self.paramiko.ECDSAKey
+            key_types_map['ecdsa-sha2-nistp256'] = paramiko.ECDSAKey
         host_keys = []
         sources = split_option(self.config.get('ssh-host-keys', ''))
         for key in sources:
@@ -103,7 +101,7 @@ class Instance(BaseInstance):
                 continue
             host_keys.append((
                 key_type,
-                key_class(data=self.paramiko.py3compat.decodebytes(fields[1]))))
+                key_class(data=paramiko.py3compat.decodebytes(fields[1]))))
         return host_keys
 
     def get_ssh_fingerprints(self):
@@ -126,7 +124,7 @@ class Instance(BaseInstance):
             if not fingerprints:
                 fingerprints = None
         if fingerprints is None:
-            raise self.paramiko.SSHException("No fingerprint set in config.")
+            raise paramiko.SSHException("No fingerprint set in config.")
         fingerprints = split_option(fingerprints)
         result = []
         for fingerprint in fingerprints:
@@ -167,7 +165,6 @@ class Instance(BaseInstance):
             return proxy_command.format(**d)
 
     def get_proxy_sock(self, hostname, port):
-        paramiko = self.paramiko
         proxy_command = self.proxy_command
         if proxy_command:
             try:
@@ -187,15 +184,14 @@ class Instance(BaseInstance):
                 if (len(line) == 0) or (line[0] == '#'):
                     continue
                 try:
-                    self.paramiko.hostkeys.HostKeyEntry.from_line(line, lineno)
-                except self.paramiko.hostkeys.InvalidHostKey:
+                    paramiko.hostkeys.HostKeyEntry.from_line(line, lineno)
+                except paramiko.hostkeys.InvalidHostKey:
                     continue
                 lines.append(line + '\n')
         with open(known_hosts, 'w') as f:
             f.writelines(lines)
 
     def init_ssh_key(self, user=None):
-        paramiko = self.paramiko
         try:
             host = self.get_host()
         except KeyError:

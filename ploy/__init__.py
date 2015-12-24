@@ -6,6 +6,7 @@ from ploy import template
 import logging
 import argparse
 import os
+import paramiko
 import socket
 import sys
 import weakref
@@ -431,7 +432,7 @@ class Controller(object):
             user = instance.config.get('user')
         try:
             ssh_info = instance.init_ssh_key(user=user)
-        except (instance.paramiko.SSHException, socket.error) as e:
+        except (paramiko.SSHException, socket.error) as e:
             log.error("Couldn't validate fingerprint for ssh connection.")
             log.error(unicode(e))
             log.error("Is the instance finished starting up?")

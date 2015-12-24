@@ -4,6 +4,9 @@ Changelog
 2.0.0 - Unreleased
 ------------------
 
+* Dropped support ``ssh`` lib, only ``paramiko`` is supported.
+  [fschulze]
+
 * Dropped support for Python 2.6.
   [fschulze]
 

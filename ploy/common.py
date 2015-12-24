@@ -16,6 +16,7 @@ import gzip
 import hashlib
 import logging
 import os
+import paramiko
 import re
 import subprocess
 import sys
@@ -33,14 +34,6 @@ try:
     get_input = raw_input
 except NameError:  # pragma: nocover
     get_input = input
-
-
-def import_paramiko():  # pragma: no cover - we support both
-    try:
-        import paramiko
-    except ImportError:
-        import ssh as paramiko
-    return paramiko
 
 
 def gzip_string(value):
@@ -235,12 +228,8 @@ class BaseInstance(object):
         return "%s:%s" % (self.sectiongroupname, self.id)
 
     @lazy
-    def paramiko(self):
-        return import_paramiko()
-
-    @lazy
     def _sshconfig(self):
-        sshconfig = self.paramiko.SSHConfig()
+        sshconfig = paramiko.SSHConfig()
         path = os.path.expanduser('~/.ssh/config')
         if not os.path.exists(path):
             return sshconfig
@@ -259,7 +248,7 @@ class BaseInstance(object):
                 return self._conn
         try:
             ssh_info = self.init_ssh_key()
-        except self.paramiko.SSHException as e:
+        except paramiko.SSHException as e:
             log.error("Couldn't connect to %s." % (self.config_id))
             log.error(unicode(e))
             sys.exit(1)
@@ -340,7 +329,7 @@ class Executor:
             rerr = chan.makefile_stderr('rb', -1)
             forward = None
             if self.instance.conn._ploy_forward_agent:
-                forward = self.instance.paramiko.agent.AgentRequestHandler(chan)
+                forward = paramiko.agent.AgentRequestHandler(chan)
             chan.exec_command(cmd)
             if stdin is not None:
                 rin.write(stdin)
@@ -517,7 +506,7 @@ class SSHKeyFingerprintInstance(object):
             if func is not None and not self.fingerprints:
                 try:
                     self.fingerprints = [SSHKeyFingerprint(func())]
-                except self.instance.paramiko.SSHException as e:
+                except paramiko.SSHException as e:
                     log.error(str(e))
                     pass
         if not self.fingerprints:
