@@ -12,12 +12,6 @@ install_requires = [
     'paramiko',
     'setuptools']
 
-try:
-    import argparse
-    argparse    # make pyflakes happy...
-except ImportError:
-    install_requires.append('argparse >= 1.1')
-
 setup(
     version=version,
     description="A tool to manage servers through a central configuration. Plugins allow provisioning, configuration and other management tasks.",

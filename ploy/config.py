@@ -2,11 +2,8 @@ from ploy.common import Hooks
 try:
     from configparser import RawConfigParser
 except ImportError:  # pragma: nocover
-    from ConfigParser import RawConfigParser
-try:
-    from collections import MutableMapping as DictMixin
-except ImportError:  # pragma: nocover
-    from UserDict import DictMixin
+    from ConfigParser import RawConfigParser  # for Python 2.7
+from collections import MutableMapping
 from weakref import proxy
 import inspect
 import logging
@@ -82,7 +79,7 @@ class PathMassager(BaseMassager):
 def resolve_dotted_name(value):
     if '.' in value:
         prefix, name = value.rsplit('.', 1)
-        _temp = __import__(prefix, globals(), locals(), [name])
+        _temp = __import__(prefix, globals(), locals(), [str(name)])
         return getattr(_temp, name)
     else:
         return __import__(value, globals(), locals(), [])
@@ -166,7 +163,7 @@ def get_caller_src():
     sys.exit(0)
 
 
-class ConfigSection(DictMixin):
+class ConfigSection(MutableMapping):
     def __init__(self, *args, **kw):
         self._dict = {}
         for k, v in dict(*args, **kw).items():
