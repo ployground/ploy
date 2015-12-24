@@ -1,8 +1,9 @@
 from lazy import lazy
-from ploy.common import BaseMaster, BaseInstance, import_paramiko, yesno
+from ploy.common import BaseMaster, BaseInstance, yesno
 import getpass
 import logging
 import os
+import paramiko
 import socket
 import subprocess
 import sys
@@ -19,8 +20,6 @@ def get_key_fingerprint(key):
 
 
 def ServerHostKeyPolicy(*args, **kwarks):
-    paramiko = import_paramiko()
-
     class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
         def __init__(self, fingerprint_func):
             self.fingerprint_func = fingerprint_func

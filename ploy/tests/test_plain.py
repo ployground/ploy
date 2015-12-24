@@ -114,8 +114,8 @@ class TestPlain:
 
 @pytest.fixture
 def paramiko():
-    from ploy.common import import_paramiko
-    return import_paramiko()
+    import paramiko
+    return paramiko
 
 
 @pytest.yield_fixture
