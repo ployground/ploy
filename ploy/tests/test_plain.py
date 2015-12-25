@@ -120,8 +120,8 @@ def sshclient(mock):
 
 
 @pytest.fixture
-def ployconf(tempdir):
-    configfile = tempdir['ploy.conf']
+def filled_ployconf(confmaker):
+    configfile = confmaker('ploy.conf')
     configfile.fill('\n'.join([
         '[plain-instance:foo]',
         '[plain-instance:master]',
@@ -131,12 +131,12 @@ def ployconf(tempdir):
 
 
 @pytest.fixture
-def ctrl(ployconf, tempdir, sshconfig):
+def ctrl(filled_ployconf, tempdir, sshconfig):
     import ploy.plain
     ctrl = Controller(tempdir.directory)
     ctrl.plugins = {
         'plain': ploy.plain.plugin}
-    ctrl.configfile = ployconf.path
+    ctrl.configfile = filled_ployconf.path
     return ctrl
 
 
@@ -334,8 +334,8 @@ def test_proxycommand_with_instance(ctrl, mock, sshclient):
     assert ProxyCommandMock.call_args_list == [mock.call(proxycommand)]
 
 
-def test_proxycommand_through_instance(ctrl, mock, ployconf, sshclient):
-    ployconf.append('[plain-instance:bar]')
+def test_proxycommand_through_instance(ctrl, mock, filled_ployconf, sshclient):
+    filled_ployconf.append('[plain-instance:bar]')
     master = ctrl.instances['master']
     instance = ctrl.instances['foo']
     instance2 = ctrl.instances['bar']

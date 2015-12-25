@@ -25,18 +25,14 @@ class File:
         self.directory = os.path.dirname(path)
         self.path = path
 
-    def fill(self, content):
+    def makedirs(self):
         if not os.path.exists(self.directory):
             os.makedirs(self.directory)
-        with open(self.path, 'w') as f:
-            if isinstance(content, (list, tuple)):
-                content = '\n'.join(content)
-            f.write(content)
 
-    def append(self, content):
-        if isinstance(content, (list, tuple)):
-            content = '\n'.join(content)
-        self.fill("%s\n%s" % (self.content(), content))
+    def fill(self, content):
+        self.makedirs()
+        with open(self.path, 'w') as f:
+            f.write(make_file_content()(content))
 
     def content(self):
         with open(self.path) as f:
@@ -65,11 +61,67 @@ def mock():
     return mock
 
 
+@pytest.fixture
+def make_file_content():
+    from io import StringIO
+    import textwrap
+
+    def make_file_content(content):
+        if isinstance(content, StringIO):
+            return content.getvalue()
+        if isinstance(content, (list, tuple)):
+            content = u"\n".join(content)
+        return textwrap.dedent(content)
+
+    return make_file_content
+
+
+@pytest.fixture
+def make_file_io(make_file_content):
+    from io import StringIO
+
+    def make_file_io(content):
+        return StringIO(make_file_content(content))
+
+    return make_file_io
+
+
+@pytest.fixture
+def confmaker(request, tempdir):
+    class Confmaker:
+        def __init__(self, conf):
+            self.conf = tempdir[conf]
+            self.directory = self.conf.directory
+            self.path = self.conf.path
+            self._content = ""
+
+        def makedirs(self):
+            if not os.path.exists(self.directory):
+                os.makedirs(self.directory)
+
+        def fill(self, content):
+            self._content = make_file_content()(content)
+            self._write()
+
+        def append(self, content):
+            self._content += "\n" + make_file_content()(content)
+            self._write()
+
+        def content(self):
+            return self._content
+
+        def _write(self):
+            self.makedirs()
+            content = self._content
+            with open(self.path, 'w') as f:
+                f.write(content)
+
+    return Confmaker
+
+
 @pytest.yield_fixture
-def ployconf(tempdir):
-    """ Returns a Configfile object which manages ploy.conf.
-    """
-    yield tempdir['etc/ploy.conf']
+def ployconf(confmaker):
+    return confmaker('etc/ploy.conf')
 
 
 @pytest.yield_fixture
