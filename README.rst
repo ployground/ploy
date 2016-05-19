@@ -52,11 +52,15 @@ Options
 ``port``
   The ssh port number.
 
-``fingerprint``
-  (**required**) The ssh fingerprint of the server.
+``ssh-fingerprints``
+  (**required**) The ssh fingerprints of the server.
   If set to ``ask`` then manual interactive verification is enabled.
   If set to ``ignore`` then no verification is performed at all!
   You can also point this to a public ssh host key file to let the fingerprint be extracted automatically.
+  Multiple fingerprints can be specified one per line, or separated by commas.
+  The format of fingerprints is either 16 bytes as hex numbers separated by colons,
+  the same 16 bytes prefixed by ``MD5:``,
+  or the hash type, followed by a colon and the base 64 encoded hash digest.
 
 ``password-fallback``
   If this boolean is true, then using a password as fallback is enabled if the

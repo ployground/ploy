@@ -323,22 +323,28 @@ def test_proxycommand_through_instance(ctrl, ployconf, paramiko, sshclient):
 
 
 def test_missing_host_key_mismatch(paramiko, sshclient):
+    from ploy.common import SSHKeyFingerprint
     from ploy.plain import ServerHostKeyPolicy
-    shkp = ServerHostKeyPolicy(lambda: '66:6f:6f')  # that's 'foo' as hex
+    shkp = ServerHostKeyPolicy(lambda: [SSHKeyFingerprint('SHA256:LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564')])  # that's sha256 of 'foo'
     key = MagicMock()
-    key.get_fingerprint.return_value = 'bar'
+    key.asbytes.return_value = b'bar'
+    key.get_bits.return_value = None
     with pytest.raises(paramiko.SSHException) as e:
         shkp.missing_host_key(sshclient, 'localhost', key)
-    assert unicode(e.value) == "Fingerprint doesn't match for localhost (got 62:61:72, expected 66:6f:6f)"
+    assert unicode(e.value) == (
+        "Fingerprint doesn't match for localhost (got "
+        "['SHA256:/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k'], "
+        "expected: ['SHA256:LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564'])")
 
 
 def test_missing_host_key(tempdir, sshclient):
+    from ploy.common import SSHKeyFingerprint
     from ploy.plain import ServerHostKeyPolicy
     known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
-    shkp = ServerHostKeyPolicy(lambda: '66:6f:6f')  # that's 'foo' as hex
+    shkp = ServerHostKeyPolicy(lambda: [SSHKeyFingerprint('SHA256:LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564')])  # that's sha256 of 'foo'
     key = MagicMock()
-    key.get_fingerprint.return_value = 'foo'
+    key.asbytes.return_value = b'foo'
     key.get_name.return_value = 'ssh-rsa'
     shkp.missing_host_key(sshclient, 'localhost', key)
     assert sshclient.mock_calls == [
@@ -348,62 +354,72 @@ def test_missing_host_key(tempdir, sshclient):
 
 
 def test_missing_host_key_ignore(tempdir, sshclient):
+    from ploy.common import SSHKeyFingerprintIgnore
     from ploy.plain import ServerHostKeyPolicy
     known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
-    shkp = ServerHostKeyPolicy(lambda: 'ignore')
+    shkp = ServerHostKeyPolicy(lambda: [SSHKeyFingerprintIgnore()])
     key = MagicMock()
-    key.get_fingerprint.return_value = 'foo'
+    key.asbytes.return_value = b'foo'
     key.get_name.return_value = 'ssh-rsa'
-    with patch('ploy.plain.log') as LogMock:
+    with patch('ploy.common.log') as LogMock:
         shkp.missing_host_key(sshclient, 'localhost', key)
     assert sshclient.mock_calls == [
         call.get_host_keys(),
         call.get_host_keys().add('localhost', 'ssh-rsa', key),
         call.save_host_keys(known_hosts)]
     assert LogMock.method_calls == [
-        call.warn('Fingerprint verification disabled!')]
+        call.warn(
+            'Fingerprint verification disabled!\n'
+            'Got fingerprint ac:bd:18:db:4c:c2:f8:5c:ed:ef:65:4f:cc:c4:a4:d8.')]
 
 
 def test_missing_host_key_ask_answer_no(tempdir, sshclient):
+    from ploy.common import SSHKeyFingerprintAsk
     from ploy.plain import ServerHostKeyPolicy
     known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
-    shkp = ServerHostKeyPolicy(lambda: 'ask')
+    shkp = ServerHostKeyPolicy(lambda: [SSHKeyFingerprintAsk()])
     key = MagicMock()
-    key.get_fingerprint.return_value = 'foo'
+    key.asbytes.return_value = b'foo'
     key.get_name.return_value = 'ssh-rsa'
-    with patch("ploy.plain.yesno") as yesno_mock:
+    with patch("ploy.common.yesno") as yesno_mock:
         yesno_mock.return_value = False
         with pytest.raises(SystemExit):
             shkp.missing_host_key(sshclient, 'localhost', key)
 
 
 def test_missing_host_key_ask_answer_yes(tempdir, sshclient):
+    from ploy.common import SSHKeyFingerprintAsk
     from ploy.plain import ServerHostKeyPolicy
     known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
-    shkp = ServerHostKeyPolicy(lambda: 'ask')
+    shkp = ServerHostKeyPolicy(lambda: [SSHKeyFingerprintAsk()])
     key = MagicMock()
-    key.get_fingerprint.return_value = 'foo'
+    key.asbytes.return_value = b'foo'
     key.get_name.return_value = 'ssh-rsa'
-    with patch("ploy.plain.yesno") as yesno_mock:
+    with patch("ploy.common.yesno") as yesno_mock:
         yesno_mock.return_value = True
         shkp.missing_host_key(sshclient, 'localhost', key)
     assert sshclient.method_calls == []
 
 
 def test_missing_host_key_ask_answer_yes_and_try_again(tempdir, sshclient):
+    from ploy.common import SSHKeyFingerprintAsk
     from ploy.plain import ServerHostKeyPolicy
     known_hosts = tempdir['known_hosts'].path
     sshclient._host_keys_filename = known_hosts
-    shkp = ServerHostKeyPolicy(lambda: 'ask')
+    shkp = ServerHostKeyPolicy(lambda: [SSHKeyFingerprintAsk()])
     key = MagicMock()
-    key.get_fingerprint.return_value = 'foo'
+    key.asbytes.return_value = b'foo'
     key.get_name.return_value = 'ssh-rsa'
-    with patch("ploy.plain.yesno") as yesno_mock:
+    with patch("ploy.common.yesno") as yesno_mock:
         # if yesno is called twice, it throws an error
         yesno_mock.side_effect = [True, RuntimeError]
         shkp.missing_host_key(sshclient, 'localhost', key)
         shkp.missing_host_key(sshclient, 'localhost', key)
     assert sshclient.method_calls == []
+
+
+def test_instance_get_fingerprint():
+    pass
