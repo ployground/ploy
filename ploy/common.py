@@ -432,7 +432,11 @@ class SSHKeyFingerprint(object):
         self.fingerprint = fingerprint
         if not isinstance(self.fingerprint, tuple):
             self.fingerprint = parse_fingerprint(fingerprint)
+        if keylen is not None and not isinstance(keylen, int):
+            keylen = int(keylen)
         self.keylen = keylen
+        if keytype is not None:
+            keytype = keytype.lower()
         self.keytype = keytype
 
     def match(self, other):
