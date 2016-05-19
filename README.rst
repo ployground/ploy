@@ -229,13 +229,3 @@ With zc.recipe.egg you can set a custom configfile location like this::
   recipe = zc.recipe.egg
   eggs = ploy
   arguments = configpath="${buildout:directory}/etc/", configname="servers.cfg"
-
-As of this writing the pycrypto package is throwing some deprecation warnings, you might want to disable them by adding an initialization option to the ploy part like this::
-
-  initialization =
-      import warnings
-      warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Hash\.MD5", 6)
-      warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Hash\.SHA", 6)
-      warnings.filterwarnings("ignore", ".*", DeprecationWarning, "Crypto\.Util\.randpool", 40)
-
-
