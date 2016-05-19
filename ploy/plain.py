@@ -81,7 +81,7 @@ class Instance(BaseInstance):
                 fingerprints = 'auto'
         if fingerprints is None:
             raise self.paramiko.SSHException("No fingerprint set in config.")
-        fingerprints = [x.strip() for x in re.split(',\n', fingerprints)]
+        fingerprints = [x.strip() for x in re.split(',|\n', fingerprints.strip())]
         result = []
         for fingerprint in fingerprints:
             path = os.path.join(self.master.main_config.path, fingerprint)

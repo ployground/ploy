@@ -483,6 +483,9 @@ class SSHKeyFingerprintAsk(object):
             return True
         sys.exit(1)
 
+    def __str__(self):
+        return "ask"
+
 
 class SSHKeyFingerprintIgnore(object):
     store = True
@@ -492,6 +495,9 @@ class SSHKeyFingerprintIgnore(object):
             "Fingerprint verification disabled!\n"
             "Got fingerprint %s." % other)
         return True
+
+    def __str__(self):
+        return "ignore"
 
 
 class SSHKeyFingerprintInstance(object):
@@ -505,10 +511,17 @@ class SSHKeyFingerprintInstance(object):
         if self.fingerprint is None:
             func = getattr(self.instance, 'get_fingerprint', None)
             if func is not None:
-                self.fingerprint = SSHKeyFingerprint(func())
+                try:
+                    self.fingerprint = SSHKeyFingerprint(func())
+                except self.instance.paramiko.SSHException as e:
+                    log.error(str(e))
+                    pass
         if self.fingerprint is None:
             return False
         return self.fingerprint.match(other)
+
+    def __str__(self):
+        return "auto"
 
 
 class SSHKeyInfo(object):
