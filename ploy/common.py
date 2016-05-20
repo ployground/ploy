@@ -11,7 +11,9 @@ try:
     from shlex import quote as shquote
 except ImportError:  # pragma: nocover
     from pipes import quote as shquote
+import binascii
 import gzip
+import hashlib
 import logging
 import os
 import re
@@ -392,3 +394,196 @@ class Hooks(object):
 
     def add(self, hook):
         self.hooks.append(hook)
+
+
+def parse_fingerprint(data):
+    if hasattr(data, 'split'):
+        parts = data.split(':')
+        if len(parts) == 17:
+            return (
+                parts[0].lower(),
+                binascii.unhexlify("".join(parts[1:])))
+        elif len(parts) == 16:
+            return (
+                'md5',
+                binascii.unhexlify("".join(parts)))
+        elif len(parts) == 2:
+            return (
+                parts[0].lower(),
+                binascii.a2b_base64(parts[1] + "==="))
+        raise ValueError("Unknown fingerprint format: %s" % data)
+    raise ValueError("Unknown fingerprint type: %r" % data)
+
+
+def format_fingerprint(fingerprint):
+    if fingerprint[0] == 'md5':
+        if isinstance(fingerprint[1][0], int):
+            return ':'.join("%02x" % x for x in fingerprint[1])
+        return ':'.join("%02x" % ord(x) for x in fingerprint[1])
+    return "%s:%s" % (
+        fingerprint[0].upper(),
+        binascii.b2a_base64(fingerprint[1]).decode('ascii').rstrip().rstrip('='))
+
+
+class SSHKeyFingerprint(object):
+    store = True
+
+    def __init__(self, fingerprint, keylen=None, keytype=None):
+        self.fingerprint = fingerprint
+        if not isinstance(self.fingerprint, tuple):
+            self.fingerprint = parse_fingerprint(fingerprint)
+        if keylen is not None and not isinstance(keylen, int):
+            keylen = int(keylen)
+        self.keylen = keylen
+        if keytype is not None:
+            keytype = keytype.lower()
+        self.keytype = keytype
+
+    def match(self, other):
+        return (
+            self.fingerprint == other.fingerprint
+            and (
+                self.keylen is None
+                or other.keylen is None
+                or self.keylen == other.keylen)
+            and (
+                self.keytype is None
+                or other.keytype is None
+                or self.keytype == other.keytype))
+
+    def __str__(self):
+        return format_fingerprint(self.fingerprint)
+
+    def __repr__(self):
+        result = "%s(%r" % (
+            self.__class__.__name__,
+            format_fingerprint(self.fingerprint))
+        if self.keylen is not None:
+            result += ", keylen=%r" % self.keylen
+        if self.keytype is not None:
+            result += ", keytype=%r" % self.keytype
+        return "%s)" % result
+
+
+class SSHKeyFingerprintAsk(object):
+    store = False
+
+    def __init__(self):
+        self.ask = True
+
+    def match(self, other):
+        if not self.ask:
+            return True
+        msg = (
+            "WARNING! Automatic fingerprint checking disabled.\n"
+            "Got fingerprint %s.\n"
+            "Continue?" % other)
+        if yesno(msg):
+            self.ask = False
+            return True
+        sys.exit(1)
+
+    def __str__(self):
+        return "ask"
+
+
+class SSHKeyFingerprintIgnore(object):
+    store = True
+
+    def match(self, other):
+        log.warn(
+            "Fingerprint verification disabled!\n"
+            "Got fingerprint %s." % other)
+        return True
+
+    def __str__(self):
+        return "ignore"
+
+
+class SSHKeyFingerprintInstance(object):
+    store = True
+
+    def __init__(self, instance):
+        self.instance = instance
+        self.fingerprint = None
+
+    def match(self, other):
+        if self.fingerprint is None:
+            func = getattr(self.instance, 'get_fingerprint', None)
+            if func is not None:
+                try:
+                    self.fingerprint = SSHKeyFingerprint(func())
+                except self.instance.paramiko.SSHException as e:
+                    log.error(str(e))
+                    pass
+        if self.fingerprint is None:
+            return False
+        return self.fingerprint.match(other)
+
+    def __str__(self):
+        return "auto"
+
+
+class SSHKeyInfo(object):
+    def __init__(self, key):
+        self.keytype = None
+        if key.get_name() == 'ssh-rsa':
+            self.keytype = 'rsa'
+        self.keylen = key.get_bits()
+        self.data = key.asbytes()
+        self.fingerprints = {}
+
+    def __contains__(self, other):
+        hashtypes = ['md5', 'sha256']
+        fingerprint = getattr(other, 'fingerprint', None)
+        if fingerprint is not None:
+            hashtypes = [fingerprint[0]]
+        for hashtype in hashtypes:
+            if hashtype not in self.fingerprints:
+                hash_func = getattr(hashlib, hashtype, None)
+                if hash_func is None:
+                    continue
+                self.fingerprints[hashtype] = SSHKeyFingerprint(
+                    (hashtype, hash_func(self.data).digest()),
+                    keylen=self.keylen, keytype=self.keytype)
+            fingerprint = self.fingerprints[hashtype]
+            if other.match(fingerprint):
+                return True
+        return False
+
+    def get_fingerprints(self):
+        return [str(x[1]) for x in sorted(self.fingerprints.items())]
+
+    def __repr__(self):
+        return "%s(%r)" % (
+            self.__class__.__name__, self.fingerprints)
+
+
+re_hex_byte = '[0-9a-fA-F]{2}'
+re_fingerprint = "(?:%s:){15}%s" % (re_hex_byte, re_hex_byte)
+re_fingerprint_md5 = "(?:[^:]+:%s)" % re_fingerprint
+re_fingerprint_other = "(?:[^:]+:[0-9a-zA-Z+/=]+)"
+re_fingerprint_info = "^.*?(\d+)\s+(%s|%s|%s)(.*)$" % (re_fingerprint, re_fingerprint_md5, re_fingerprint_other)
+fingerprint_regexp = re.compile(re_fingerprint_info, re.MULTILINE)
+fingerprint_type_regexp = re.compile("\((.*?)\)")
+
+
+def parse_ssh_keygen(text):
+    fingerprints = []
+    for match in fingerprint_regexp.findall(text):
+        info = dict(keylen=int(match[0]), fingerprint=match[1])
+        key_info = match[2].lower()
+        if '(rsa1)' in key_info or 'ssh_host_key' in key_info:
+            info['keytype'] = 'rsa1'
+        elif '(rsa)' in key_info or 'ssh_host_rsa_key' in key_info:
+            info['keytype'] = 'rsa'
+        elif '(dsa)' in key_info or 'ssh_host_dsa_key' in key_info:
+            info['keytype'] = 'dsa'
+        elif '(ecdsa)' in key_info or 'ssh_host_ecdsa_key' in key_info:
+            info['keytype'] = 'ecdsa'
+        else:
+            match = fingerprint_type_regexp.search(key_info)
+            if match:
+                info['keytype'] = match.group(1)
+        fingerprints.append(SSHKeyFingerprint(**info))
+    return fingerprints

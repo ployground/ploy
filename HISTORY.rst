@@ -1,6 +1,17 @@
 Changelog
 =========
 
+1.3.0 - Unreleased
+------------------
+
+* Add option ``ssh_fingerprints`` which allows to specify multiple fingerprints.
+  [fschulze]
+
+* Support new output of ``ssh-keygen`` which includes the hash type and
+  defaults to ``SHA256``.
+  [fschulze]
+
+
 1.2.1 - 2015-08-27
 ------------------
 

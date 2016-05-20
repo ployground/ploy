@@ -1,8 +1,16 @@
 from lazy import lazy
-from ploy.common import BaseMaster, BaseInstance, import_paramiko, yesno
+from ploy.common import BaseMaster, BaseInstance
+from ploy.common import SSHKeyFingerprint
+from ploy.common import SSHKeyFingerprintAsk
+from ploy.common import SSHKeyFingerprintIgnore
+from ploy.common import SSHKeyFingerprintInstance
+from ploy.common import SSHKeyInfo
+from ploy.common import import_paramiko
+from ploy.common import parse_fingerprint, parse_ssh_keygen
 import getpass
 import logging
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -11,42 +19,32 @@ import sys
 log = logging.getLogger('ploy')
 
 
-def get_key_fingerprint(key):
-    key_fingerprint = key.get_fingerprint()
-    if isinstance(key_fingerprint[0], int):
-        return ':'.join("%02x" % x for x in key_fingerprint)
-    return ':'.join("%02x" % ord(x) for x in key_fingerprint)
-
-
 def ServerHostKeyPolicy(*args, **kwarks):
     paramiko = import_paramiko()
 
     class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
-        def __init__(self, fingerprint_func):
-            self.fingerprint_func = fingerprint_func
-            self.ask = True
+        def __init__(self, fingerprints_func):
+            self.fingerprints_func = fingerprints_func
 
         @lazy
-        def fingerprint(self):
-            return self.fingerprint_func()
+        def fingerprints(self):
+            return self.fingerprints_func()
 
         def missing_host_key(self, client, hostname, key):
-            fingerprint = get_key_fingerprint(key)
-            if self.fingerprint.lower() == 'ask':
-                if not self.ask:
+            ssh_key_info = SSHKeyInfo(key)
+            for fingerprint in self.fingerprints:
+                if fingerprint in ssh_key_info:
+                    if not fingerprint.store:
+                        return
+                    client.get_host_keys().add(hostname, key.get_name(), key)
+                    if client._host_keys_filename is not None:
+                        client.save_host_keys(client._host_keys_filename)
                     return
-                if yesno("WARNING! Automatic fingerprint checking disabled.\nGot fingerprint %s.\nContinue?" % fingerprint):
-                    self.ask = False
-                    return
-                sys.exit(1)
-            elif fingerprint == self.fingerprint or self.fingerprint.lower() == 'ignore':
-                if self.fingerprint.lower() == 'ignore':
-                    log.warn("Fingerprint verification disabled!")
-                client.get_host_keys().add(hostname, key.get_name(), key)
-                if client._host_keys_filename is not None:
-                    client.save_host_keys(client._host_keys_filename)
-                return
-            raise paramiko.SSHException("Fingerprint doesn't match for %s (got %s, expected %s)" % (hostname, fingerprint, self.fingerprint))
+            raise paramiko.SSHException(
+                "Fingerprint doesn't match for %s (got %s, expected: %s)" % (
+                    hostname,
+                    ssh_key_info.get_fingerprints(),
+                    [str(x) for x in self.fingerprints]))
 
     return ServerHostKeyPolicy(*args, **kwarks)
 
@@ -70,22 +68,42 @@ class Instance(BaseInstance):
     def get_port(self):
         return self.config.get('port', 22)
 
-    def get_fingerprint(self):
-        fingerprint = self.config.get('fingerprint')
-        if fingerprint is None:
-            fingerprint = self.master.master_config.get('fingerprint')
-        if fingerprint is None:
+    def get_ssh_fingerprints(self):
+        fingerprints = self.config.get('ssh-fingerprints')
+        if fingerprints is None:
+            fingerprints = self.config.get('fingerprint')
+        if fingerprints is None:
+            fingerprints = self.master.master_config.get('ssh-fingerprints')
+        if fingerprints is None:
+            fingerprints = self.master.master_config.get('fingerprint')
+        if fingerprints is None:
+            if getattr(self, 'get_fingerprint', None) is not None:
+                fingerprints = 'auto'
+        if fingerprints is None:
             raise self.paramiko.SSHException("No fingerprint set in config.")
-        path = os.path.join(self.master.main_config.path, fingerprint)
-        if os.path.exists(path):
-            try:
-                result = subprocess.check_output(['ssh-keygen', '-lf', path])
-            except subprocess.CalledProcessError as e:
-                log.error("Couldn't get fingerprint from '%s':\n%s" % (path, e))
-                sys.exit(1)
-            else:
-                fingerprint = result.split()[1]
-        return fingerprint
+        fingerprints = [x.strip() for x in re.split(',|\n', fingerprints.strip())]
+        result = []
+        for fingerprint in fingerprints:
+            path = os.path.join(self.master.main_config.path, fingerprint)
+            if os.path.exists(path):
+                try:
+                    text = subprocess.check_output(['ssh-keygen', '-lf', path])
+                except subprocess.CalledProcessError as e:
+                    log.error("Couldn't get fingerprint from '%s':\n%s" % (path, e))
+                    sys.exit(1)
+                result.extend(parse_ssh_keygen(text))
+                continue
+            if fingerprint.lower() == 'auto':
+                result.append(SSHKeyFingerprintInstance(self))
+                continue
+            if fingerprint.lower() == 'ask':
+                result.append(SSHKeyFingerprintAsk())
+                continue
+            if fingerprint.lower() == 'ignore':
+                result.append(SSHKeyFingerprintIgnore())
+                continue
+            result.append(SSHKeyFingerprint(parse_fingerprint(fingerprint)))
+        return result
 
     @lazy
     def proxy_command(self):
@@ -141,8 +159,7 @@ class Instance(BaseInstance):
         port = self.sshconfig.get('port', port)
         password = None
         client = paramiko.SSHClient()
-        fingerprint_func = self.get_fingerprint
-        client.set_missing_host_key_policy(ServerHostKeyPolicy(fingerprint_func))
+        client.set_missing_host_key_policy(ServerHostKeyPolicy(self.get_ssh_fingerprints))
         known_hosts = self.master.known_hosts
         client.known_hosts = None
         while 1:
