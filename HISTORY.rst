@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.3.0 - Unreleased
+1.3.0 - 2016-05-21
 ------------------
 
 * Add option ``ssh_fingerprints`` which allows to specify multiple fingerprints.
