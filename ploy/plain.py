@@ -73,10 +73,6 @@ class Instance(BaseInstance):
         if fingerprints is None:
             fingerprints = self.config.get('fingerprint')
         if fingerprints is None:
-            fingerprints = self.master.master_config.get('ssh-fingerprints')
-        if fingerprints is None:
-            fingerprints = self.master.master_config.get('fingerprint')
-        if fingerprints is None:
             if getattr(self, 'get_fingerprint', None) is not None:
                 fingerprints = 'auto'
         if fingerprints is None:

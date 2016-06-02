@@ -1,9 +1,12 @@
 Changelog
 =========
 
-1.3.1 - Unreleased
+1.3.1 - 2016-06-02
 ------------------
 
+* Don't get ``ssh_fingerprints`` from master if not set in instance config.
+  This fixes automatic fingerprint fetching for EC2, ezjail etc.
+  [fschulze]
 
 
 1.3.0 - 2016-05-21
