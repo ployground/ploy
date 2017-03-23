@@ -194,6 +194,54 @@ def test_conn_fingerprint_mismatch(instance, paramiko, sshclient):
         (("port: 22",), {})]
 
 
+def test_ssh_fingerprints_none_set(instance, paramiko):
+    instance.config['host'] = 'localhost'
+    with pytest.raises(paramiko.SSHException) as e:
+        instance.get_ssh_fingerprints()
+    assert str(e.value) == 'No fingerprint set in config.'
+
+
+def test_ssh_fingerprints_ask(instance, paramiko):
+    from ploy.common import SSHKeyFingerprintAsk
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'ask'
+    (result,) = instance.get_ssh_fingerprints()
+    assert isinstance(result, SSHKeyFingerprintAsk)
+
+
+def test_ssh_fingerprints_ignore(instance, paramiko):
+    from ploy.common import SSHKeyFingerprintIgnore
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'ignore'
+    (result,) = instance.get_ssh_fingerprints()
+    assert isinstance(result, SSHKeyFingerprintIgnore)
+
+
+def test_ssh_fingerprints_auto(instance, paramiko):
+    from ploy.common import SSHKeyFingerprintInstance
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'auto'
+    (result,) = instance.get_ssh_fingerprints()
+    assert isinstance(result, SSHKeyFingerprintInstance)
+
+
+def test_ssh_fingerprints_fingerprint(instance, paramiko):
+    from ploy.common import SSHKeyFingerprint
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'a6:7f:6a:a5:8a:7c:26:45:46:ca:d9:d9:8c:f2:64:27'
+    (result,) = instance.get_ssh_fingerprints()
+    assert isinstance(result, SSHKeyFingerprint)
+
+
+def test_ssh_fingerprints_fingerprint_auto(instance, paramiko):
+    from ploy.common import SSHKeyFingerprint, SSHKeyFingerprintInstance
+    instance.config['host'] = 'localhost'
+    instance.config['fingerprint'] = 'a6:7f:6a:a5:8a:7c:26:45:46:ca:d9:d9:8c:f2:64:27\nauto'
+    (fingerprint, auto) = instance.get_ssh_fingerprints()
+    assert isinstance(fingerprint, SSHKeyFingerprint)
+    assert isinstance(auto, SSHKeyFingerprintInstance)
+
+
 def test_conn(instance, sshclient):
     instance.config['host'] = 'localhost'
     instance.config['fingerprint'] = 'foo'

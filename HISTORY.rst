@@ -1,9 +1,12 @@
 Changelog
 =========
 
-1.3.2 - Unreleased
+1.4.0 - Unreleased
 ------------------
 
+* Allow instance implementations to return multiple fingerprints via
+  ``get_fingerprints`` method.
+  [fschulze]
 
 
 1.3.1 - 2016-06-02

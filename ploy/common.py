@@ -505,20 +505,26 @@ class SSHKeyFingerprintInstance(object):
 
     def __init__(self, instance):
         self.instance = instance
-        self.fingerprint = None
+        self.fingerprints = None
 
     def match(self, other):
-        if self.fingerprint is None:
-            func = getattr(self.instance, 'get_fingerprint', None)
+        if self.fingerprints is None:
+            func = getattr(self.instance, 'get_fingerprints', None)
             if func is not None:
+                self.fingerprints = [
+                    SSHKeyFingerprint(**x) for x in func()]
+            func = getattr(self.instance, 'get_fingerprint', None)
+            if func is not None and not self.fingerprints:
                 try:
-                    self.fingerprint = SSHKeyFingerprint(func())
+                    self.fingerprints = [SSHKeyFingerprint(func())]
                 except self.instance.paramiko.SSHException as e:
                     log.error(str(e))
                     pass
-        if self.fingerprint is None:
+        if not self.fingerprints:
             return False
-        return self.fingerprint.match(other)
+        for fingerprint in self.fingerprints:
+            if fingerprint.match(other):
+                return True
 
     def __str__(self):
         return "auto"

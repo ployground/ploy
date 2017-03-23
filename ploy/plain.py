@@ -73,7 +73,10 @@ class Instance(BaseInstance):
         if fingerprints is None:
             fingerprints = self.config.get('fingerprint')
         if fingerprints is None:
-            if getattr(self, 'get_fingerprint', None) is not None:
+            func = getattr(self, 'get_fingerprints', None)
+            if func is None:
+                func = getattr(self, 'get_fingerprint', None)
+            if func is not None:
                 fingerprints = 'auto'
         if fingerprints is None:
             raise self.paramiko.SSHException("No fingerprint set in config.")

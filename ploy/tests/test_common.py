@@ -299,3 +299,50 @@ def test_yesno(default, all, question, answer, expected):
             SSHKeyFingerprint(keylen=2048, keytype='rsa', fingerprint='ef:85:3d:e6:ab:c4:18:88:81:63:08:0f:32:8a:9d:e0')])])
 def test_parse_ssh_keygen(text, keyinfo):
     assert all(a.match(b) for a, b in zip(parse_ssh_keygen(text), keyinfo))
+
+
+def test_sshkeyfingerprintinstance_none():
+    from ploy.common import SSHKeyFingerprint
+    from ploy.common import SSHKeyFingerprintInstance
+
+    class Instance:
+        pass
+
+    instance = Instance()
+    sshkey = SSHKeyFingerprintInstance(instance)
+    assert not sshkey.match(SSHKeyFingerprint('7b:0d:a3:0d:9e:fc:f3:97:bb:a8:d2:1d:05:3f:d5:f9'))
+
+
+def test_sshkeyfingerprintinstance_get_fingerprint():
+    from ploy.common import SSHKeyFingerprint
+    from ploy.common import SSHKeyFingerprintInstance
+
+    class Instance:
+        def get_fingerprint(self):
+            return '7b:0d:a3:0d:9e:fc:f3:97:bb:a8:d2:1d:05:3f:d5:f9'
+
+    instance = Instance()
+    sshkey = SSHKeyFingerprintInstance(instance)
+    assert sshkey.match(SSHKeyFingerprint('7b:0d:a3:0d:9e:fc:f3:97:bb:a8:d2:1d:05:3f:d5:f9'))
+
+
+def test_sshkeyfingerprintinstance_get_fingerprints():
+    from ploy.common import SSHKeyFingerprint
+    from ploy.common import SSHKeyFingerprintInstance
+
+    class Instance:
+        def get_fingerprints(self):
+            return [
+                dict(keylen=256, keytype='ed25519', fingerprint='56:0f:1a:4d:cc:66:0a:9e:90:d5:1d:98:3a:03:ef:b6'),
+                dict(keylen=1024, keytype='dsa', fingerprint='7b:0d:a3:0d:9e:fc:f3:97:bb:a8:d2:1d:05:3f:d5:f9'),
+                dict(keylen=256, keytype='ecdsa', fingerprint='96:c6:3c:47:7b:11:eb:8a:ca:78:ed:20:d6:21:f2:b7'),
+                dict(keylen=2048, keytype='rsa1', fingerprint='b6:8a:43:51:72:af:49:88:a5:d6:c5:7f:3c:fd:91:70'),
+                dict(keylen=2048, keytype='rsa', fingerprint='ef:85:3d:e6:ab:c4:18:88:81:63:08:0f:32:8a:9d:e0')]
+
+    instance = Instance()
+    sshkey = SSHKeyFingerprintInstance(instance)
+    assert sshkey.match(SSHKeyFingerprint('7b:0d:a3:0d:9e:fc:f3:97:bb:a8:d2:1d:05:3f:d5:f9'))
+    assert sshkey.match(SSHKeyFingerprint('7b:0d:a3:0d:9e:fc:f3:97:bb:a8:d2:1d:05:3f:d5:f9', keylen=1024, keytype='dsa'))
+    assert sshkey.match(SSHKeyFingerprint('56:0f:1a:4d:cc:66:0a:9e:90:d5:1d:98:3a:03:ef:b6', keylen=256, keytype='ed25519'))
+    assert not sshkey.match(SSHKeyFingerprint('cd:be:b8:a2:57:bf:71:5c:ed:14:b8:27:e8:e1:4a:a6'))
+    assert not sshkey.match(SSHKeyFingerprint('56:0f:1a:4d:cc:66:0a:9e:90:d5:1d:98:3a:03:ef:b6', keylen=1024, keytype='ed25519'))
