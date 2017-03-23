@@ -411,14 +411,13 @@ class Controller(object):
             if not arg.startswith('-'):
                 sid_index = i
                 break
-            else:
-                if arg[1] in '1246AaCfgKkMNnqsTtVvXxYy':
-                    continue
-                elif arg[1] in 'bcDeFiLlmOopRSw':
-                    value = iargs.next()
-                    if arg[1] == 'l':
-                        user = value[1]
-                    continue
+            if arg[1] in '1246AaCfgKkMNnqsTtVvXxYy':
+                continue
+            elif arg[1] in 'bcDeFiLlmOopRSw':
+                value = iargs.next()
+                if arg[1] == 'l':
+                    user = value[1]
+                continue
         # fake parsing for nice error messages
         if sid_index is None:
             parser.parse_args([])
