@@ -10,3 +10,8 @@ install:
   - pip install tox-travis
 script:
   - tox
+notifications:
+  irc:
+    - "irc.freenode.org#bsdploy"
+  on_success: change
+  on_failure: change
