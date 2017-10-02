@@ -533,8 +533,8 @@ class SSHKeyFingerprintInstance(object):
 class SSHKeyInfo(object):
     def __init__(self, key):
         self.keytype = None
-        if key.get_name() == 'ssh-rsa':
-            self.keytype = 'rsa'
+        if key.get_name().startswith('ssh-'):
+            self.keytype = key.get_name()[4:]
         self.keylen = key.get_bits()
         self.data = key.asbytes()
         self.fingerprints = {}

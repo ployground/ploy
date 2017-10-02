@@ -8,6 +8,10 @@ Changelog
   ``get_fingerprints`` method.
   [fschulze]
 
+* Support other key types than just rsa, because paramiko > 2 defaults to
+  ``ed25519``.
+  [fschulze]
+
 
 1.3.1 - 2016-06-02
 ------------------

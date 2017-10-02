@@ -375,6 +375,7 @@ def test_missing_host_key_mismatch(paramiko, sshclient):
     from ploy.plain import ServerHostKeyPolicy
     shkp = ServerHostKeyPolicy(lambda: [SSHKeyFingerprint('SHA256:LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564')])  # that's sha256 of 'foo'
     key = MagicMock()
+    key.get_name.return_value = 'ssh-rsa'
     key.asbytes.return_value = b'bar'
     key.get_bits.return_value = None
     with pytest.raises(paramiko.SSHException) as e:
