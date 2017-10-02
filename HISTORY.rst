@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.4.0 - Unreleased
+1.4.0 - 2017-10-02
 ------------------
 
 * Allow instance implementations to return multiple fingerprints via
