@@ -12,7 +12,7 @@ Changelog
 1.3.1 - 2016-06-02
 ------------------
 
-* Don't get ``ssh_fingerprints`` from master if not set in instance config.
+* Don't get ``ssh-fingerprints`` from master if not set in instance config.
   This fixes automatic fingerprint fetching for EC2, ezjail etc.
   [fschulze]
 
@@ -20,7 +20,7 @@ Changelog
 1.3.0 - 2016-05-21
 ------------------
 
-* Add option ``ssh_fingerprints`` which allows to specify multiple fingerprints.
+* Add option ``ssh-fingerprints`` which allows to specify multiple fingerprints.
   [fschulze]
 
 * Support new output of ``ssh-keygen`` which includes the hash type and
