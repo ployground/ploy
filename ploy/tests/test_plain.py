@@ -170,7 +170,7 @@ def test_no_fingerprint(instance):
     instance.config['host'] = 'localhost'
     with pytest.raises(instance.paramiko.SSHException) as e:
         instance.get_ssh_fingerprints()
-    assert e.value.message == "No fingerprint set in config."
+    assert e.value.args[0] == "No fingerprint set in config."
 
 
 def test_conn_fingerprint_mismatch(instance, paramiko, sshclient):
