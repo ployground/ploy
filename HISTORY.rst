@@ -12,6 +12,9 @@ Changelog
   ``ed25519``.
   [fschulze]
 
+* Output more information about used keys on fingerprint mismatch.
+  [fschulze]
+
 
 1.3.1 - 2016-06-02
 ------------------

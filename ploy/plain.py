@@ -41,10 +41,10 @@ def ServerHostKeyPolicy(*args, **kwarks):
                         client.save_host_keys(client._host_keys_filename)
                     return
             raise paramiko.SSHException(
-                "Fingerprint doesn't match for %s (got %s, expected: %s)" % (
+                "Fingerprint doesn't match for %s (got %r, expected: %s)" % (
                     hostname,
-                    ssh_key_info.get_fingerprints(),
-                    [str(x) for x in self.fingerprints]))
+                    ssh_key_info.get_fingerprint_objects(),
+                    self.fingerprints))
 
     return ServerHostKeyPolicy(*args, **kwarks)
 

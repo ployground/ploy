@@ -455,7 +455,7 @@ class SSHKeyFingerprint(object):
         return format_fingerprint(self.fingerprint)
 
     def __repr__(self):
-        result = "%s(%r" % (
+        result = "%s('%s'" % (
             self.__class__.__name__,
             format_fingerprint(self.fingerprint))
         if self.keylen is not None:
@@ -557,12 +557,15 @@ class SSHKeyInfo(object):
                 return True
         return False
 
+    def get_fingerprint_objects(self):
+        return [x[1] for x in sorted(self.fingerprints.items())]
+
     def get_fingerprints(self):
-        return [str(x[1]) for x in sorted(self.fingerprints.items())]
+        return [str(x) for x in self.get_fingerprint_objects()]
 
     def __repr__(self):
-        return "%s(%r)" % (
-            self.__class__.__name__, self.fingerprints)
+        return "%s(%r, %r, %r)" % (
+            self.__class__.__name__, self.keytype, self.keylen, self.fingerprints)
 
 
 re_hex_byte = '[0-9a-fA-F]{2}'

@@ -382,8 +382,8 @@ def test_missing_host_key_mismatch(paramiko, sshclient):
         shkp.missing_host_key(sshclient, 'localhost', key)
     assert unicode(e.value) == (
         "Fingerprint doesn't match for localhost (got "
-        "['SHA256:/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k'], "
-        "expected: ['SHA256:LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564'])")
+        "[SSHKeyFingerprint('SHA256:/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k', keytype='rsa')], "
+        "expected: [SSHKeyFingerprint('SHA256:LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564')])")
 
 
 def test_missing_host_key(tempdir, sshclient):
