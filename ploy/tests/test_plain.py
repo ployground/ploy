@@ -166,14 +166,11 @@ def test_conn_no_host(instance):
         (("No host or ip set in config.",), {})]
 
 
-def test_conn_no_fingerprint(instance):
+def test_no_fingerprint(instance):
     instance.config['host'] = 'localhost'
-    with patch('ploy.common.log') as LogMock:
-        with pytest.raises(SystemExit):
-            instance.conn
-    assert LogMock.error.call_args_list == [
-        (("Couldn't connect to plain-instance:foo.",), {}),
-        (("No fingerprint set in config.",), {})]
+    with pytest.raises(instance.paramiko.SSHException) as e:
+        instance.get_ssh_fingerprints()
+    assert e.value.message == "No fingerprint set in config."
 
 
 def test_conn_fingerprint_mismatch(instance, paramiko, sshclient):
