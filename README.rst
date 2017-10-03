@@ -52,11 +52,17 @@ Options
 ``port``
   The ssh port number.
 
+``ssh-host-keys`` or ``ssh-fingerprints``
+  (**required**) The public ssh host keys (or fingerprints) of the server.
+
+``ssh-host-keys``
+  It's best to use the public ssh host keys if available.
+  You can either specify the path, or put in the contents directly (``ssh-rsa AAAA...``).
+  Multiple host keys can be specified one per line, or separated by commas.
+
 ``ssh-fingerprints``
-  (**required**) The ssh fingerprints of the server.
   If set to ``ask`` then manual interactive verification is enabled.
   If set to ``ignore`` then no verification is performed at all!
-  You can also point this to a public ssh host key file to let the fingerprint be extracted automatically.
   Multiple fingerprints can be specified one per line, or separated by commas.
   The format of fingerprints is either 16 bytes as hex numbers separated by colons,
   the same 16 bytes prefixed by ``MD5:``,

@@ -1,7 +1,7 @@
 from setuptools import setup
 import os
 
-version = "1.4.0"
+version = "1.5.0"
 
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
@@ -33,6 +33,9 @@ setup(
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Topic :: System :: Installation/Setup',
         'Topic :: System :: Systems Administration'],
     include_package_data=True,

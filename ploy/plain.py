@@ -1,3 +1,4 @@
+from functools import partial
 from lazy import lazy
 from ploy.common import BaseMaster, BaseInstance
 from ploy.common import SSHKeyFingerprint
@@ -57,6 +58,10 @@ class InstanceFormattingWrapper(object):
         return self.instance.config[name]
 
 
+def split_option(option):
+    return list(filter(None, (x.strip() for x in re.split(',|\n', option.strip()))))
+
+
 class Instance(BaseInstance):
     sectiongroupname = 'plain-instance'
 
@@ -67,6 +72,38 @@ class Instance(BaseInstance):
 
     def get_port(self):
         return self.config.get('port', 22)
+
+    def get_ssh_pub_host_keys(self):
+        key_types_map = {
+            'ssh-dss': self.paramiko.DSSKey,
+            'ssh-rsa': self.paramiko.RSAKey}
+        if hasattr(self.paramiko, 'Ed25519Key'):
+            key_types_map['ssh-ed25519'] = self.paramiko.Ed25519Key
+        if hasattr(self.paramiko.ECDSAKey, 'supported_key_format_identifiers'):
+            for key_type in self.paramiko.ECDSAKey.supported_key_format_identifiers():
+                key_types_map[key_type] = partial(self.paramiko.ECDSAKey, validate_point=False)
+        else:
+            key_types_map['ecdsa-sha2-nistp256'] = self.paramiko.ECDSAKey
+        host_keys = []
+        sources = split_option(self.config.get('ssh-host-keys', ''))
+        for key in sources:
+            if key.startswith('ssh-'):
+                fields = key.split()
+            elif os.path.exists(key):
+                with open(key, 'rb') as f:
+                    fields = f.read().split()
+            else:
+                continue
+            if len(fields) < 2:
+                continue
+            key_type = fields[0].decode('ascii')
+            key_class = key_types_map.get(key_type)
+            if key_class is None:
+                continue
+            host_keys.append((
+                key_type,
+                key_class(data=self.paramiko.py3compat.decodebytes(fields[1]))))
+        return host_keys
 
     def get_ssh_fingerprints(self):
         fingerprints = self.config.get('ssh-fingerprints')
@@ -80,7 +117,7 @@ class Instance(BaseInstance):
                 fingerprints = 'auto'
         if fingerprints is None:
             raise self.paramiko.SSHException("No fingerprint set in config.")
-        fingerprints = [x.strip() for x in re.split(',|\n', fingerprints.strip())]
+        fingerprints = split_option(fingerprints)
         result = []
         for fingerprint in fingerprints:
             path = os.path.join(self.master.main_config.path, fingerprint)
@@ -158,6 +195,12 @@ class Instance(BaseInstance):
         port = self.sshconfig.get('port', port)
         password = None
         client = paramiko.SSHClient()
+        if port == '22':
+            server_hostkey_name = hostname
+        else:
+            server_hostkey_name = "[%s]:%s" % (hostname, port)
+        for key_type, key in self.get_ssh_pub_host_keys():
+            client.get_host_keys().add(server_hostkey_name, key_type, key)
         client.set_missing_host_key_policy(ServerHostKeyPolicy(self.get_ssh_fingerprints))
         known_hosts = self.master.known_hosts
         client.known_hosts = None

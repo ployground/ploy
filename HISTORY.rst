@@ -1,6 +1,14 @@
 Changelog
 =========
 
+1.5.0 - 2017-10-03
+------------------
+
+* New ``ssh-host-keys`` option which allows to set host keys directly to
+  force paramiko to use a specific key type to avoid fingerprint mismatches.
+  [fschulze]
+
+
 1.4.0 - 2017-10-02
 ------------------
 
