@@ -10,6 +10,11 @@ class Directory:
     def __init__(self, directory):
         self.directory = directory
 
+    def mkdir(self, name):
+        path = os.path.join(self.directory, name)
+        os.mkdir(path)
+        return Directory(path)
+
     def __getitem__(self, name):
         path = os.path.join(self.directory, name)
         assert not os.path.relpath(path, self.directory).startswith('..')

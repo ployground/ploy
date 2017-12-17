@@ -33,6 +33,9 @@ class Instance(BaseInstance, StartupScriptMixin):
     def get_host(self):
         return self.config['host']
 
+    def get_port(self):
+        return self.config.get('port', 22)
+
     def get_massagers(self):
         return get_instance_massagers()
 
