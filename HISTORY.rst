@@ -1,6 +1,13 @@
 Changelog
 =========
 
+1.5.1 - 2017-12-17
+------------------
+
+* Fix getting fingerprints automatically when ``ssh-host-keys`` is used.
+  [fschulze]
+
+
 1.5.0 - 2017-10-03
 ------------------
 

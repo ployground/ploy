@@ -9,6 +9,7 @@ from ploy.common import SSHKeyInfo
 from ploy.common import import_paramiko
 from ploy.common import parse_fingerprint, parse_ssh_keygen
 import getpass
+import hashlib
 import logging
 import os
 import re
@@ -115,6 +116,15 @@ class Instance(BaseInstance):
                 func = getattr(self, 'get_fingerprint', None)
             if func is not None:
                 fingerprints = 'auto'
+        if fingerprints is None:
+            fingerprints = '\n'.join(
+                str(SSHKeyFingerprint(
+                    ('sha256', hashlib.sha256(key.asbytes()).digest()),
+                    keylen=key.get_bits(),
+                    keytype=key_type))
+                for key_type, key in self.get_ssh_pub_host_keys())
+            if not fingerprints:
+                fingerprints = None
         if fingerprints is None:
             raise self.paramiko.SSHException("No fingerprint set in config.")
         fingerprints = split_option(fingerprints)
