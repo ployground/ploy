@@ -572,7 +572,6 @@ class TestSSHCommand:
         self.ctrl = Controller(ployconf.directory)
         self.ctrl.configfile = ployconf.path
         self._write_config = ployconf.fill
-        self.os_execvp_mock = os_execvp_mock
 
     def testCallWithNoArguments(self, mock):
         self._write_config('')
@@ -592,7 +591,7 @@ class TestSSHCommand:
         assert 'usage: ploy ssh' in output
         assert "argument instance: invalid choice: 'foo'" in output
 
-    def testCallWithExistingInstance(self, mock):
+    def testCallWithExistingInstance(self, mock, os_execvp_mock):
         import ploy.tests.dummy_plugin
         self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         self._write_config('\n'.join([
@@ -606,7 +605,7 @@ class TestSSHCommand:
             (('sock.close',), {}),
             (('client.close',), {})]
         known_hosts = os.path.join(self.directory, 'known_hosts')
-        self.os_execvp_mock.assert_called_with(
+        os_execvp_mock.assert_called_with(
             'ssh',
             ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
 

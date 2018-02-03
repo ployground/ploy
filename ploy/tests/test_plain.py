@@ -7,14 +7,13 @@ import pytest
 
 class TestPlain:
     @pytest.fixture(autouse=True)
-    def setup_ctrl(self, os_execvp_mock, sshclient, sshconfig, tempdir):
+    def setup_ctrl(self, sshclient, sshconfig, tempdir):
         import ploy.plain
         self.directory = tempdir.directory
         self.ctrl = Controller(self.directory)
         self.ctrl.plugins = {
             'plain': ploy.plain.plugin}
         self.ssh_client_mock = sshclient
-        self.os_execvp_mock = os_execvp_mock
 
     def _write_config(self, content):
         with open(os.path.join(self.directory, 'ploy.conf'), 'w') as f:
@@ -82,18 +81,18 @@ class TestPlain:
             (("Fingerprint doesn't match for localhost (got bar, expected foo)",), {}),
             (('Is the instance finished starting up?',), {})]
 
-    def testSSH(self):
+    def testSSH(self, os_execvp_mock):
         self._write_config('\n'.join([
             '[plain-instance:foo]',
             'host = localhost',
             'fingerprint = foo']))
         self.ctrl(['./bin/ploy', 'ssh', 'foo'])
         known_hosts = os.path.join(self.directory, 'known_hosts')
-        self.os_execvp_mock.assert_called_with(
+        os_execvp_mock.assert_called_with(
             'ssh',
             ['ssh', '-o', 'StrictHostKeyChecking=yes', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
 
-    def testSSHExtraArgs(self):
+    def testSSHExtraArgs(self, os_execvp_mock):
         self._write_config('\n'.join([
             '[plain-instance:foo]',
             'host = localhost',
@@ -101,7 +100,7 @@ class TestPlain:
             'ssh-extra-args = forwardagent yes']))
         self.ctrl(['./bin/ploy', 'ssh', 'foo'])
         known_hosts = os.path.join(self.directory, 'known_hosts')
-        self.os_execvp_mock.assert_called_with(
+        os_execvp_mock.assert_called_with(
             'ssh',
             ['ssh', '-o', 'Forwardagent=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
 
