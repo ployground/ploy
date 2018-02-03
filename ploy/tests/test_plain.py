@@ -7,7 +7,7 @@ import pytest
 
 class TestPlain:
     @pytest.fixture(autouse=True)
-    def setup_ctrl(self, sshclient, sshconfig, tempdir):
+    def setup_ctrl(self, sshclient, tempdir):
         import ploy.plain
         self.directory = tempdir.directory
         self.ctrl = Controller(self.directory)
@@ -106,13 +106,6 @@ class TestPlain:
 
 
 @pytest.yield_fixture
-def sshconfig(mock):
-    with mock.patch("paramiko.SSHConfig") as ssh_config_mock:
-        ssh_config_mock().lookup.return_value = {}
-        yield ssh_config_mock
-
-
-@pytest.yield_fixture
 def sshclient(mock):
     with mock.patch("paramiko.SSHClient") as ssh_client_mock:
         yield ssh_client_mock
@@ -130,7 +123,7 @@ def filled_ployconf(confmaker):
 
 
 @pytest.fixture
-def ctrl(filled_ployconf, tempdir, sshconfig):
+def ctrl(filled_ployconf, tempdir):
     import ploy.plain
     ctrl = Controller(tempdir.directory)
     ctrl.plugins = {
