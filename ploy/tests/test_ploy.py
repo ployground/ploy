@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from ploy import Controller
 import logging
 import os

@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from functools import partial
 from lazy import lazy
 from ploy.common import BaseMaster, BaseInstance
@@ -228,7 +229,7 @@ class Instance(BaseInstance):
                     log.error('Failed to connect to %s (%s)' % (self.config_id, hostname))
                     for option in ('username', 'password', 'port', 'key_filename', 'sock'):
                         if client_args[option] is not None:
-                            log.error('%s: %r' % (option, client_args[option]))
+                            log.error('%s: %s' % (option, client_args[option]))
                     raise
                 if password is None and 'password' in self.config:
                     password = self.config['password']
@@ -254,7 +255,7 @@ class Instance(BaseInstance):
                 log.error('Failed to connect to %s (%s)' % (self.config_id, hostname))
                 for option in ('username', 'password', 'port', 'key_filename', 'sock'):
                     if client_args[option] is not None:
-                        log.error('%s: %r' % (option, client_args[option]))
+                        log.error('%s: %s' % (option, client_args[option]))
                 raise
             if sock is not None:
                 sock.close()

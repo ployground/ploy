@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from ploy import Controller
 import os
 import paramiko
@@ -176,12 +177,12 @@ def test_conn_fingerprint_mismatch(instance, mock, sshclient):
             with pytest.raises(SystemExit):
                 instance.conn
     assert CommonLogMock.error.call_args_list == [
-        (("Couldn't connect to plain-instance:foo.",), {}),
-        (("Fingerprint doesn't match for localhost (got bar, expected foo)",), {})]
+        mock.call("Couldn't connect to plain-instance:foo."),
+        mock.call("Fingerprint doesn't match for localhost (got bar, expected foo)")]
     assert PlainLogMock.error.call_args_list == [
-        (("Failed to connect to plain-instance:foo (localhost)",), {}),
-        (("username: 'root'",), {}),
-        (("port: 22",), {})]
+        mock.call("Failed to connect to plain-instance:foo (localhost)"),
+        mock.call("username: root"),
+        mock.call("port: 22")]
 
 
 def test_ssh_fingerprints_none_set(instance):

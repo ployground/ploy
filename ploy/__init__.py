@@ -1,7 +1,8 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 import pkg_resources
 from collections import MutableMapping
 from lazy import lazy
+from ploy.common import sorted_choices
 from ploy.config import Config
 from ploy import template
 import logging
@@ -219,7 +220,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         args = parser.parse_args(argv)
         instance = instances[args.instance[0]]
         instance.status()
@@ -234,7 +236,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         args = parser.parse_args(argv)
         instance = instances[args.instance[0]]
         instance.stop()
@@ -250,7 +253,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         args = parser.parse_args(argv)
         instance = instances[args.instance[0]]
         if not yesno("Are you sure you want to terminate '%s'?" % instance.config_id):
@@ -285,7 +289,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         parser.add_argument("-o", "--override", nargs="*", type=str,
                             dest="overrides", metavar="OVERRIDE",
                             help="Option to override in instance config for startup script (name=value).")
@@ -327,7 +332,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         parser.add_argument("-v", "--verbose", dest="verbose",
                             action="store_true", help="Print more info and output the startup script")
         parser.add_argument("-c", "--console-output", dest="console_output",
@@ -391,7 +397,8 @@ class Controller(object):
         parser.add_argument("list", nargs=1,
                             metavar="listname",
                             help="Name of list to show.",
-                            choices=sorted(self.list_cmds))
+                            type=str,
+                            choices=sorted_choices(self.list_cmds))
         parser.add_argument("listopts",
                             metavar="...",
                             nargs=argparse.REMAINDER,
@@ -410,7 +417,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         parser.add_argument("...", nargs=argparse.REMAINDER,
                             help="ssh options")
         iargs = enumerate(argv)
@@ -462,7 +470,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         args = parser.parse_args(argv)
         instance = instances[args.instance[0]]
         instance.snapshot()
@@ -479,7 +488,8 @@ class Controller(object):
         parser.add_argument("command", nargs='?',
                             metavar="command",
                             help="Name of the command you want help for.",
-                            choices=self.subparsers.keys())
+                            type=str,
+                            choices=sorted_choices(self.subparsers.keys()))
         args = parser.parse_args(argv)
         if args.zsh:
             if args.command is None:

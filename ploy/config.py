@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from ploy.common import Hooks
 try:
     import configparser

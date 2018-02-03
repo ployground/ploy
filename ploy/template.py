@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from ploy.common import gzip_string
 import base64
 import email

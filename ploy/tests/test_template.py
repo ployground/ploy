@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from ploy.template import Template
 import base64
 import pytest

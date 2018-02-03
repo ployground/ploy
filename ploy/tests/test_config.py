@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 from io import StringIO
 from ploy.config import Config
 import os

@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 from lazy import lazy
 from io import BytesIO
 try:
@@ -73,7 +73,7 @@ def yesno(question, default=None, all=False):
             True: ('y', 'yes'),
         }
     if all:
-        if default is 'all':
+        if default == 'all':
             answers['all'] = ('', 'a', 'all')
             question = "%s/All" % question
         else:
@@ -93,6 +93,10 @@ def yesno(question, default=None, all=False):
 
 def shjoin(args):
     return ' '.join(shquote(x) for x in args)
+
+
+def sorted_choices(choices):
+    return sorted(str(x) for x in choices)
 
 
 class StartupScriptMixin(object):
@@ -448,7 +452,7 @@ class SSHKeyFingerprint(object):
         if self.keylen is not None:
             result += ", keylen=%r" % self.keylen
         if self.keytype is not None:
-            result += ", keytype=%r" % self.keytype
+            result += ", keytype='%s'" % self.keytype
         return "%s)" % result
 
 

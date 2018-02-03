@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 from ploy.common import BaseInstance, BaseMaster, StartupScriptMixin
 from ploy.config import BaseMassager, HooksMassager
 from ploy.config import StartupScriptMassager
