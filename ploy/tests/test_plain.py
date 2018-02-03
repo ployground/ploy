@@ -7,13 +7,12 @@ import pytest
 
 class TestPlain:
     @pytest.fixture(autouse=True)
-    def setup_ctrl(self, sshclient, tempdir):
+    def setup_ctrl(self, tempdir):
         import ploy.plain
         self.directory = tempdir.directory
         self.ctrl = Controller(self.directory)
         self.ctrl.plugins = {
             'plain': ploy.plain.plugin}
-        self.ssh_client_mock = sshclient
 
     def _write_config(self, content):
         with open(os.path.join(self.directory, 'ploy.conf'), 'w') as f:
@@ -66,12 +65,12 @@ class TestPlain:
             (("No host or ip set in config.",), {}),
             (('Is the instance finished starting up?',), {})]
 
-    def testSSHWithFingerprintMismatch(self, mock):
+    def testSSHWithFingerprintMismatch(self, mock, sshclient):
         self._write_config('\n'.join([
             '[plain-instance:foo]',
             'host = localhost',
             'fingerprint = foo']))
-        self.ssh_client_mock().connect.side_effect = paramiko.SSHException(
+        sshclient().connect.side_effect = paramiko.SSHException(
             "Fingerprint doesn't match for localhost (got bar, expected foo)")
         with mock.patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
@@ -81,7 +80,7 @@ class TestPlain:
             (("Fingerprint doesn't match for localhost (got bar, expected foo)",), {}),
             (('Is the instance finished starting up?',), {})]
 
-    def testSSH(self, os_execvp_mock):
+    def testSSH(self, os_execvp_mock, sshclient):
         self._write_config('\n'.join([
             '[plain-instance:foo]',
             'host = localhost',
@@ -92,7 +91,7 @@ class TestPlain:
             'ssh',
             ['ssh', '-o', 'StrictHostKeyChecking=yes', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
 
-    def testSSHExtraArgs(self, os_execvp_mock):
+    def testSSHExtraArgs(self, os_execvp_mock, sshclient):
         self._write_config('\n'.join([
             '[plain-instance:foo]',
             'host = localhost',
