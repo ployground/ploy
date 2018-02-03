@@ -1,8 +1,8 @@
 from ploy.common import Hooks
 try:
-    from configparser import RawConfigParser
+    import configparser
 except ImportError:  # pragma: nocover
-    from ConfigParser import RawConfigParser  # for Python 2.7
+    import ConfigParser as configparser  # for Python 2.7
 from collections import MutableMapping
 from weakref import proxy
 import inspect
@@ -249,7 +249,12 @@ class ConfigSection(MutableMapping):
         return "%s(%r)" % (self.__class__.__name__, dict(self))
 
 
-def read_config(config, path):
+class ConfigParser(configparser.RawConfigParser):
+    def optionxform(self, s):
+        return s
+
+
+def _read_config(config, path, parser):
     result = []
     stack = [config]
     while 1:
@@ -257,8 +262,7 @@ def read_config(config, path):
         src = None
         if isinstance(config, (str, unicode)):
             src = os.path.relpath(config)
-        _config = RawConfigParser()
-        _config.optionxform = lambda s: s
+        _config = parser()
         if getattr(config, 'read', None) is not None:
             _config.readfp(config)
         else:
@@ -281,6 +285,11 @@ def read_config(config, path):
             os.path.abspath(os.path.join(path, x))
             for x in reversed(extends)]
     return reversed(result)
+
+
+def read_config(config, path):
+    _config = _read_config(config, path, ConfigParser)
+    return _config
 
 
 class Config(ConfigSection):
