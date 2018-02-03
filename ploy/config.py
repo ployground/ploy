@@ -249,6 +249,40 @@ class ConfigSection(MutableMapping):
         return "%s(%r)" % (self.__class__.__name__, dict(self))
 
 
+def read_config(config, path):
+    result = []
+    stack = [config]
+    while 1:
+        config = stack.pop()
+        src = None
+        if isinstance(config, (str, unicode)):
+            src = os.path.relpath(config)
+        _config = RawConfigParser()
+        _config.optionxform = lambda s: s
+        if getattr(config, 'read', None) is not None:
+            _config.readfp(config)
+        else:
+            if not os.path.exists(config):
+                log.error("Config file '%s' doesn't exist.", config)
+                sys.exit(1)
+            _config.read(config)
+            path = os.path.dirname(config)
+        for section in reversed(_config.sections()):
+            for key, value in reversed(_config.items(section)):
+                result.append((src, path, section, key, value))
+            result.append((src, path, section, None, None))
+        if _config.has_option('global', 'extends'):
+            extends = _config.get('global', 'extends').split()
+        elif _config.has_option('global:global', 'extends'):
+            extends = _config.get('global:global', 'extends').split()
+        else:
+            break
+        stack[0:0] = [
+            os.path.abspath(os.path.join(path, x))
+            for x in reversed(extends)]
+    return reversed(result)
+
+
 class Config(ConfigSection):
     def _expand(self, sectiongroupname, sectionname, section, seen):
         if (sectiongroupname, sectionname) in seen:
@@ -288,40 +322,6 @@ class Config(ConfigSection):
                 if 'get_macro_cleaners' in plugin:
                     self.macro_cleaners.update(plugin['get_macro_cleaners'](self))
 
-    def read_config(self, config):
-        result = []
-        stack = [config]
-        while 1:
-            config = stack.pop()
-            src = None
-            if isinstance(config, (str, unicode)):
-                src = os.path.relpath(config)
-            _config = RawConfigParser()
-            _config.optionxform = lambda s: s
-            if getattr(config, 'read', None) is not None:
-                _config.readfp(config)
-                path = self.path
-            else:
-                if not os.path.exists(config):
-                    log.error("Config file '%s' doesn't exist.", config)
-                    sys.exit(1)
-                _config.read(config)
-                path = os.path.dirname(config)
-            for section in reversed(_config.sections()):
-                for key, value in reversed(_config.items(section)):
-                    result.append((src, path, section, key, value))
-                result.append((src, path, section, None, None))
-            if _config.has_option('global', 'extends'):
-                extends = _config.get('global', 'extends').split()
-            elif _config.has_option('global:global', 'extends'):
-                extends = _config.get('global:global', 'extends').split()
-            else:
-                break
-            stack[0:0] = [
-                os.path.abspath(os.path.join(path, x))
-                for x in reversed(extends)]
-        return reversed(result)
-
     def get_section(self, sectiongroupname, sectionname):
         sectiongroup = self[sectiongroupname]
         if sectionname not in sectiongroup:
@@ -333,7 +333,7 @@ class Config(ConfigSection):
         return sectiongroup[sectionname]
 
     def parse(self):
-        _config = self.read_config(self.config)
+        _config = read_config(self.config, self.path)
         for src, path, configsection, key, value in _config:
             if ':' in configsection:
                 sectiongroupname, sectionname = configsection.split(':')
