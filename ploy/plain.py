@@ -7,12 +7,12 @@ from ploy.common import SSHKeyFingerprintIgnore
 from ploy.common import SSHKeyFingerprintInstance
 from ploy.common import SSHKeyInfo
 from ploy.common import parse_fingerprint, parse_ssh_keygen
+from ploy.common import split_option
 import getpass
 import hashlib
 import logging
 import os
 import paramiko
-import re
 import socket
 import subprocess
 import sys
@@ -55,10 +55,6 @@ class InstanceFormattingWrapper(object):
 
     def __getattr__(self, name):
         return self.instance.config[name]
-
-
-def split_option(option):
-    return list(filter(None, (x.strip() for x in re.split(',|\n', option.strip()))))
 
 
 class Instance(BaseInstance):

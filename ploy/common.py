@@ -379,6 +379,10 @@ class Hooks(object):
         self.hooks.append(hook)
 
 
+def split_option(option):
+    return list(filter(None, (x.strip() for x in re.split(',|\n', option.strip()))))
+
+
 def parse_fingerprint(data):
     if hasattr(data, 'split'):
         parts = data.split(':')
