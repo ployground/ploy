@@ -238,10 +238,11 @@ def test_yesno(default, mock, all, question, answer, expected):
 
     with mock.patch('ploy.common.get_input') as RawInput:
         RawInput.side_effect = get_input_result
-        try:
+        if type(expected) == type and issubclass(expected, Exception):
+            with pytest.raises(expected):
+                yesno('Foo', default, all)
+        else:
             assert yesno('Foo', default, all) == expected
-        except Exception as e:
-            assert type(e) == expected
 
 
 @pytest.mark.parametrize("text, keyinfo", [
