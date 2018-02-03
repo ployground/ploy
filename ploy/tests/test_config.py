@@ -5,12 +5,6 @@ import os
 import pytest
 
 
-try:
-    unicode
-except NameError:  # pragma: nocover
-    unicode = str
-
-
 class TestConfig:
     def testEmpty(self):
         contents = StringIO(u"")
@@ -320,7 +314,7 @@ class TestMassagers:
         config.add_massager(BooleanMassager('section', 'value'))
         with pytest.raises(ValueError) as e:
             config.add_massager(IntegerMassager('section', 'value'))
-        assert unicode(e.value) == "Massager for option 'value' in section group 'section' already registered."
+        assert str(e.value) == "Massager for option 'value' in section group 'section' already registered."
 
     def testMassagedOverrides(self):
         from ploy.config import IntegerMassager

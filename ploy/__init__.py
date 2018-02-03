@@ -21,12 +21,6 @@ __all__ = [template.__name__]
 log = logging.getLogger('ploy')
 
 
-try:
-    unicode
-except NameError:  # pragma: nocover
-    unicode = str
-
-
 def versionaction_factory(ctrl):
     class VersionAction(argparse.Action):
         def __init__(self, *args, **kw):
@@ -450,7 +444,7 @@ class Controller(object):
             ssh_info = instance.init_ssh_key(user=user)
         except (paramiko.SSHException, socket.error) as e:
             log.error("Couldn't validate fingerprint for ssh connection.")
-            log.error(unicode(e))
+            log.error(str(e))
             log.error("Is the instance finished starting up?")
             sys.exit(1)
         client = ssh_info['client']

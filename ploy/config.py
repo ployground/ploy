@@ -17,9 +17,9 @@ log = logging.getLogger('ploy')
 
 
 try:
-    unicode
+    basestring
 except NameError:  # pragma: nocover
-    unicode = str
+    basestring = str
 
 
 _marker = object()
@@ -261,7 +261,7 @@ def _read_config(config, path, parser):
     while 1:
         config = stack.pop()
         src = None
-        if isinstance(config, (str, unicode)):
+        if isinstance(config, basestring):
             src = os.path.relpath(config)
         _config = parser()
         if getattr(config, 'read', None) is not None:
@@ -387,10 +387,10 @@ class Config(ConfigSection):
                         try:
                             massager = resolve_dotted_name(massager)
                         except ImportError as e:
-                            log.error("Can't import massager from '%s'.\n%s", massager, unicode(e))
+                            log.error("Can't import massager from '%s'.\n%s", massager, str(e))
                             sys.exit(1)
                         except AttributeError as e:
-                            log.error("Can't import massager from '%s'.\n%s", massager, unicode(e))
+                            log.error("Can't import massager from '%s'.\n%s", massager, str(e))
                             sys.exit(1)
                         massager = massager(massager_sectiongroupname, massager_key)
                         if massager_sectionname is None:

@@ -20,11 +20,6 @@ log = logging.getLogger('ploy')
 
 
 try:
-    unicode
-except NameError:  # pragma: nocover
-    unicode = str
-
-try:
     get_input = raw_input
 except NameError:  # pragma: nocover
     get_input = input
@@ -248,7 +243,7 @@ class BaseInstance(object):
             ssh_info = self.init_ssh_key()
         except paramiko.SSHException as e:
             log.error("Couldn't connect to %s." % (self.config_id))
-            log.error(unicode(e))
+            log.error(str(e))
             sys.exit(1)
         self._conn = ssh_info['client']
         ssh_options = dict(

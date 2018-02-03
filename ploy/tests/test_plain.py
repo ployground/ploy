@@ -5,12 +5,6 @@ import paramiko
 import pytest
 
 
-try:
-    unicode
-except NameError:  # pragma: nocover
-    unicode = str
-
-
 class TestPlain:
     @pytest.fixture(autouse=True)
     def setup_ctrl(self, os_execvp_mock, sshclient, sshconfig, tempdir):
@@ -371,7 +365,7 @@ def test_missing_host_key_mismatch(mock, sshclient):
     key.get_bits.return_value = None
     with pytest.raises(paramiko.SSHException) as e:
         shkp.missing_host_key(sshclient, 'localhost', key)
-    assert unicode(e.value) == (
+    assert str(e.value) == (
         "Fingerprint doesn't match for localhost (got "
         "[SSHKeyFingerprint('SHA256:/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k', keytype='rsa')], "
         "expected: [SSHKeyFingerprint('SHA256:LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564')])")
