@@ -26,39 +26,46 @@ else:  # pragma: nocover
     too_view_arguments = 'the following arguments are required'
 
 
-class TestPloy:
-    @pytest.fixture(autouse=True)
-    def setup_configfile(self, ployconf):
-        self.directory = ployconf.directory
-        ployconf.fill([])
-        self.configfile = ployconf
+@pytest.fixture
+def ctrl(ployconf):
+    ctrl = Controller(ployconf.directory)
+    ctrl.configfile = ployconf.path
+    return ctrl
 
+
+@pytest.fixture
+def ctrl_dummy_plugin(ctrl):
+    import ploy.tests.dummy_plugin
+    ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
+    return ctrl
+
+
+class TestPloy:
     def testDefaultConfigPath(self):
         ctrl = Controller()
         ctrl(['./bin/ploy', 'help'])
         assert ctrl.configfile == 'etc/ploy.conf'
 
-    def testDirectoryAsConfig(self):
-        ctrl = Controller(configpath=self.directory)
+    def testDirectoryAsConfig(self, ployconf):
+        ctrl = Controller(configpath=ployconf.directory)
         ctrl(['./bin/ploy', 'help'])
-        assert ctrl.configfile == self.configfile.path
+        assert ctrl.configfile == ployconf.path
 
-    def testFileConfigName(self):
-        ctrl = Controller(configpath=self.directory, configname='foo.conf')
+    def testFileConfigName(self, ployconf):
+        ctrl = Controller(configpath=ployconf.directory, configname='foo.conf')
         ctrl(['./bin/ploy', 'help'])
-        assert ctrl.configfile == os.path.join(self.directory, 'foo.conf')
+        assert ctrl.configfile == os.path.join(ployconf.directory, 'foo.conf')
 
-    def testMissingConfig(self, mock):
-        os.remove(self.configfile.path)
-        ctrl = Controller(configpath=self.directory)
-        ctrl.configfile = self.configfile.path
+    def testMissingConfig(self, mock, ployconf):
+        ctrl = Controller(configpath=ployconf.directory)
+        ctrl.configfile = ployconf.path
         with mock.patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
                 ctrl.config
             LogMock.error.assert_called_with("Config '%s' doesn't exist." % ctrl.configfile)
 
-    def testCallWithNoArguments(self, mock):
-        ctrl = Controller(configpath=self.directory)
+    def testCallWithNoArguments(self, mock, ployconf):
+        ctrl = Controller(configpath=ployconf.directory)
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
                 ctrl(['./bin/ploy'])
@@ -66,30 +73,25 @@ class TestPloy:
         assert 'usage:' in output
         assert too_view_arguments in output
 
-    def testOverwriteConfigPath(self):
-        open(os.path.join(self.directory, 'foo.conf'), 'w').write('\n'.join([
+    def testOverwriteConfigPath(self, ployconf):
+        ployconf.makedirs()
+        open(os.path.join(ployconf.directory, 'foo.conf'), 'w').write('\n'.join([
             '[global]',
             'foo = bar']))
-        ctrl = Controller(configpath=self.directory)
-        ctrl(['./bin/ploy', '-c', os.path.join(self.directory, 'foo.conf'), 'help'])
-        assert ctrl.configfile == os.path.join(self.directory, 'foo.conf')
+        ctrl = Controller(configpath=ployconf.directory)
+        ctrl(['./bin/ploy', '-c', os.path.join(ployconf.directory, 'foo.conf'), 'help'])
+        assert ctrl.configfile == os.path.join(ployconf.directory, 'foo.conf')
         assert ctrl.config == {'global': {'global': {'foo': 'bar'}}}
 
-    def testKnownHostsWithNoConfigErrors(self):
-        os.remove(self.configfile.path)
-        ctrl = Controller(configpath=self.directory)
-        ctrl.configfile = self.configfile.path
+    def testKnownHostsWithNoConfigErrors(self, ctrl, ployconf):
         with pytest.raises(SystemExit):
             ctrl.known_hosts
 
-    def testKnownHosts(self):
-        ctrl = Controller(configpath=self.directory)
-        ctrl.configfile = self.configfile.path
-        assert ctrl.known_hosts == os.path.join(self.directory, 'known_hosts')
+    def testKnownHosts(self, ctrl, ployconf):
+        ployconf.fill([])
+        assert ctrl.known_hosts == os.path.join(ployconf.directory, 'known_hosts')
 
-    def testConflictingPluginCommandName(self, mock):
-        ctrl = Controller(configpath=self.directory)
-        ctrl.configfile = self.configfile.path
+    def testConflictingPluginCommandName(self, ctrl, mock, ployconf):
         ctrl.plugins = dict(dummy=dict(
             get_commands=lambda x: [
                 ('ssh', None)]))
@@ -98,14 +100,11 @@ class TestPloy:
                 ctrl([])
         LogMock.error.assert_called_with("Command name '%s' of '%s' conflicts with existing command name.", 'ssh', 'dummy')
 
-    def testConflictingInstanceShortName(self, mock):
-        import ploy.tests.dummy_plugin
+    def testConflictingInstanceShortName(self, ctrl, mock, ployconf):
         import ploy.plain
-        self.configfile.fill([
+        ployconf.fill([
             '[dummy-instance:foo]',
             '[plain-instance:foo]'])
-        ctrl = Controller(configpath=self.directory)
-        ctrl.configfile = self.configfile.path
         ctrl.plugins = {
             'dummy': ploy.tests.dummy_plugin.plugin,
             'plain': ploy.plain.plugin}
@@ -115,41 +114,30 @@ class TestPloy:
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert "(choose from 'default-foo', 'plain-foo')" in output
 
-    def testInvalidInstanceName(self, mock):
-        import ploy.tests.dummy_plugin
-        self.configfile.fill([
+    def testInvalidInstanceName(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill([
             '[dummy-instance:fo o]'])
-        ctrl = Controller(configpath=self.directory)
-        ctrl.configfile = self.configfile.path
-        ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
         with mock.patch('ploy.common.log') as LogMock:
             with pytest.raises(SystemExit):
-                ctrl(['./bin/ploy', 'ssh', 'bar'])
+                ctrl_dummy_plugin(['./bin/ploy', 'ssh', 'bar'])
         LogMock.error.assert_called_with("Invalid instance name 'fo o'. An instance name may only contain letters, numbers, dashes and underscores.")
 
-    def testInstanceAugmentation(self):
-        import ploy.tests.dummy_plugin
-        self.configfile.fill([
+    def testInstanceAugmentation(self, ctrl_dummy_plugin, ployconf):
+        ployconf.fill([
             '[dummy-instance:foo]'])
-        ctrl = Controller(configpath=self.directory)
-        ctrl.configfile = self.configfile.path
-        ctrl.plugins = {
-            'dummy': ploy.tests.dummy_plugin.plugin}
-        assert 'dummy_augmented' in ctrl.instances['foo'].config
-        assert ctrl.instances['foo'].config['dummy_augmented'] == 'augmented massaged'
+        assert 'dummy_augmented' in ctrl_dummy_plugin.instances['foo'].config
+        assert ctrl_dummy_plugin.instances['foo'].config['dummy_augmented'] == 'augmented massaged'
 
-    def testInstanceAugmentationProxiedMaster(self):
+    def testInstanceAugmentationProxiedMaster(self, ctrl, ployconf):
         import ploy.tests.dummy_proxy_plugin
         import ploy.plain
-        self.configfile.fill([
+        ployconf.fill([
             '[plain-instance:foo]',
             'somevalue = ham',
             '[dummy-master:master]',
             'instance = foo',
             '[dummy-instance:bar]',
             'dummy_value = egg'])
-        ctrl = Controller(configpath=self.directory)
-        ctrl.configfile = self.configfile.path
         ctrl.plugins = {
             'dummy': ploy.tests.dummy_proxy_plugin.plugin,
             'plain': ploy.plain.plugin}
@@ -167,39 +155,29 @@ class TestPloy:
 
 
 class TestStartCommand:
-    @pytest.fixture(autouse=True)
-    def setup_ctrl(self, ployconf, tempdir):
-        self.directory = ployconf.directory
-        self.tempdir = tempdir
-        self.ctrl = Controller(ployconf.directory)
-        self.ctrl.configfile = ployconf.path
-        self._write_config = ployconf.fill
-
-    def testCallWithNoArguments(self, mock):
-        self._write_config('')
+    def testCallWithNoArguments(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'start'])
+                ctrl(['./bin/ploy', 'start'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy start' in output
         assert too_view_arguments in output
 
-    def testCallWithNonExistingInstance(self, mock):
-        self._write_config('')
+    def testCallWithNonExistingInstance(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'start', 'foo'])
+                ctrl(['./bin/ploy', 'start', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy start' in output
         assert "argument instance: invalid choice: 'foo'" in output
 
-    def testCallWithExistingInstance(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithExistingInstance(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]']))
         with mock.patch('ploy.tests.dummy_plugin.log') as LogMock:
-            self.ctrl(['./bin/ploy', 'start', 'foo'])
+            ctrl_dummy_plugin(['./bin/ploy', 'start', 'foo'])
         assert len(LogMock.info.call_args_list) == 1
         call_args = LogMock.info.call_args_list[0][0]
         assert call_args[0] == 'start: %s %s'
@@ -207,23 +185,19 @@ class TestStartCommand:
         assert list(call_args[2].keys()) == ['instances']
         assert sorted(call_args[2]['instances'].keys()) == ['default-foo', 'foo']
 
-    def testCallWithInvalidOverride(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithInvalidOverride(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]']))
         with mock.patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'start', 'foo', '-o', 'ham:egg,spam:1'])
+                ctrl_dummy_plugin(['./bin/ploy', 'start', 'foo', '-o', 'ham:egg,spam:1'])
         LogMock.error.assert_called_with("Invalid format for override 'ham:egg,spam:1', should be NAME=VALUE.")
 
-    def testCallWithOverride(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithOverride(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]']))
         with mock.patch('ploy.tests.dummy_plugin.log') as LogMock:
-            self.ctrl(['./bin/ploy', 'start', 'foo', '-o', 'ham=egg'])
+            ctrl_dummy_plugin(['./bin/ploy', 'start', 'foo', '-o', 'ham=egg'])
         assert len(LogMock.info.call_args_list) == 2
         call_args = LogMock.info.call_args_list[0][0]
         assert call_args[0] == 'start: %s %s'
@@ -232,13 +206,11 @@ class TestStartCommand:
         assert sorted(call_args[2]['instances'].keys()) == ['default-foo', 'foo']
         assert LogMock.info.call_args_list[1] == (('status: %s', 'foo'), {})
 
-    def testCallWithOverrides(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithOverrides(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]']))
         with mock.patch('ploy.tests.dummy_plugin.log') as LogMock:
-            self.ctrl(['./bin/ploy', 'start', 'foo', '-o', 'ham=egg', 'spam=1'])
+            ctrl_dummy_plugin(['./bin/ploy', 'start', 'foo', '-o', 'ham=egg', 'spam=1'])
         assert len(LogMock.info.call_args_list) == 2
         call_args = LogMock.info.call_args_list[0][0]
         assert call_args[0] == 'start: %s %s'
@@ -247,254 +219,205 @@ class TestStartCommand:
         assert sorted(call_args[2]['instances'].keys()) == ['default-foo', 'foo']
         assert LogMock.info.call_args_list[1] == (('status: %s', 'foo'), {})
 
-    def testCallWithMissingStartupScript(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithMissingStartupScript(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
-            'startup_script = %s' % os.path.join(self.directory, 'startup')]))
+            'startup_script = %s' % os.path.join(ployconf.directory, 'startup')]))
         with mock.patch('ploy.common.log') as LogMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'debug', 'foo'])
+                ctrl_dummy_plugin(['./bin/ploy', 'debug', 'foo'])
         LogMock.error.assert_called_with(
             "Startup script '%s' not found.",
-            os.path.join(self.directory, 'startup'))
+            os.path.join(ployconf.directory, 'startup'))
 
-    def testCallWithTooBigStartupScript(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        startup = os.path.join(self.directory, 'startup')
-        self._write_config('\n'.join([
+    def testCallWithTooBigStartupScript(self, ctrl_dummy_plugin, mock, ployconf):
+        startup = os.path.join(ployconf.directory, 'startup')
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
             'startup_script = %s' % startup]))
         with open(startup, 'w') as f:
             f.write(';;;;;;;;;;' * 150)
         with mock.patch('ploy.log') as LogMock:
             with mock.patch('ploy.common.log') as CommonLogMock:
-                self.ctrl(['./bin/ploy', 'debug', 'foo'])
+                ctrl_dummy_plugin(['./bin/ploy', 'debug', 'foo'])
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 1500, 1024)
         CommonLogMock.error.assert_called_with('Startup script too big (%s > %s).', 1500, 1024)
 
-    def testHook(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        startup = self.tempdir['startup']
+    def testHook(self, ctrl_dummy_plugin, mock, ployconf, tempdir):
+        startup = tempdir['startup']
         startup.fill(';;;;;;;;;;')
-        self._write_config('\n'.join([
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
             'startup_script = %s' % startup.path,
             'hooks = ploy.tests.test_ploy.DummyHooks']))
         with mock.patch('ploy.tests.test_ploy.log') as LogMock:
-            self.ctrl(['./bin/ploy', 'start', 'foo'])
+            ctrl_dummy_plugin(['./bin/ploy', 'start', 'foo'])
         assert LogMock.info.call_args_list == [
             (('before_start',), {}),
             (('startup_script_options',), {})]
 
 
 class TestStatusCommand:
-    @pytest.fixture(autouse=True)
-    def setup_ctrl(self, ployconf):
-        self.ctrl = Controller(ployconf.directory)
-        self.ctrl.configfile = ployconf.path
-        self._write_config = ployconf.fill
-
-    def testCallWithNoArguments(self, mock):
-        self._write_config('')
+    def testCallWithNoArguments(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'status'])
+                ctrl(['./bin/ploy', 'status'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy status' in output
         assert too_view_arguments in output
 
-    def testCallWithNonExistingInstance(self, mock):
-        self._write_config('')
+    def testCallWithNonExistingInstance(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'status', 'foo'])
+                ctrl(['./bin/ploy', 'status', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy status' in output
         assert "argument instance: invalid choice: 'foo'" in output
 
-    def testCallWithExistingInstance(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithExistingInstance(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]']))
         with mock.patch('ploy.tests.dummy_plugin.log') as LogMock:
-            self.ctrl(['./bin/ploy', 'status', 'foo'])
+            ctrl_dummy_plugin(['./bin/ploy', 'status', 'foo'])
         LogMock.info.assert_called_with('status: %s', 'foo')
 
 
 class TestStopCommand:
-    @pytest.fixture(autouse=True)
-    def setup_ctrl(self, ployconf):
-        self.ctrl = Controller(ployconf.directory)
-        self.ctrl.configfile = ployconf.path
-        self._write_config = ployconf.fill
-
-    def testCallWithNoArguments(self, mock):
-        self._write_config('')
+    def testCallWithNoArguments(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'stop'])
+                ctrl(['./bin/ploy', 'stop'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy stop' in output
         assert too_view_arguments in output
 
-    def testCallWithNonExistingInstance(self, mock):
-        self._write_config('')
+    def testCallWithNonExistingInstance(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'stop', 'foo'])
+                ctrl(['./bin/ploy', 'stop', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy stop' in output
         assert "argument instance: invalid choice: 'foo'" in output
 
-    def testCallWithExistingInstance(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithExistingInstance(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]']))
         with mock.patch('ploy.tests.dummy_plugin.log') as LogMock:
-            self.ctrl(['./bin/ploy', 'stop', 'foo'])
+            ctrl_dummy_plugin(['./bin/ploy', 'stop', 'foo'])
         LogMock.info.assert_called_with('stop: %s', 'foo')
 
 
 class TestTerminateCommand:
-    @pytest.fixture(autouse=True)
-    def setup_ctrl(self, ployconf):
-        self.ctrl = Controller(ployconf.directory)
-        self.ctrl.configfile = ployconf.path
-        self._write_config = ployconf.fill
-
-    def testCallWithNoArguments(self, mock):
-        self._write_config('')
+    def testCallWithNoArguments(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'terminate'])
+                ctrl(['./bin/ploy', 'terminate'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy terminate' in output
         assert too_view_arguments in output
 
-    def testCallWithNonExistingInstance(self, mock):
-        self._write_config('')
+    def testCallWithNonExistingInstance(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'terminate', 'foo'])
+                ctrl(['./bin/ploy', 'terminate', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy terminate' in output
         assert "argument instance: invalid choice: 'foo'" in output
 
-    def testCallWithExistingInstance(self, mock, yesno_mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithExistingInstance(self, ctrl_dummy_plugin, mock, ployconf, yesno_mock):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]']))
         yesno_mock.expected = [
             ("Are you sure you want to terminate 'dummy-instance:foo'?", True)]
         with mock.patch('ploy.tests.dummy_plugin.log') as LogMock:
-            self.ctrl(['./bin/ploy', 'terminate', 'foo'])
+            ctrl_dummy_plugin(['./bin/ploy', 'terminate', 'foo'])
         LogMock.info.assert_called_with('terminate: %s', 'foo')
 
-    def testHook(self, mock, yesno_mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testHook(self, ctrl_dummy_plugin, mock, ployconf, yesno_mock):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
             'hooks = ploy.tests.test_ploy.DummyHooks']))
         yesno_mock.expected = [
             ("Are you sure you want to terminate 'dummy-instance:foo'?", True)]
         with mock.patch('ploy.tests.test_ploy.log') as LogMock:
-            self.ctrl(['./bin/ploy', 'terminate', 'foo'])
+            ctrl_dummy_plugin(['./bin/ploy', 'terminate', 'foo'])
         assert LogMock.info.call_args_list == [(('after_terminate',), {})]
 
 
 class TestDebugCommand:
-    @pytest.fixture(autouse=True)
-    def setup_ctrl(self, ployconf):
-        self.directory = ployconf.directory
-        self.ctrl = Controller(ployconf.directory)
-        self.ctrl.configfile = ployconf.path
-        self._write_config = ployconf.fill
-
-    def testCallWithNoArguments(self, mock):
-        self._write_config('')
+    def testCallWithNoArguments(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'debug'])
+                ctrl(['./bin/ploy', 'debug'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy debug' in output
         assert too_view_arguments in output
 
-    def testCallWithNonExistingInstance(self, mock):
-        self._write_config('')
+    def testCallWithNonExistingInstance(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'debug', 'foo'])
+                ctrl(['./bin/ploy', 'debug', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy debug' in output
         assert "argument instance: invalid choice: 'foo'" in output
 
-    def testCallWithExistingInstance(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithExistingInstance(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]']))
         with mock.patch('ploy.log') as LogMock:
-            self.ctrl(['./bin/ploy', 'debug', 'foo'])
+            ctrl_dummy_plugin(['./bin/ploy', 'debug', 'foo'])
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 0, 1024)
 
-    def testCallWithMissingStartupScript(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithMissingStartupScript(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
-            'startup_script = %s' % os.path.join(self.directory, 'startup')]))
+            'startup_script = %s' % os.path.join(ployconf.directory, 'startup')]))
         with mock.patch('ploy.common.log') as LogMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'debug', 'foo'])
+                ctrl_dummy_plugin(['./bin/ploy', 'debug', 'foo'])
         LogMock.error.assert_called_with(
             "Startup script '%s' not found.",
-            os.path.join(self.directory, 'startup'))
+            os.path.join(ployconf.directory, 'startup'))
 
-    def testCallWithTooBigStartupScript(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        startup = os.path.join(self.directory, 'startup')
-        self._write_config('\n'.join([
+    def testCallWithTooBigStartupScript(self, ctrl_dummy_plugin, mock, ployconf):
+        startup = os.path.join(ployconf.directory, 'startup')
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
             'startup_script = %s' % startup]))
         with open(startup, 'w') as f:
             f.write(';;;;;;;;;;' * 150)
         with mock.patch('ploy.log') as LogMock:
             with mock.patch('ploy.common.log') as CommonLogMock:
-                self.ctrl(['./bin/ploy', 'debug', 'foo'])
+                ctrl_dummy_plugin(['./bin/ploy', 'debug', 'foo'])
         LogMock.info.assert_called_with('Length of startup script: %s/%s', 1500, 1024)
         CommonLogMock.error.assert_called_with('Startup script too big (%s > %s).', 1500, 1024)
 
-    def testCallWithVerboseOption(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        startup = os.path.join(self.directory, 'startup')
-        self._write_config('\n'.join([
+    def testCallWithVerboseOption(self, ctrl_dummy_plugin, mock, ployconf):
+        startup = os.path.join(ployconf.directory, 'startup')
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
             'startup_script = %s' % startup]))
         with open(startup, 'w') as f:
             f.write('FooBar')
         with mock.patch('sys.stdout') as StdOutMock:
             with mock.patch('ploy.log') as LogMock:
-                self.ctrl(['./bin/ploy', 'debug', 'foo', '-v'])
+                ctrl_dummy_plugin(['./bin/ploy', 'debug', 'foo', '-v'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         assert output == 'FooBar'
         assert LogMock.info.call_args_list == [
             (('Length of startup script: %s/%s', 6, 1024), {}), (('Startup script:',), {})]
 
-    def testCallWithTemplateStartupScript(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        startup = os.path.join(self.directory, 'startup')
-        self._write_config('\n'.join([
+    def testCallWithTemplateStartupScript(self, ctrl_dummy_plugin, mock, ployconf):
+        startup = os.path.join(ployconf.directory, 'startup')
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
             'startup_script = %s' % startup,
             'foo = bar']))
@@ -502,17 +425,15 @@ class TestDebugCommand:
             f.write('{foo}')
         with mock.patch('sys.stdout') as StdOutMock:
             with mock.patch('ploy.log') as LogMock:
-                self.ctrl(['./bin/ploy', 'debug', 'foo', '-v'])
+                ctrl_dummy_plugin(['./bin/ploy', 'debug', 'foo', '-v'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         assert output == 'bar'
         assert LogMock.info.call_args_list == [
             (('Length of startup script: %s/%s', 3, 1024), {}), (('Startup script:',), {})]
 
-    def testCallWithOverride(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        startup = os.path.join(self.directory, 'startup')
-        self._write_config('\n'.join([
+    def testCallWithOverride(self, ctrl_dummy_plugin, mock, ployconf):
+        startup = os.path.join(ployconf.directory, 'startup')
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
             'startup_script = %s' % startup,
             'foo = bar']))
@@ -520,7 +441,7 @@ class TestDebugCommand:
             f.write('{foo}')
         with mock.patch('sys.stdout') as StdOutMock:
             with mock.patch('ploy.log') as LogMock:
-                self.ctrl(['./bin/ploy', 'debug', 'foo', '-v', '-o', 'foo=hamster'])
+                ctrl_dummy_plugin(['./bin/ploy', 'debug', 'foo', '-v', '-o', 'foo=hamster'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         assert output == 'hamster'
         assert LogMock.info.call_args_list == [
@@ -528,189 +449,148 @@ class TestDebugCommand:
 
 
 class TestListCommand:
-    @pytest.fixture(autouse=True)
-    def setup_ctrl(self, ployconf):
-        self.ctrl = Controller(ployconf.directory)
-        self.ctrl.configfile = ployconf.path
-        self._write_config = ployconf.fill
-
-    def testCallWithNoArguments(self, mock):
-        self._write_config('')
+    def testCallWithNoArguments(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'list'])
+                ctrl(['./bin/ploy', 'list'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy list' in output
         assert too_view_arguments in output
 
-    def testCallWithNonExistingList(self, mock):
-        self._write_config('')
+    def testCallWithNonExistingList(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'list', 'foo'])
+                ctrl(['./bin/ploy', 'list', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy list' in output
         assert "argument listname: invalid choice: 'foo'" in output
 
-    def testCallWithExistingListButNoMastersWithSnapshots(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithExistingListButNoMastersWithSnapshots(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
             'host = localhost']))
         with mock.patch('sys.stdout') as StdOutMock:
-            self.ctrl(['./bin/ploy', 'list', 'dummy'])
+            ctrl_dummy_plugin(['./bin/ploy', 'list', 'dummy'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         output = list(filter(None, output.splitlines()))
         assert output == ['list_dummy']
 
 
 class TestSSHCommand:
-    @pytest.fixture(autouse=True)
-    def setup_ctrl(self, ployconf, os_execvp_mock):
-        self.directory = ployconf.directory
-        self.ctrl = Controller(ployconf.directory)
-        self.ctrl.configfile = ployconf.path
-        self._write_config = ployconf.fill
-
-    def testCallWithNoArguments(self, mock):
-        self._write_config('')
+    def testCallWithNoArguments(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'ssh'])
+                ctrl(['./bin/ploy', 'ssh'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy ssh' in output
         assert too_view_arguments in output
 
-    def testCallWithNonExistingInstance(self, mock):
-        self._write_config('')
+    def testCallWithNonExistingInstance(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'ssh', 'foo'])
+                ctrl(['./bin/ploy', 'ssh', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy ssh' in output
         assert "argument instance: invalid choice: 'foo'" in output
 
-    def testCallWithExistingInstance(self, mock, os_execvp_mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithExistingInstance(self, ctrl_dummy_plugin, mock, os_execvp_mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
             'host = localhost']))
         with mock.patch('ploy.tests.dummy_plugin.log') as LogMock:
-            self.ctrl(['./bin/ploy', 'ssh', 'foo'])
+            ctrl_dummy_plugin(['./bin/ploy', 'ssh', 'foo'])
         assert LogMock.info.call_args_list == [
             (('init_ssh_key: %s %s', 'foo', None), {}),
             (('client.get_transport',), {}),
             (('sock.close',), {}),
             (('client.close',), {})]
-        known_hosts = os.path.join(self.directory, 'known_hosts')
+        known_hosts = os.path.join(ployconf.directory, 'known_hosts')
         os_execvp_mock.assert_called_with(
             'ssh',
             ['ssh', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
 
 
 class TestSnapshotCommand:
-    @pytest.fixture(autouse=True)
-    def setup_ctrl(self, ployconf):
-        self.ctrl = Controller(ployconf.directory)
-        self.ctrl.configfile = ployconf.path
-        self._write_config = ployconf.fill
-
-    def testCallWithNoArguments(self, mock):
-        self._write_config('')
+    def testCallWithNoArguments(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'snapshot'])
+                ctrl(['./bin/ploy', 'snapshot'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy snapshot' in output
         assert too_view_arguments in output
 
-    def testCallWithNonExistingInstance(self, mock):
-        self._write_config('')
+    def testCallWithNonExistingInstance(self, ctrl, mock, ployconf):
+        ployconf.fill('')
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'snapshot', 'foo'])
+                ctrl(['./bin/ploy', 'snapshot', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy snapshot' in output
         assert "argument instance: invalid choice: 'foo'" in output
 
-    def testCallWithExistingInstance(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testCallWithExistingInstance(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
             'host = localhost']))
         with mock.patch('ploy.tests.dummy_plugin.log') as LogMock:
-            self.ctrl(['./bin/ploy', 'snapshot', 'foo'])
+            ctrl_dummy_plugin(['./bin/ploy', 'snapshot', 'foo'])
         assert LogMock.info.call_args_list == [
             (('snapshot: %s', 'foo'), {})]
 
 
 class TestHelpCommand:
-    @pytest.fixture(autouse=True)
-    def setup_ctrl(self, ployconf):
-        self.ctrl = Controller(ployconf.directory)
-        self.ctrl.configfile = ployconf.path
-        self._write_config = ployconf.fill
-        self._write_config('')
-
-    def testCallWithNoArguments(self, mock):
+    def testCallWithNoArguments(self, ctrl, mock):
         with mock.patch('sys.stdout') as StdOutMock:
-            self.ctrl(['./bin/ploy', 'help'])
+            ctrl(['./bin/ploy', 'help'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         assert 'usage: ploy help' in output
         assert 'Name of the command you want help for.' in output
 
-    def testCallWithNonExistingCommand(self, mock):
+    def testCallWithNonExistingCommand(self, ctrl, mock):
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'help', 'foo'])
+                ctrl(['./bin/ploy', 'help', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert 'usage: ploy help' in output
         assert "argument command: invalid choice: 'foo'" in output
 
-    def testCallWithExistingCommand(self, mock):
+    def testCallWithExistingCommand(self, ctrl, mock):
         with mock.patch('sys.stdout') as StdOutMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'help', 'start'])
+                ctrl(['./bin/ploy', 'help', 'start'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         assert 'usage: ploy start' in output
         assert 'Starts the instance' in output
 
-    def testZSHHelperCommands(self, mock):
+    def testZSHHelperCommands(self, ctrl, mock):
         with mock.patch('sys.stdout') as StdOutMock:
-            self.ctrl(['./bin/ploy', 'help', '-z'])
+            ctrl(['./bin/ploy', 'help', '-z'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         assert 'start' in output.splitlines()
 
-    def testZSHHelperCommand(self, mock):
-        import ploy.tests.dummy_plugin
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-        self._write_config('\n'.join([
+    def testZSHHelperCommand(self, ctrl_dummy_plugin, mock, ployconf):
+        ployconf.fill('\n'.join([
             '[dummy-instance:foo]',
             'host = localhost']))
         with mock.patch('sys.stdout') as StdOutMock:
-            self.ctrl(['./bin/ploy', 'help', '-z', 'start'])
+            ctrl_dummy_plugin(['./bin/ploy', 'help', '-z', 'start'])
         output = "".join(x[0][0] for x in StdOutMock.write.call_args_list)
         assert output.splitlines() == ['default-foo', 'foo']
 
 
 class TestInstance:
-    @pytest.fixture(autouse=True)
-    def setup_ctrl(self, ployconf, tempdir):
-        import ploy.tests.dummy_plugin
+    def testStartupScript(self, ctrl_dummy_plugin, ployconf, tempdir):
         ployconf.fill([
             '[dummy-master:master]',
             '[instance:foo]',
             'master = master',
             'startup_script = ../startup'])
         tempdir['startup'].fill('startup')
-        self.ctrl = Controller(ployconf.directory)
-        self.ctrl.configfile = ployconf.path
-        self.ctrl.plugins = {'dummy': ploy.tests.dummy_plugin.plugin}
-
-    def testStartupScript(self):
-        instance = self.ctrl.instances['foo']
+        instance = ctrl_dummy_plugin.instances['foo']
         startup = instance.startup_script()
         assert startup == 'startup'

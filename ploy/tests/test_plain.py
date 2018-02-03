@@ -6,99 +6,95 @@ import pytest
 
 
 class TestPlain:
-    @pytest.fixture(autouse=True)
-    def setup_ctrl(self, tempdir):
+    @pytest.fixture
+    def ctrl(self, ployconf):
         import ploy.plain
-        self.directory = tempdir.directory
-        self.ctrl = Controller(self.directory)
-        self.ctrl.plugins = {
+        ctrl = Controller(ployconf.directory)
+        ctrl.plugins = {
             'plain': ploy.plain.plugin}
+        return ctrl
 
-    def _write_config(self, content):
-        with open(os.path.join(self.directory, 'ploy.conf'), 'w') as f:
-            f.write(content)
-
-    def testInstanceHasNoStatus(self, mock):
-        self._write_config('\n'.join([
-            '[plain-instance:foo]']))
+    def testInstanceHasNoStatus(self, ctrl, mock, ployconf):
+        ployconf.fill([
+            '[plain-instance:foo]'])
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'status', 'foo'])
+                ctrl(['./bin/ploy', 'status', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert "invalid choice: 'foo'" in output
 
-    def testInstanceCantBeStarted(self, mock):
-        self._write_config('\n'.join([
-            '[plain-instance:foo]']))
+    def testInstanceCantBeStarted(self, ctrl, mock, ployconf):
+        ployconf.fill([
+            '[plain-instance:foo]'])
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'start', 'foo'])
+                ctrl(['./bin/ploy', 'start', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert "invalid choice: 'foo'" in output
 
-    def testInstanceCantBeStopped(self, mock):
-        self._write_config('\n'.join([
-            '[plain-instance:foo]']))
+    def testInstanceCantBeStopped(self, ctrl, mock, ployconf):
+        ployconf.fill([
+            '[plain-instance:foo]'])
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'stop', 'foo'])
+                ctrl(['./bin/ploy', 'stop', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert "invalid choice: 'foo'" in output
 
-    def testInstanceCantBeTerminated(self, mock):
-        self._write_config('\n'.join([
-            '[plain-instance:foo]']))
+    def testInstanceCantBeTerminated(self, ctrl, mock, ployconf):
+        ployconf.fill([
+            '[plain-instance:foo]'])
         with mock.patch('sys.stderr') as StdErrMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'stop', 'foo'])
+                ctrl(['./bin/ploy', 'stop', 'foo'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
         assert "invalid choice: 'foo'" in output
 
-    def testSSHWithNoHost(self, mock):
-        self._write_config('\n'.join([
-            '[plain-instance:foo]']))
+    def testSSHWithNoHost(self, ctrl, mock, ployconf):
+        ployconf.fill([
+            '[plain-instance:foo]'])
         with mock.patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'ssh', 'foo'])
+                ctrl(['./bin/ploy', 'ssh', 'foo'])
         assert LogMock.error.call_args_list == [
             (("Couldn't validate fingerprint for ssh connection.",), {}),
             (("No host or ip set in config.",), {}),
             (('Is the instance finished starting up?',), {})]
 
-    def testSSHWithFingerprintMismatch(self, mock, sshclient):
-        self._write_config('\n'.join([
+    def testSSHWithFingerprintMismatch(self, ctrl, mock, ployconf, sshclient):
+        ployconf.fill([
             '[plain-instance:foo]',
             'host = localhost',
-            'fingerprint = foo']))
+            'fingerprint = foo'])
         sshclient().connect.side_effect = paramiko.SSHException(
             "Fingerprint doesn't match for localhost (got bar, expected foo)")
         with mock.patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
-                self.ctrl(['./bin/ploy', 'ssh', 'foo'])
+                ctrl(['./bin/ploy', 'ssh', 'foo'])
         assert LogMock.error.call_args_list == [
             (("Couldn't validate fingerprint for ssh connection.",), {}),
             (("Fingerprint doesn't match for localhost (got bar, expected foo)",), {}),
             (('Is the instance finished starting up?',), {})]
 
-    def testSSH(self, os_execvp_mock, sshclient):
-        self._write_config('\n'.join([
+    def testSSH(self, ctrl, os_execvp_mock, ployconf, sshclient):
+        ployconf.fill([
             '[plain-instance:foo]',
             'host = localhost',
-            'fingerprint = foo']))
-        self.ctrl(['./bin/ploy', 'ssh', 'foo'])
-        known_hosts = os.path.join(self.directory, 'known_hosts')
+            'fingerprint = foo'])
+        ctrl(['./bin/ploy', 'ssh', 'foo'])
+        known_hosts = os.path.join(ployconf.directory, 'known_hosts')
         os_execvp_mock.assert_called_with(
             'ssh',
             ['ssh', '-o', 'StrictHostKeyChecking=yes', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
 
-    def testSSHExtraArgs(self, os_execvp_mock, sshclient):
-        self._write_config('\n'.join([
+    def testSSHExtraArgs(self, ctrl, os_execvp_mock, ployconf, sshclient):
+        ployconf.fill([
             '[plain-instance:foo]',
             'host = localhost',
             'fingerprint = foo',
-            'ssh-extra-args = forwardagent yes']))
-        self.ctrl(['./bin/ploy', 'ssh', 'foo'])
-        known_hosts = os.path.join(self.directory, 'known_hosts')
+            'ssh-extra-args = forwardagent yes'])
+        ctrl(['./bin/ploy', 'ssh', 'foo'])
+        known_hosts = os.path.join(ployconf.directory, 'known_hosts')
         os_execvp_mock.assert_called_with(
             'ssh',
             ['ssh', '-o', 'Forwardagent=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])

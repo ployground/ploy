@@ -1,5 +1,4 @@
 from __future__ import print_function, unicode_literals
-from io import StringIO
 from ploy.common import InstanceHooks, BaseInstance, StartupScriptMixin
 from ploy.common import SSHKeyFingerprint, parse_ssh_keygen
 from ploy.config import Config, StartupScriptMassager
@@ -28,60 +27,59 @@ class MockInstance(BaseInstance, StartupScriptMixin):
 
 
 class TestStartupScript:
-    @pytest.fixture(autouse=True)
-    def setup_tempdir(self, tempdir):
-        self.tempdir = tempdir
-        self.directory = tempdir.directory
+    @pytest.fixture
+    def make_parsed_config(self, make_file_io):
 
-    def _create_config(self, contents, path=None):
-        contents = StringIO(contents)
-        config = Config(contents, path=path)
-        config.add_massager(
-            StartupScriptMassager('instance', 'startup_script'))
-        return config.parse()
+        def make_parsed_config(content, path=None):
+            config = Config(make_file_io(content), path=path)
+            config.add_massager(
+                StartupScriptMassager('instance', 'startup_script'))
+            return config.parse()
 
-    def testNoStartupScript(self):
+        return make_parsed_config
+
+    def testNoStartupScript(self, make_parsed_config):
         instance = MockInstance()
-        config = self._create_config(u"[instance:foo]")
+        config = make_parsed_config(u"[instance:foo]")
         instance.master = MockMaster(config)
         result = instance.startup_script()
         assert result == ""
 
-    def testMissingStartupScript(self, mock):
+    def testMissingStartupScript(self, make_parsed_config, mock, tempdir):
         instance = MockInstance()
-        config = self._create_config(
+        config = make_parsed_config(
             u"\n".join([
                 "[instance:foo]",
                 "startup_script = foo"]),
-            path=self.directory)
+            path=tempdir.directory)
         instance.master = MockMaster(config)
         with mock.patch('ploy.common.log') as CommonLogMock:
             with pytest.raises(SystemExit):
                 instance.startup_script()
         CommonLogMock.error.assert_called_with(
             "Startup script '%s' not found.",
-            os.path.join(self.directory, 'foo'))
+            os.path.join(tempdir.directory, 'foo'))
 
-    def testEmptyStartupScript(self):
-        self.tempdir['foo'].fill("")
+    def testEmptyStartupScript(self, make_parsed_config, tempdir):
+        tempdir['foo'].fill("")
         instance = MockInstance()
-        config = self._create_config(
+        config = make_parsed_config(
             u"\n".join([
                 "[instance:foo]",
                 "startup_script = foo"]),
-            path=self.directory)
+            path=tempdir.directory)
         instance.master = MockMaster(config)
         result = instance.startup_script()
         assert result == ""
 
-    def testGzip(self):
-        self.tempdir['foo'].fill("")
+    def testGzip(self, make_parsed_config, tempdir):
+        tempdir['foo'].fill("")
         instance = MockInstance()
-        config = self._create_config(
+        config = make_parsed_config(
             u"\n".join([
                 "[instance:foo]",
                 "startup_script = gzip:foo"]),
-            path=self.directory)
+            path=tempdir.directory)
         instance.master = MockMaster(config)
         result = instance.startup_script()
         expected = b"\n".join([
@@ -97,14 +95,14 @@ class TestStartupScript:
         assert header[8:] == b"\x02\xff"  # extra flags + os
         assert body == b"\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 
-    def testGzipCustomShebang(self):
-        self.tempdir['foo'].fill("#!/usr/bin/env python")
+    def testGzipCustomShebang(self, make_parsed_config, tempdir):
+        tempdir['foo'].fill("#!/usr/bin/env python")
         instance = MockInstance()
-        config = self._create_config(
+        config = make_parsed_config(
             u"\n".join([
                 "[instance:foo]",
                 "startup_script = gzip:foo"]),
-            path=self.directory)
+            path=tempdir.directory)
         instance.master = MockMaster(config)
         result = instance.startup_script()
         expected = b"\n".join([
@@ -114,19 +112,19 @@ class TestStartupScript:
             b""])
         assert result[:len(expected)] == expected
 
-    def test_strip_hashcomments(self):
-        self.tempdir['foo'].fill([
+    def test_strip_hashcomments(self, make_parsed_config, tempdir):
+        tempdir['foo'].fill([
             "#!/bin/bash",
             "some command",
             "#some comment",
             "    # an indented comment",
             "and another command"])
         instance = MockInstance()
-        config = self._create_config(
+        config = make_parsed_config(
             u"\n".join([
                 "[instance:foo]",
                 "startup_script = foo"]),
-            path=self.directory)
+            path=tempdir.directory)
         instance.master = MockMaster(config)
         result = instance.startup_script()
         assert result == "\n".join([
@@ -134,27 +132,27 @@ class TestStartupScript:
             "some command",
             "and another command"])
 
-    def testMaxSizeOk(self):
-        self.tempdir['foo'].fill("")
+    def testMaxSizeOk(self, make_parsed_config, tempdir):
+        tempdir['foo'].fill("")
         instance = MockInstance()
-        config = self._create_config(
+        config = make_parsed_config(
             u"\n".join([
                 "[instance:foo]",
                 "startup_script = foo"]),
-            path=self.directory)
+            path=tempdir.directory)
         instance.master = MockMaster(config)
         instance.max_startup_script_size = 10
         result = instance.startup_script()
         assert result == ""
 
-    def testMaxSizeExceeded(self, mock):
-        self.tempdir['foo'].fill("aaaaabbbbbccccc")
+    def testMaxSizeExceeded(self, make_parsed_config, mock, tempdir):
+        tempdir['foo'].fill("aaaaabbbbbccccc")
         instance = MockInstance()
-        config = self._create_config(
+        config = make_parsed_config(
             u"\n".join([
                 "[instance:foo]",
                 "startup_script = foo"]),
-            path=self.directory)
+            path=tempdir.directory)
         instance.master = MockMaster(config)
         instance.max_startup_script_size = 10
         with mock.patch('ploy.common.log') as LogMock:
@@ -162,14 +160,14 @@ class TestStartupScript:
                 instance.startup_script()
             LogMock.error.assert_called_with('Startup script too big (%s > %s).', 15, 10)
 
-    def testMaxSizeExceededDebug(self, mock):
-        self.tempdir['foo'].fill("aaaaabbbbbccccc")
+    def testMaxSizeExceededDebug(self, make_parsed_config, mock, tempdir):
+        tempdir['foo'].fill("aaaaabbbbbccccc")
         instance = MockInstance()
-        config = self._create_config(
+        config = make_parsed_config(
             u"\n".join([
                 "[instance:foo]",
                 "startup_script = foo"]),
-            path=self.directory)
+            path=tempdir.directory)
         instance.master = MockMaster(config)
         instance.max_startup_script_size = 10
         with mock.patch('ploy.common.log') as LogMock:
