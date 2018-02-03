@@ -316,7 +316,7 @@ class Config(ConfigSection):
         # properly detected
         del section['<']
 
-    def __init__(self, config, path=None, bbb_config=False, plugins=None):
+    def __init__(self, config, path=None, plugins=None):
         ConfigSection.__init__(self)
         self.config = config
         if path is None:
