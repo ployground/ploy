@@ -2,9 +2,9 @@ from __future__ import print_function, unicode_literals
 import pkg_resources
 from collections import MutableMapping
 from lazy import lazy
+from ploy import hookspecs, template
 from ploy.common import sorted_choices
-from ploy.config import Config
-from ploy import template
+from pluggy import PluginManager
 import logging
 import argparse
 import os
@@ -110,6 +110,17 @@ class Controller(object):
         if progname is None:
             progname = 'ploy'
         self.progname = progname
+        self.pm = PluginManager('ploy')
+        self.pm.add_hookspecs(hookspecs)
+
+    @lazy
+    def hook(self):
+        from .config import ConfigPlugin
+        self.pm.register(ConfigPlugin())
+        for pluginname, plugin in self.plugins.items():
+            pass
+        self.pm.check_pending()
+        return self.pm.hook
 
     @lazy
     def plugins(self):
@@ -133,9 +144,8 @@ class Controller(object):
         if not os.path.exists(configpath):
             log.error("Config '%s' doesn't exist." % configpath)
             sys.exit(1)
-        config = Config(configpath, plugins=self.plugins)
-        config.parse()
-        return config
+        plugins = self.plugins
+        return self.hook.ploy_load_config(fn=configpath, plugins=plugins)
 
     @lazy
     def masters(self):
@@ -559,6 +569,20 @@ class Controller(object):
         sub_argv = argv[len(main_argv):]
         args = parser.parse_args(main_argv[1:])
         self.configfile = args.configfile
+        configfiles = self.hook.ploy_locate_config(fn=args.configfile)
+        if len(configfiles) > 1:
+            log.warning(
+                "Multiple config files found:\n%s", "\n".join(
+                    "    " + x for x in configfiles))
+            configfile = configfiles[0]
+            for fn in configfiles:
+                if fn.endswith(".conf"):
+                    configfile = fn
+                    break
+            log.info("Using config file: %s", configfile)
+            self.configfile = configfile
+        elif len(configfiles) == 1:
+            self.configfile = configfiles[0]
         if args.debug:
             logging.root.setLevel(logging.DEBUG)
         try:

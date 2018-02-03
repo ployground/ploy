@@ -5,6 +5,7 @@ try:
 except ImportError:  # pragma: nocover
     import ConfigParser as configparser  # for Python 2.7
 from collections import MutableMapping
+from pluggy import HookimplMarker
 from weakref import proxy
 import inspect
 import logging
@@ -14,6 +15,7 @@ import warnings
 
 
 log = logging.getLogger('ploy')
+hookimpl = HookimplMarker("ploy")
 
 
 try:
@@ -417,4 +419,19 @@ class Config(ConfigSection):
         config = self[sectiongroupname][sectionname].copy()
         if overrides is not None:
             config._dict.update(overrides)
+        return config
+
+
+class ConfigPlugin:
+    @hookimpl
+    def ploy_locate_config(self, fn):
+        if fn.endswith('.conf') and os.path.exists(fn):
+            return fn
+
+    @hookimpl
+    def ploy_load_config(self, fn, plugins):
+        if not fn.endswith('.conf'):
+            return
+        config = Config(fn, plugins=plugins)
+        config.parse()
         return config

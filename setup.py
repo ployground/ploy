@@ -10,6 +10,7 @@ HISTORY = open(os.path.join(here, 'HISTORY.rst')).read()
 install_requires = [
     'lazy',
     'paramiko',
+    'pluggy',
     'setuptools']
 
 setup(
