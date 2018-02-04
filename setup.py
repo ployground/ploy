@@ -33,7 +33,7 @@ setup(
         'Topic :: System :: Systems Administration'],
     include_package_data=True,
     zip_safe=False,
-    packages=['ploy', 'ploy.tests'],
+    packages=['ploy', 'ploy.tests', 'ploy_pytest_plugin'],
     install_requires=install_requires,
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*',
     entry_points="""
@@ -42,4 +42,6 @@ setup(
         ploy-ssh = ploy:ploy_ssh
         [ploy.plugins]
         plain = ploy.plain:plugin
+        [pytest11]
+        ploy_pytest_plugin = ploy_pytest_plugin
     """)
