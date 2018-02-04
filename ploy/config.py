@@ -7,6 +7,7 @@ except ImportError:  # pragma: nocover
 from collections import MutableMapping
 from pluggy import HookimplMarker
 from weakref import proxy
+import attr
 import inspect
 import logging
 import os
@@ -121,13 +122,11 @@ class UserMassager(BaseMassager):
         return value
 
 
+@attr.s(slots=True)
 class ConfigValue(object):
-    __slots__ = ('path', 'value', 'src')
-
-    def __init__(self, path, value, src=None):
-        self.path = path
-        self.value = value
-        self.src = src
+    path = attr.ib()
+    value = attr.ib()
+    src = attr.ib(default=None)
 
 
 def get_package_name(module):
@@ -257,6 +256,15 @@ class ConfigParser(configparser.RawConfigParser):
         return s
 
 
+@attr.s(slots=True)
+class _RawConfigValue(object):
+    src = attr.ib()
+    path = attr.ib()
+    section = attr.ib()
+    key = attr.ib()
+    value = attr.ib()
+
+
 def _read_config(config, path, parser):
     result = []
     stack = [config]
@@ -276,8 +284,18 @@ def _read_config(config, path, parser):
             path = os.path.dirname(config)
         for section in reversed(_config.sections()):
             for key, value in reversed(_config.items(section)):
-                result.append((src, path, section, key, value))
-            result.append((src, path, section, None, None))
+                result.append(_RawConfigValue(
+                    src=src,
+                    path=path,
+                    section=section,
+                    key=key,
+                    value=value))
+            result.append(_RawConfigValue(
+                src=src,
+                path=path,
+                section=section,
+                key=None,
+                value=None))
         if _config.has_option('global', 'extends'):
             extends = _config.get('global', 'extends').split()
         elif _config.has_option('global:global', 'extends'):
@@ -346,18 +364,18 @@ class Config(ConfigSection):
 
     def parse(self):
         _config = read_config(self.config, self.path)
-        for src, path, configsection, key, value in _config:
-            if ':' in configsection:
-                sectiongroupname, sectionname = configsection.split(':')
+        for info in _config:
+            if ':' in info.section:
+                sectiongroupname, sectionname = info.section.split(':')
             else:
-                sectiongroupname, sectionname = 'global', configsection
-            if sectiongroupname == 'global' and sectionname == 'global' and key == 'extends':
+                sectiongroupname, sectionname = 'global', info.section
+            if sectiongroupname == 'global' and sectionname == 'global' and info.key == 'extends':
                 continue
             sectiongroup = self.setdefault(sectiongroupname, ConfigSection())
             self.get_section(sectiongroupname, sectionname)
-            if key is not None:
-                if key == 'massagers':
-                    for spec in value.splitlines():
+            if info.key is not None:
+                if info.key == 'massagers':
+                    for spec in info.value.splitlines():
                         spec = spec.strip()
                         if not spec:
                             continue
@@ -402,7 +420,8 @@ class Config(ConfigSection):
                                 sectiongroupname, massager_sectionname)
                             massager_section.add_massager(massager)
                 else:
-                    sectiongroup[sectionname][key] = ConfigValue(path, value, src=src)
+                    sectiongroup[sectionname][info.key] = ConfigValue(
+                        info.path, info.value, src=info.src)
         if 'plugin' in self:  # pragma: no cover
             warnings.warn("The 'plugin' section isn't used anymore.")
             del self['plugin']
