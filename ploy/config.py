@@ -268,8 +268,13 @@ class _RawConfigValue(object):
 def _read_config(config, path, parser):
     result = []
     stack = [config]
+    seen = set()
     while 1:
         config = stack.pop()
+        if config in seen:
+            log.error("Circular config file extension on '%s'.", config)
+            sys.exit(1)
+        seen.add(config)
         src = None
         if isinstance(config, basestring):
             src = os.path.relpath(config)

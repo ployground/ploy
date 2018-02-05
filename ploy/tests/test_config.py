@@ -512,6 +512,24 @@ class TestConfigExtend:
                 'global': {
                     'foo': 'bar', 'ham': 'egg'}}}
 
+    def testCircularExtend(self, confmaker, mock):
+        ployconf = confmaker('ploy.conf')
+        ployconf.fill(
+            '\n'.join([
+                '[global]',
+                'extends = foo.conf',
+                'ham = egg']))
+        confmaker('foo.conf').fill(
+            '\n'.join([
+                '[global]',
+                'extends = foo.conf',
+                'ham = pork']))
+        with mock.patch('ploy.config.log') as LogMock:
+            with pytest.raises(SystemExit):
+                Config(ployconf.path).parse()
+        assert LogMock.error.call_args_list == [
+            (("Circular config file extension on '%s'.", os.path.join(ployconf.directory, 'foo.conf')), {})]
+
     def testDoubleExtend(self, confmaker):
         ployconf = confmaker('ploy.conf')
         ployconf.fill(
