@@ -1,8 +1,8 @@
 Changelog
 =========
 
-2.0.0 - Unreleased
-------------------
+2.0.0b1 - 2018-02-06
+--------------------
 
 * Support YAML configuration files.
   [fschulze]
@@ -10,7 +10,7 @@ Changelog
 * Dropped support ``ssh`` lib, only ``paramiko`` is supported.
   [fschulze]
 
-* Dropped support for Python 2.6.
+* Dropped support for Python 2.6 and 3.3.
   [fschulze]
 
 
