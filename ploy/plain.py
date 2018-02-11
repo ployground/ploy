@@ -232,7 +232,7 @@ class Instance(BaseInstance):
                             log.error('%s: %s' % (option, client_args[option]))
                     raise
                 if password is None and 'password' in self.config:
-                    password = self.config['password']
+                    password = self.config['password'].encode('utf-8')
                 else:
                     password = getpass.getpass("Password for '%s@%s:%s': " % (user, host, port))
             except paramiko.BadHostKeyException:
