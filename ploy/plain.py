@@ -9,6 +9,7 @@ from ploy.common import SSHKeyFingerprintInstance
 from ploy.common import SSHKeyInfo
 from ploy.common import parse_fingerprint, parse_ssh_keygen
 from ploy.common import split_option
+from ploy.common import wait_for_ssh, wait_for_ssh_on_sock
 import getpass
 import hashlib
 import logging
@@ -188,6 +189,10 @@ class Instance(BaseInstance):
         with open(known_hosts, 'w') as f:
             f.writelines(lines)
 
+    @property
+    def ssh_timeout(self):
+        return int(self.config.get('ssh-timeout', 5))
+
     def init_ssh_key(self, user=None):
         try:
             host = self.get_host()
@@ -196,6 +201,8 @@ class Instance(BaseInstance):
         port = self.get_port()
         hostname = self.sshconfig.get('hostname', host)
         port = self.sshconfig.get('port', port)
+        if not self.proxy_command:
+            wait_for_ssh(hostname, int(port), timeout=self.ssh_timeout)
         password = None
         client = paramiko.SSHClient()
         if port == '22':
@@ -208,7 +215,9 @@ class Instance(BaseInstance):
         known_hosts = self.master.known_hosts
         client.known_hosts = None
         while 1:
-            sock = self.get_proxy_sock(hostname, port)
+            sock_factory = partial(self.get_proxy_sock, hostname, port)
+            wait_for_ssh_on_sock(sock_factory, timeout=self.ssh_timeout)
+            sock = sock_factory()
             if os.path.exists(known_hosts):
                 self._fix_known_hosts(known_hosts)
                 client.load_host_keys(known_hosts)

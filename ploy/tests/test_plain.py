@@ -102,8 +102,10 @@ class TestPlain:
 
 @pytest.yield_fixture
 def sshclient(mock):
-    with mock.patch("paramiko.SSHClient") as ssh_client_mock:
-        yield ssh_client_mock
+    with mock.patch("ploy.plain.wait_for_ssh"):
+        with mock.patch("ploy.plain.wait_for_ssh_on_sock"):
+            with mock.patch("paramiko.SSHClient") as ssh_client_mock:
+                yield ssh_client_mock
 
 
 @pytest.fixture
