@@ -196,7 +196,9 @@ class TestBaseMaster:
             'master = master',
             '[dummy-instance:ham]',
             'master = warden master',
-            '[dummy-instance:egg]'])
+            '[dummy-instance:egg]',
+            '[instance:cheese]',
+            'master = warden master'])
         ctrl = Controller(configpath=ployconf.directory)
         ctrl.plugins = {
             'dummy': ploy.tests.dummy_plugin.plugin}
@@ -208,7 +210,8 @@ class TestBaseMaster:
             'warden-foo', 'foo',
             'master-bar', 'bar',
             'warden-ham', 'master-ham',
-            'warden-egg', 'master-egg', 'another-egg'])
+            'warden-egg', 'master-egg', 'another-egg',
+            'master-cheese', 'warden-cheese'])
 
 
 @pytest.mark.parametrize("default, all, question, answer, expected", [

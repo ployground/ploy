@@ -1,6 +1,13 @@
 Changelog
 =========
 
+1.5.2 - Unreleased
+------------------
+
+* Fix multiple masters for ``instance``.
+  [fschulze]
+
+
 1.5.1 - 2017-12-17
 ------------------
 
