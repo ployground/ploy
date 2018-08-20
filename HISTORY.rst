@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.5.2 - Unreleased
+1.5.2 - 2018-08-20
 ------------------
 
 * Stop testing on Python 3.3.
