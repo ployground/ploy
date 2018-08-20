@@ -4,6 +4,9 @@ Changelog
 1.5.2 - Unreleased
 ------------------
 
+* Stop testing on Python 3.3.
+  [fschulze]
+
 * Fix multiple masters for ``instance``.
   [fschulze]
 
