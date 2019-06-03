@@ -1,8 +1,10 @@
 from __future__ import print_function, unicode_literals
+from io import StringIO
 import pytest
 import os
 import shutil
 import tempfile
+import textwrap
 
 
 class Directory:
@@ -34,7 +36,7 @@ class File:
             raise ValueError
         self.makedirs()
         with open(self.path, 'w') as f:
-            f.write(make_file_content()(content))
+            f.write(make_file_content(content))
 
     def content(self):
         with open(self.path) as f:
@@ -63,18 +65,16 @@ def mock():
     return mock
 
 
-@pytest.fixture
-def make_file_content():
-    from io import StringIO
-    import textwrap
+def make_file_content(content):
+    if isinstance(content, StringIO):
+        return content.getvalue()
+    if isinstance(content, (list, tuple)):
+        content = u"\n".join(content)
+    return textwrap.dedent(content)
 
-    def make_file_content(content):
-        if isinstance(content, StringIO):
-            return content.getvalue()
-        if isinstance(content, (list, tuple)):
-            content = u"\n".join(content)
-        return textwrap.dedent(content)
 
+@pytest.fixture(name="make_file_content")
+def _make_file_content():
     return make_file_content
 
 
@@ -128,11 +128,11 @@ def confmaker(request, tempdir, confext):
                 os.makedirs(self.directory)
 
         def fill(self, content):
-            self._content = make_file_content()(content)
+            self._content = make_file_content(content)
             self._write()
 
         def append(self, content):
-            self._content += "\n" + make_file_content()(content)
+            self._content += "\n" + make_file_content(content)
             self._write()
 
         def content(self):
