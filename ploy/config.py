@@ -427,7 +427,10 @@ def _read_config(config, path, parser, shallow=False):
         except TypeError:
             _config = parser()
         if getattr(config, 'read', None) is not None:
-            _config.readfp(config)
+            if hasattr(_config, 'read_file'):
+                _config.read_file(config)
+            else:
+                _config.readfp(config)
             config.seek(0)
         else:
             if not os.path.exists(config):
