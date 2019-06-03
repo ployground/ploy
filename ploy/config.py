@@ -556,7 +556,7 @@ def _make_comment(value, indent):
     for item in value.split('\n'):
         result.append(
             yaml.tokens.CommentToken(
-                "#%s" % item,
+                "#%s\n" % item,
                 yaml.error.CommentMark(indent),
                 yaml.error.CommentMark(0)))
     return result
