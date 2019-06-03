@@ -7,6 +7,9 @@ Changelog
 * Add 5 seconds default timeout to ssh connections.
   [fschulze]
 
+* Dropped support for Python 3.4.
+  [fschulze]
+
 
 2.0.0b1 - 2018-02-06
 --------------------
