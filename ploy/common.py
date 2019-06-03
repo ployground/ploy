@@ -561,9 +561,9 @@ re_hex_byte = '[0-9a-fA-F]{2}'
 re_fingerprint = "(?:%s:){15}%s" % (re_hex_byte, re_hex_byte)
 re_fingerprint_md5 = "(?:[^:]+:%s)" % re_fingerprint
 re_fingerprint_other = "(?:[^:]+:[0-9a-zA-Z+/=]+)"
-re_fingerprint_info = "^.*?(\d+)\s+(%s|%s|%s)(.*)$" % (re_fingerprint, re_fingerprint_md5, re_fingerprint_other)
+re_fingerprint_info = r"^.*?(\d+)\s+(%s|%s|%s)(.*)$" % (re_fingerprint, re_fingerprint_md5, re_fingerprint_other)
 fingerprint_regexp = re.compile(re_fingerprint_info, re.MULTILINE)
-fingerprint_type_regexp = re.compile("\((.*?)\)")
+fingerprint_type_regexp = re.compile(r"\((.*?)\)")
 
 
 def parse_ssh_keygen(text):
