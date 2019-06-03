@@ -1,7 +1,7 @@
 Changelog
 =========
 
-2.0.0b2 - Unreleased
+2.0.0b2 - 2019-06-03
 --------------------
 
 * Add 5 seconds default timeout to ssh connections.
