@@ -350,21 +350,25 @@ class Executor:
                 raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
         if out is None:
             if self.splitlines:
-                _out = _out.splitlines()
-            result.append(_out)
+                result.append(_out.decode('utf-8').splitlines())
+            else:
+                result.append(_out)
         else:
             if out != _out:
                 if _rc == 0:
-                    log.error(_out)
+                    log.error(_out.decode('utf-8'))
+                    log.error(_err.decode('utf-8'))
                 raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
         if err is None:
             if self.splitlines:
-                _err = _err.splitlines()
-            result.append(_err)
+                result.append(_err.decode('utf-8').splitlines())
+            else:
+                result.append(_err)
         else:
             if err != _err:
                 if _rc == 0:
-                    log.error(_err)
+                    log.error(_out.decode('utf-8'))
+                    log.error(_err.decode('utf-8'))
                 raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
         if len(result) == 0:
             return

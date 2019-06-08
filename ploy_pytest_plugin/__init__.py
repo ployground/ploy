@@ -38,6 +38,11 @@ class File:
         with open(self.path, 'w') as f:
             f.write(make_file_content(content))
 
+    def fill_binary(self, data):
+        self.makedirs()
+        with open(self.path, 'wb') as f:
+            f.write(data)
+
     def content(self):
         with open(self.path) as f:
             return f.read()

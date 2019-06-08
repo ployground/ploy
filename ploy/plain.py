@@ -85,7 +85,7 @@ class Instance(BaseInstance):
         sources = split_option(self.config.get('ssh-host-keys', ''))
         for key in sources:
             if key.startswith('ssh-'):
-                fields = key.split()
+                fields = key.encode('ascii').split()
             elif os.path.exists(key):
                 with open(key, 'rb') as f:
                     fields = f.read().split()
