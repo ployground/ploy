@@ -422,10 +422,11 @@ def _read_config(config, path, parser, shallow=False):
             src = os.path.relpath(config)
         try:
             _config = parser(
+                strict=False,
                 comment_prefixes=('#', ';', 'REM ', 'rem ', 'REm ', 'ReM ', 'rEM ', 'Rem ', 'rEm ', 'reM '),
                 inline_comment_prefixes=(';',))
         except TypeError:
-            _config = parser()
+            _config = parser(strict=False)
         if getattr(config, 'read', None) is not None:
             if hasattr(_config, 'read_file'):
                 _config.read_file(config)
