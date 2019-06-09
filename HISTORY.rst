@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.0.0b3 - 2019-06-09
+--------------------
+
+* Some Python 3.x encoding related fixes.
+  [fschulze]
+
+
 2.0.0b2 - 2019-06-03
 --------------------
 
