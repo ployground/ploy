@@ -183,17 +183,18 @@ class Controller(object):
             if 'master' not in iconfig:
                 log.error("Instance 'instance:%s' has no master set." % instance_id)
                 sys.exit(1)
-            master = self.masters[iconfig['master']]
-            if instance_id in master.instances:
-                log.error("Instance 'instance:%s' conflicts with another instance with id '%s' in master '%s'." % (instance_id, instance_id, master.id))
-                sys.exit(1)
-            instance_class = master.section_info.get(None)
-            if instance_class is None:
-                log.error("Master '%s' has no default instance class." % (master.id))
-                sys.exit(1)
-            instance = instance_class(master, instance_id, iconfig)
-            instance.sectiongroupname = 'instance'
-            master.instances[instance_id] = instance
+            masters = [self.masters[x] for x in iconfig['master'].split()]
+            for master in masters:
+                if instance_id in master.instances:
+                    log.error("Instance 'instance:%s' conflicts with another instance with id '%s' in master '%s'." % (instance_id, instance_id, master.id))
+                    sys.exit(1)
+                instance_class = master.section_info.get(None)
+                if instance_class is None:
+                    log.error("Master '%s' has no default instance class." % (master.id))
+                    sys.exit(1)
+                instance = instance_class(master, instance_id, iconfig)
+                instance.sectiongroupname = 'instance'
+                master.instances[instance_id] = instance
         shortname_map = {}
         for master in self.masters.values():
             for instance_id in master.instances:

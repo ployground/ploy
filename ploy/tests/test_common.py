@@ -190,7 +190,9 @@ class TestBaseMaster:
             'master = master',
             '[dummy-instance:ham]',
             'master = warden master',
-            '[dummy-instance:egg]'])
+            '[dummy-instance:egg]',
+            '[instance:separate]',
+            'master = warden master'])
         ctrl = Controller(configpath=ployconf.directory)
         ctrl.plugins = {
             'dummy': ploy.tests.dummy_plugin.plugin}
@@ -202,6 +204,7 @@ class TestBaseMaster:
             'warden-foo', 'foo',
             'master-bar', 'bar',
             'warden-ham', 'master-ham',
+            'warden-separate', 'master-separate',
             'warden-egg', 'master-egg', 'another-egg'])
 
 

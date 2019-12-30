@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.0.0b4 - Unreleased
+--------------------
+
+* Fix multiple master association for ``[instance:...]`` sections.
+  [fschulze]
+
+
 2.0.0b3 - 2019-06-09
 --------------------
 
