@@ -598,6 +598,8 @@ class Controller(object):
             logging.root.setLevel(logging.DEBUG)
         try:
             args.func(sub_argv, args.func.__doc__)
+        except Exception:
+            log.exception("Error calling command '%s':" % args.commands)
         finally:
             self.instances.close_connections()
 
