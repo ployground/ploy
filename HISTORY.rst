@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.0.0b5 - Unreleased
+--------------------
+
+* Use ``format_exc`` for error reporting in ``ssh`` command for more details.
+  [fschulze]
+
+
 2.0.0b4 - 2020-05-13
 --------------------
 

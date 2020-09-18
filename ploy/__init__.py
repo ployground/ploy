@@ -5,6 +5,7 @@ from lazy import lazy
 from ploy import hookspecs, template
 from ploy.common import sorted_choices
 from pluggy import PluginManager
+from traceback import format_exc
 import logging
 import argparse
 import os
@@ -464,9 +465,9 @@ class Controller(object):
             user = instance.config.get('user')
         try:
             ssh_info = instance.init_ssh_key(user=user)
-        except (paramiko.SSHException, socket.error) as e:
+        except (paramiko.SSHException, socket.error):
             log.error("Couldn't validate fingerprint for ssh connection.")
-            log.error(str(e))
+            log.error(''.join(format_exc()).strip())
             log.error("Is the instance finished starting up?")
             sys.exit(1)
         client = ssh_info['client']

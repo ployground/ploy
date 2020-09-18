@@ -56,10 +56,12 @@ class TestPlain:
         with mock.patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
                 ctrl(['./bin/ploy', 'ssh', 'foo'])
-        assert LogMock.error.call_args_list == [
-            (("Couldn't validate fingerprint for ssh connection.",), {}),
-            (("No host or ip set in config.",), {}),
-            (('Is the instance finished starting up?',), {})]
+        (call1, call2, call3) = LogMock.error.call_args_list
+        assert call1 == (("Couldn't validate fingerprint for ssh connection.",), {})
+        ((arg,), kw) = call2
+        assert "No host or ip set in config." in arg
+        assert kw == {}
+        assert call3 == (('Is the instance finished starting up?',), {})
 
     def testSSHWithFingerprintMismatch(self, ctrl, mock, ployconf, sshclient):
         ployconf.fill([
@@ -71,10 +73,12 @@ class TestPlain:
         with mock.patch('ploy.log') as LogMock:
             with pytest.raises(SystemExit):
                 ctrl(['./bin/ploy', 'ssh', 'foo'])
-        assert LogMock.error.call_args_list == [
-            (("Couldn't validate fingerprint for ssh connection.",), {}),
-            (("Fingerprint doesn't match for localhost (got bar, expected foo)",), {}),
-            (('Is the instance finished starting up?',), {})]
+        (call1, call2, call3) = LogMock.error.call_args_list
+        assert call1 == (("Couldn't validate fingerprint for ssh connection.",), {})
+        ((arg,), kw) = call2
+        assert "Fingerprint doesn't match for localhost (got bar, expected foo)" in arg
+        assert kw == {}
+        assert call3 == (('Is the instance finished starting up?',), {})
 
     def testSSH(self, ctrl, os_execvp_mock, ployconf, sshclient):
         ployconf.fill([
