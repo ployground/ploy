@@ -133,7 +133,7 @@ class Instance(BaseInstance):
                 except subprocess.CalledProcessError as e:
                     log.error("Couldn't get fingerprint from '%s':\n%s" % (path, e))
                     sys.exit(1)
-                result.extend(parse_ssh_keygen(text))
+                result.extend(parse_ssh_keygen(text.decode('ascii')))
                 continue
             if fingerprint.lower() == 'auto':
                 result.append(SSHKeyFingerprintInstance(self))
