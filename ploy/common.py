@@ -144,9 +144,9 @@ class StartupScriptMixin(object):
 
 
 class BaseMaster(object):
-    def __init__(self, ctrl, id, master_config):
+    def __init__(self, ctrl, mid, master_config):
         from ploy.config import ConfigSection  # avoid circular import
-        self.id = id
+        self.id = mid
         self.ctrl = ctrl
         assert self.ctrl.__class__.__name__ == 'Controller'
         self.main_config = self.ctrl.config
