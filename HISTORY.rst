@@ -4,6 +4,9 @@ Changelog
 2.0.0b5 - Unreleased
 --------------------
 
+* Make a proper copy of the configuration for instances with multiple masters.
+  [fschulze]
+
 * Use ``format_exc`` for error reporting in ``ssh`` command for more details.
   [fschulze]
 

@@ -164,7 +164,9 @@ class BaseMaster(object):
                 masters = config.get('master', self.id).split()
                 if self.id not in masters:
                     continue
-                self.instances[sid] = instance_class(self, sid, config)
+                self.main_config.setdefault(instance_class.sectiongroupname, config.__class__())
+                self.main_config[instance_class.sectiongroupname][sid] = config.copy()
+                self.instances[sid] = instance_class(self, sid, self.main_config[instance_class.sectiongroupname][sid])
                 self.instances[sid].sectiongroupname = sectiongroupname
 
 

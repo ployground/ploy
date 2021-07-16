@@ -193,8 +193,9 @@ class Controller(object):
                 if instance_class is None:
                     log.error("Master '%s' has no default instance class." % (master.id))
                     sys.exit(1)
-                instance = instance_class(master, instance_id, iconfig)
-                instance.sectiongroupname = 'instance'
+                config.setdefault(instance_class.sectiongroupname, iconfig.__class__())
+                config[instance_class.sectiongroupname][instance_id] = iconfig.copy()
+                instance = instance_class(master, instance_id, config[instance_class.sectiongroupname][instance_id])
                 master.instances[instance_id] = instance
         shortname_map = {}
         for master in self.masters.values():

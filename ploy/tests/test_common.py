@@ -207,6 +207,24 @@ class TestBaseMaster:
             'warden-separate', 'master-separate',
             'warden-egg', 'master-egg', 'another-egg'])
 
+    def test_config_copy(self, ctrl):
+        instance = ctrl.instances['warden-ham']
+        instance.config['new'] = 'setting'
+        occurences = []
+        for instance in ctrl.instances.values():
+            if 'new' in instance.config:
+                occurences.append(instance.uid)
+        assert occurences == ['warden-ham']
+
+    def test_instance_config_copy(self, ctrl):
+        instance = ctrl.instances['warden-separate']
+        instance.config['new'] = 'setting'
+        occurences = []
+        for instance in ctrl.instances.values():
+            if 'new' in instance.config:
+                occurences.append(instance.uid)
+        assert occurences == ['warden-separate']
+
 
 @pytest.mark.parametrize("default, all, question, answer, expected", [
     (None, False, 'Foo [yes/no] ', ['y'], True),
