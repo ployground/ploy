@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
+try:
+    from base64 import encodebytes
+except ImportError:
+    from base64 import encodestring as encodebytes
 from ploy.common import gzip_string
-import base64
 import email
 import os
 
@@ -28,7 +31,7 @@ class Template(object):
                 elif cmd == 'base64':
                     if not isinstance(value, bytes):
                         value = value.encode('ascii')
-                    value = base64.encodestring(value).decode('ascii')
+                    value = encodebytes(value).decode('ascii')
                 elif cmd == 'format':
                     value = value.format(**kwargs)
                 elif cmd == 'template':

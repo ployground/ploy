@@ -28,16 +28,17 @@ setup(
         'Environment :: Console',
         'Intended Audience :: System Administrators',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Topic :: System :: Installation/Setup',
         'Topic :: System :: Systems Administration'],
     include_package_data=True,
     zip_safe=False,
     packages=['ploy', 'ploy.tests', 'ploy_pytest_plugin'],
     install_requires=install_requires,
-    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*',
+    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*',
     entry_points="""
         [console_scripts]
         ploy = ploy:ploy

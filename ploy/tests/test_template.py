@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
+try:
+    from base64 import decodebytes
+except ImportError:
+    from base64 import decodestring as decodebytes
 from ploy.template import Template
-import base64
 import pytest
 
 
@@ -38,7 +41,7 @@ class TestTemplate:
         template = Template(template.path)
         result = template()
         assert result == "MQ==\n"
-        assert base64.decodestring(result.encode('ascii')) == b"1"
+        assert decodebytes(result.encode('ascii')) == b"1"
 
     def testEscapeEolOption(self, tempdir, template):
         template.fill("option: file,escape_eol test.txt\n\n{option}")
@@ -64,7 +67,7 @@ class TestTemplate:
         template.fill("option: gzip,base64 1\n\n{option}")
         template = Template(template.path)
         result = template()
-        payload = base64.decodestring(result.encode('ascii'))
+        payload = decodebytes(result.encode('ascii'))
         header = payload[:10]
         body = payload[10:]
         assert header[:4] == b"\x1f\x8b\x08\x00"  # magic + compression + flags
