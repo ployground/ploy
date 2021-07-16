@@ -57,10 +57,10 @@ class BaseMassager(object):
 class BooleanMassager(BaseMassager):
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
-        value = value_asbool(value)
-        if value is None:
-            raise ValueError("Unknown value %s for %s in %s:%s." % (value, self.key, self.sectiongroupname, sectionname))
-        return value
+        result = value_asbool(value)
+        if result is None:
+            raise ValueError("Can't convert '%s' to boolean for %s in %s:%s." % (value, self.key, self.sectiongroupname, sectionname))
+        return result
 
 
 class IntegerMassager(BaseMassager):
