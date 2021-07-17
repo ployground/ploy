@@ -1,7 +1,7 @@
 Changelog
 =========
 
-2.0.0b5 - Unreleased
+2.0.0b5 - 2021-07-17
 --------------------
 
 * Make a proper copy of the configuration for instances with multiple masters.
