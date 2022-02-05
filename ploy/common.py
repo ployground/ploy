@@ -13,6 +13,7 @@ import logging
 import os
 import paramiko
 import re
+import select
 import socket
 import subprocess
 import sys
@@ -297,11 +298,14 @@ class BaseInstance(object):
         return shjoin(ssh_args)
 
 
-class Executor:
+class BaseExecutor:
     def __init__(self, instance=None, prefix_args=(), splitlines=False):
         self.instance = instance
         self.prefix_args = tuple(prefix_args)
         self.splitlines = splitlines
+
+    def _run(self):
+        raise NotImplementedError
 
     def __call__(self, *cmd_args, **kw):
         args = self.prefix_args + cmd_args
@@ -309,36 +313,7 @@ class Executor:
         out = kw.pop('out', None)
         err = kw.pop('err', None)
         stdin = kw.pop('stdin', None)
-        if self.instance is None:
-            log.debug('Executing locally:\n%s', args)
-            popen_kw = dict(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if stdin is not None:
-                popen_kw['stdin'] = subprocess.PIPE
-            proc = subprocess.Popen(args, **popen_kw)
-            _out, _err = proc.communicate(input=stdin)
-            _rc = proc.returncode
-        else:
-            cmd = shjoin(args)
-            log.debug('Executing on instance %s:\n%s', self.instance.uid, cmd)
-            chan = self.instance.conn.get_transport().open_session()
-            if stdin is not None:
-                rin = chan.makefile('wb', -1)
-            rout = chan.makefile('rb', -1)
-            rerr = chan.makefile_stderr('rb', -1)
-            forward = None
-            if self.instance.conn._ploy_forward_agent:
-                forward = paramiko.agent.AgentRequestHandler(chan)
-            chan.exec_command(cmd)
-            if stdin is not None:
-                rin.write(stdin)
-                rin.flush()
-                chan.shutdown_write()
-            _out = rout.read()
-            _err = rerr.read()
-            _rc = chan.recv_exit_status()
-            chan.close()
-            if forward is not None:
-                forward.close()
+        (_rc, _out, _err) = self._run(args, stdin)
         result = []
         if rc is None:
             result.append(_rc)
@@ -377,6 +352,83 @@ class Executor:
         elif len(result) == 1:
             return result[0]
         return tuple(result)
+
+
+class LocalExecutor(BaseExecutor):
+    def __init__(self, **kw):
+        BaseExecutor.__init__(self, **kw)
+
+    def _run(self, args, stdin):
+        log.debug('Executing locally:\n%s', args)
+        popen_kw = dict(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if stdin is not None:
+            popen_kw['stdin'] = subprocess.PIPE
+        proc = subprocess.Popen(args, **popen_kw)
+        (out, err) = proc.communicate(input=stdin)
+        rc = proc.returncode
+        return (rc, out, err)
+
+
+class InstanceExecutor(BaseExecutor):
+    def __init__(self, instance, **kw):
+        BaseExecutor.__init__(self, **kw)
+        self.instance = instance
+
+    def _run(self, args, stdin):
+        cmd = shjoin(args)
+        log.debug('Executing on instance %s:\n%s', self.instance.uid, cmd)
+        chan = self.instance.conn.get_transport().open_session()
+        if stdin is not None:
+            rin = chan.makefile('wb', -1)
+        rout = chan.makefile('rb', -1)
+        rerr = chan.makefile_stderr('rb', -1)
+        forward = None
+        if self.instance.conn._ploy_forward_agent:
+            forward = paramiko.agent.AgentRequestHandler(chan)
+        chan.exec_command(cmd)
+        if stdin is not None:
+            rin.write(stdin)
+            rin.flush()
+            rin.close()
+            del rin
+            chan.shutdown_write()
+        out_chunks = []
+        err_chunks = []
+        assert chan == rout.channel
+        assert chan == rerr.channel
+        while 1:
+            # stop if channel was closed prematurely,
+            # and there is no data in the buffers
+            should_break = True
+            (readq, _, _) = select.select([chan], [], [])
+            assert len(readq) == 1 and readq[0] == chan
+            if chan.recv_ready():
+                out_chunks.append(chan.recv(len(chan.in_buffer)))
+                should_break = False
+            if chan.recv_stderr_ready():
+                err_chunks.append(chan.recv_stderr(len(chan.in_stderr_buffer)))
+                should_break = False
+            should_break = (
+                should_break
+                and chan.exit_status_ready()
+                and not chan.recv_ready()
+                and not chan.recv_stderr_ready())
+            if should_break:
+                break
+        rc = chan.recv_exit_status()
+        chan.shutdown_read()
+        chan.close()
+        rout.close()
+        rerr.close()
+        if forward is not None:
+            forward.close()
+        return (rc, b''.join(out_chunks), b''.join(err_chunks))
+
+
+def Executor(instance=None, **kw):
+    if instance is None:
+        return LocalExecutor(**kw)
+    return InstanceExecutor(**kw)
 
 
 class Hooks(object):
