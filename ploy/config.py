@@ -4,7 +4,10 @@ try:
     import configparser
 except ImportError:  # pragma: nocover
     import ConfigParser as configparser  # for Python 2.7
-from collections import MutableMapping
+try:
+    from collections.abc import MutableMapping
+except ImportError:
+    from collections import MutableMapping
 from io import BytesIO
 from ploy.common import split_option
 from pluggy import HookimplMarker

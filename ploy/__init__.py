@@ -1,6 +1,9 @@
 from __future__ import print_function, unicode_literals
 import pkg_resources
-from collections import MutableMapping
+try:
+    from collections.abc import MutableMapping
+except ImportError:
+    from collections import MutableMapping
 from lazy import lazy
 from ploy import hookspecs, template
 from ploy.common import sorted_choices
