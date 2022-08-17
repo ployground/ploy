@@ -1,46 +1,32 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
+from contextlib import closing
 from lazy import lazy
-try:
-    from cStringIO import StringIO as BytesIO
-except ImportError:  # pragma: no cover
-    try:
-        from StringIO import StringIO as BytesIO
-    except ImportError:
-        from io import BytesIO
+from io import BytesIO
 try:
     from shlex import quote as shquote
 except ImportError:  # pragma: nocover
-    from pipes import quote as shquote
+    from pipes import quote as shquote  # for Python 2.7
 import binascii
 import gzip
 import hashlib
 import logging
 import os
+import paramiko
 import re
+import select
+import socket
 import subprocess
 import sys
+import time
 
 
 log = logging.getLogger('ploy')
 
 
 try:
-    unicode
-except NameError:  # pragma: nocover
-    unicode = str
-
-try:
     get_input = raw_input
 except NameError:  # pragma: nocover
     get_input = input
-
-
-def import_paramiko():  # pragma: no cover - we support both
-    try:
-        import paramiko
-    except ImportError:
-        import ssh as paramiko
-    return paramiko
 
 
 def gzip_string(value):
@@ -86,7 +72,7 @@ def yesno(question, default=None, all=False):
             True: ('y', 'yes'),
         }
     if all:
-        if default is 'all':
+        if default == 'all':
             answers['all'] = ('', 'a', 'all')
             question = "%s/All" % question
         else:
@@ -106,6 +92,10 @@ def yesno(question, default=None, all=False):
 
 def shjoin(args):
     return ' '.join(shquote(x) for x in args)
+
+
+def sorted_choices(choices):
+    return sorted(str(x) for x in choices)
 
 
 class StartupScriptMixin(object):
@@ -155,9 +145,9 @@ class StartupScriptMixin(object):
 
 
 class BaseMaster(object):
-    def __init__(self, ctrl, id, master_config):
+    def __init__(self, ctrl, mid, master_config):
         from ploy.config import ConfigSection  # avoid circular import
-        self.id = id
+        self.id = mid
         self.ctrl = ctrl
         assert self.ctrl.__class__.__name__ == 'Controller'
         self.main_config = self.ctrl.config
@@ -175,7 +165,9 @@ class BaseMaster(object):
                 masters = config.get('master', self.id).split()
                 if self.id not in masters:
                     continue
-                self.instances[sid] = instance_class(self, sid, config)
+                self.main_config.setdefault(instance_class.sectiongroupname, config.__class__())
+                self.main_config[instance_class.sectiongroupname][sid] = config.copy()
+                self.instances[sid] = instance_class(self, sid, self.main_config[instance_class.sectiongroupname][sid])
                 self.instances[sid].sectiongroupname = sectiongroupname
 
 
@@ -235,12 +227,8 @@ class BaseInstance(object):
         return "%s:%s" % (self.sectiongroupname, self.id)
 
     @lazy
-    def paramiko(self):
-        return import_paramiko()
-
-    @lazy
     def _sshconfig(self):
-        sshconfig = self.paramiko.SSHConfig()
+        sshconfig = paramiko.SSHConfig()
         path = os.path.expanduser('~/.ssh/config')
         if not os.path.exists(path):
             return sshconfig
@@ -259,9 +247,9 @@ class BaseInstance(object):
                 return self._conn
         try:
             ssh_info = self.init_ssh_key()
-        except self.paramiko.SSHException as e:
+        except paramiko.SSHException as e:
             log.error("Couldn't connect to %s." % (self.config_id))
-            log.error(unicode(e))
+            log.error(str(e))
             sys.exit(1)
         self._conn = ssh_info['client']
         ssh_options = dict(
@@ -310,11 +298,14 @@ class BaseInstance(object):
         return shjoin(ssh_args)
 
 
-class Executor:
+class BaseExecutor:
     def __init__(self, instance=None, prefix_args=(), splitlines=False):
         self.instance = instance
         self.prefix_args = tuple(prefix_args)
         self.splitlines = splitlines
+
+    def _run(self):
+        raise NotImplementedError
 
     def __call__(self, *cmd_args, **kw):
         args = self.prefix_args + cmd_args
@@ -322,36 +313,7 @@ class Executor:
         out = kw.pop('out', None)
         err = kw.pop('err', None)
         stdin = kw.pop('stdin', None)
-        if self.instance is None:
-            log.debug('Executing locally:\n%s', args)
-            popen_kw = dict(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if stdin is not None:
-                popen_kw['stdin'] = subprocess.PIPE
-            proc = subprocess.Popen(args, **popen_kw)
-            _out, _err = proc.communicate(input=stdin)
-            _rc = proc.returncode
-        else:
-            cmd = shjoin(args)
-            log.debug('Executing on instance %s:\n%s', self.instance.uid, cmd)
-            chan = self.instance.conn.get_transport().open_session()
-            if stdin is not None:
-                rin = chan.makefile('wb', -1)
-            rout = chan.makefile('rb', -1)
-            rerr = chan.makefile_stderr('rb', -1)
-            forward = None
-            if self.instance.conn._ploy_forward_agent:
-                forward = self.instance.paramiko.agent.AgentRequestHandler(chan)
-            chan.exec_command(cmd)
-            if stdin is not None:
-                rin.write(stdin)
-                rin.flush()
-                chan.shutdown_write()
-            _out = rout.read()
-            _err = rerr.read()
-            _rc = chan.recv_exit_status()
-            chan.close()
-            if forward is not None:
-                forward.close()
+        (_rc, _out, _err) = self._run(args, stdin)
         result = []
         if rc is None:
             result.append(_rc)
@@ -365,21 +327,25 @@ class Executor:
                 raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
         if out is None:
             if self.splitlines:
-                _out = _out.splitlines()
-            result.append(_out)
+                result.append(_out.decode('utf-8').splitlines())
+            else:
+                result.append(_out)
         else:
             if out != _out:
                 if _rc == 0:
-                    log.error(_out)
+                    log.error(_out.decode('utf-8'))
+                    log.error(_err.decode('utf-8'))
                 raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
         if err is None:
             if self.splitlines:
-                _err = _err.splitlines()
-            result.append(_err)
+                result.append(_err.decode('utf-8').splitlines())
+            else:
+                result.append(_err)
         else:
             if err != _err:
                 if _rc == 0:
-                    log.error(_err)
+                    log.error(_out.decode('utf-8'))
+                    log.error(_err.decode('utf-8'))
                 raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
         if len(result) == 0:
             return
@@ -388,12 +354,93 @@ class Executor:
         return tuple(result)
 
 
+class LocalExecutor(BaseExecutor):
+    def __init__(self, **kw):
+        BaseExecutor.__init__(self, **kw)
+
+    def _run(self, args, stdin):
+        log.debug('Executing locally:\n%s', args)
+        popen_kw = dict(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if stdin is not None:
+            popen_kw['stdin'] = subprocess.PIPE
+        proc = subprocess.Popen(args, **popen_kw)
+        (out, err) = proc.communicate(input=stdin)
+        rc = proc.returncode
+        return (rc, out, err)
+
+
+class InstanceExecutor(BaseExecutor):
+    def __init__(self, instance, **kw):
+        BaseExecutor.__init__(self, **kw)
+        self.instance = instance
+
+    def _run(self, args, stdin):
+        cmd = shjoin(args)
+        log.debug('Executing on instance %s:\n%s', self.instance.uid, cmd)
+        chan = self.instance.conn.get_transport().open_session()
+        if stdin is not None:
+            rin = chan.makefile('wb', -1)
+        rout = chan.makefile('rb', -1)
+        rerr = chan.makefile_stderr('rb', -1)
+        forward = None
+        if self.instance.conn._ploy_forward_agent:
+            forward = paramiko.agent.AgentRequestHandler(chan)
+        chan.exec_command(cmd)
+        if stdin is not None:
+            rin.write(stdin)
+            rin.flush()
+            rin.close()
+            del rin
+            chan.shutdown_write()
+        out_chunks = []
+        err_chunks = []
+        assert chan == rout.channel
+        assert chan == rerr.channel
+        while 1:
+            # stop if channel was closed prematurely,
+            # and there is no data in the buffers
+            should_break = True
+            (readq, _, _) = select.select([chan], [], [])
+            assert len(readq) == 1 and readq[0] == chan
+            if chan.recv_ready():
+                out_chunks.append(chan.recv(len(chan.in_buffer)))
+                should_break = False
+            if chan.recv_stderr_ready():
+                err_chunks.append(chan.recv_stderr(len(chan.in_stderr_buffer)))
+                should_break = False
+            should_break = (
+                should_break
+                and chan.exit_status_ready()
+                and not chan.recv_ready()
+                and not chan.recv_stderr_ready())
+            if should_break:
+                break
+        rc = chan.recv_exit_status()
+        chan.shutdown_read()
+        chan.close()
+        rout.close()
+        rerr.close()
+        if forward is not None:
+            forward.close()
+        return (rc, b''.join(out_chunks), b''.join(err_chunks))
+
+
+def Executor(instance=None, **kw):
+    if instance is None:
+        return LocalExecutor(**kw)
+    return InstanceExecutor(**kw)
+
+
 class Hooks(object):
     def __init__(self):
         self.hooks = []
 
     def add(self, hook):
         self.hooks.append(hook)
+
+
+def split_option(option):
+    return list(filter(None, (x.strip() for x in re.split(',|\n', option.strip()))))
 
 
 def parse_fingerprint(data):
@@ -461,7 +508,7 @@ class SSHKeyFingerprint(object):
         if self.keylen is not None:
             result += ", keylen=%r" % self.keylen
         if self.keytype is not None:
-            result += ", keytype=%r" % self.keytype
+            result += ", keytype='%s'" % self.keytype
         return "%s)" % result
 
 
@@ -517,7 +564,7 @@ class SSHKeyFingerprintInstance(object):
             if func is not None and not self.fingerprints:
                 try:
                     self.fingerprints = [SSHKeyFingerprint(func())]
-                except self.instance.paramiko.SSHException as e:
+                except paramiko.SSHException as e:
                     log.error(str(e))
                     pass
         if not self.fingerprints:
@@ -572,9 +619,9 @@ re_hex_byte = '[0-9a-fA-F]{2}'
 re_fingerprint = "(?:%s:){15}%s" % (re_hex_byte, re_hex_byte)
 re_fingerprint_md5 = "(?:[^:]+:%s)" % re_fingerprint
 re_fingerprint_other = "(?:[^:]+:[0-9a-zA-Z+/=]+)"
-re_fingerprint_info = "^.*?(\d+)\s+(%s|%s|%s)(.*)$" % (re_fingerprint, re_fingerprint_md5, re_fingerprint_other)
+re_fingerprint_info = r"^.*?(\d+)\s+(%s|%s|%s)(.*)$" % (re_fingerprint, re_fingerprint_md5, re_fingerprint_other)
 fingerprint_regexp = re.compile(re_fingerprint_info, re.MULTILINE)
-fingerprint_type_regexp = re.compile("\((.*?)\)")
+fingerprint_type_regexp = re.compile(r"\((.*?)\)")
 
 
 def parse_ssh_keygen(text):
@@ -596,3 +643,37 @@ def parse_ssh_keygen(text):
                 info['keytype'] = match.group(1)
         fingerprints.append(SSHKeyFingerprint(**info))
     return fingerprints
+
+
+def wait_for_ssh(host, port, timeout=5):
+    while timeout > 0:
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            try:
+                s.settimeout(1)
+                if s.connect_ex((host, port)) == 0:
+                    if s.recv(128).startswith(b'SSH-2'):
+                        return
+            except socket.timeout:
+                timeout -= 1
+                if timeout <= 0:
+                    raise
+        time.sleep(1)
+        timeout -= 1
+
+
+def wait_for_ssh_on_sock(socket_factory, timeout=5):
+    while timeout > 0:
+        sock = socket_factory()
+        if sock is None:
+            return
+        with closing(sock) as s:
+            try:
+                s.settimeout(1)
+                if s.recv(128).startswith(b'SSH-2'):
+                    return
+            except socket.timeout:
+                timeout -= 1
+                if timeout <= 0:
+                    raise
+        time.sleep(1)
+        timeout -= 1

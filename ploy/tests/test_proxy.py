@@ -1,4 +1,4 @@
-from mock import call, Mock
+from __future__ import unicode_literals
 from ploy.proxy import ProxyInstance
 import pytest
 
@@ -37,21 +37,21 @@ def test_proxy_instance(ctrl, ployconf):
     assert isinstance(master.instance._proxied_instance, Instance)
 
 
-def test_proxy_nonexisting_instance(capsys, ctrl, monkeypatch, ployconf):
+def test_proxy_nonexisting_instance(capsys, ctrl, mock, monkeypatch, ployconf):
     ployconf.fill([
         '[vb-instance:bar]',
         '[dummy-master:foo]',
         'instance = bar'])
     master = ctrl.masters['foo']
     assert isinstance(master.instance, ProxyInstance)
-    log_mock = Mock()
+    log_mock = mock.Mock()
     monkeypatch.setattr('ploy.log', log_mock)
     monkeypatch.setattr('ploy.proxy.log', log_mock)
     with pytest.raises(SystemExit):
         master.instance.instance
     assert log_mock.error.call_args_list == [
-        call("Instance 'bar' not found. Did you forget to install a plugin? The following sections might match:\n    vb-instance:bar"),
-        call("The to be proxied instance 'bar' for master 'foo' wasn't found.")]
+        mock.call("Instance 'bar' not found. Did you forget to install a plugin? The following sections might match:\n    vb-instance:bar"),
+        mock.call("The to be proxied instance 'bar' for master 'foo' wasn't found.")]
 
 
 def test_proxy_config_values_passed_on_with_default_instance_object(ctrl, ployconf):

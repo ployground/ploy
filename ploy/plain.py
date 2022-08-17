@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from functools import partial
 from lazy import lazy
 from ploy.common import BaseMaster, BaseInstance
@@ -6,13 +7,14 @@ from ploy.common import SSHKeyFingerprintAsk
 from ploy.common import SSHKeyFingerprintIgnore
 from ploy.common import SSHKeyFingerprintInstance
 from ploy.common import SSHKeyInfo
-from ploy.common import import_paramiko
 from ploy.common import parse_fingerprint, parse_ssh_keygen
+from ploy.common import split_option
+from ploy.common import wait_for_ssh, wait_for_ssh_on_sock
 import getpass
 import hashlib
 import logging
 import os
-import re
+import paramiko
 import socket
 import subprocess
 import sys
@@ -22,8 +24,6 @@ log = logging.getLogger('ploy')
 
 
 def ServerHostKeyPolicy(*args, **kwarks):
-    paramiko = import_paramiko()
-
     class ServerHostKeyPolicy(paramiko.MissingHostKeyPolicy):
         def __init__(self, fingerprints_func):
             self.fingerprints_func = fingerprints_func
@@ -59,10 +59,6 @@ class InstanceFormattingWrapper(object):
         return self.instance.config[name]
 
 
-def split_option(option):
-    return list(filter(None, (x.strip() for x in re.split(',|\n', option.strip()))))
-
-
 class Instance(BaseInstance):
     sectiongroupname = 'plain-instance'
 
@@ -76,20 +72,20 @@ class Instance(BaseInstance):
 
     def get_ssh_pub_host_keys(self):
         key_types_map = {
-            'ssh-dss': self.paramiko.DSSKey,
-            'ssh-rsa': self.paramiko.RSAKey}
-        if hasattr(self.paramiko, 'Ed25519Key'):
-            key_types_map['ssh-ed25519'] = self.paramiko.Ed25519Key
-        if hasattr(self.paramiko.ECDSAKey, 'supported_key_format_identifiers'):
-            for key_type in self.paramiko.ECDSAKey.supported_key_format_identifiers():
-                key_types_map[key_type] = partial(self.paramiko.ECDSAKey, validate_point=False)
+            'ssh-dss': paramiko.DSSKey,
+            'ssh-rsa': paramiko.RSAKey}
+        if hasattr(paramiko, 'Ed25519Key'):
+            key_types_map['ssh-ed25519'] = paramiko.Ed25519Key
+        if hasattr(paramiko.ECDSAKey, 'supported_key_format_identifiers'):
+            for key_type in paramiko.ECDSAKey.supported_key_format_identifiers():
+                key_types_map[key_type] = partial(paramiko.ECDSAKey, validate_point=False)
         else:
-            key_types_map['ecdsa-sha2-nistp256'] = self.paramiko.ECDSAKey
+            key_types_map['ecdsa-sha2-nistp256'] = paramiko.ECDSAKey
         host_keys = []
         sources = split_option(self.config.get('ssh-host-keys', ''))
         for key in sources:
             if key.startswith('ssh-'):
-                fields = key.split()
+                fields = key.encode('ascii').split()
             elif os.path.exists(key):
                 with open(key, 'rb') as f:
                     fields = f.read().split()
@@ -103,7 +99,7 @@ class Instance(BaseInstance):
                 continue
             host_keys.append((
                 key_type,
-                key_class(data=self.paramiko.py3compat.decodebytes(fields[1]))))
+                key_class(data=paramiko.py3compat.decodebytes(fields[1]))))
         return host_keys
 
     def get_ssh_fingerprints(self):
@@ -126,7 +122,7 @@ class Instance(BaseInstance):
             if not fingerprints:
                 fingerprints = None
         if fingerprints is None:
-            raise self.paramiko.SSHException("No fingerprint set in config.")
+            raise paramiko.SSHException("No fingerprint set in config.")
         fingerprints = split_option(fingerprints)
         result = []
         for fingerprint in fingerprints:
@@ -137,7 +133,7 @@ class Instance(BaseInstance):
                 except subprocess.CalledProcessError as e:
                     log.error("Couldn't get fingerprint from '%s':\n%s" % (path, e))
                     sys.exit(1)
-                result.extend(parse_ssh_keygen(text))
+                result.extend(parse_ssh_keygen(text.decode('ascii')))
                 continue
             if fingerprint.lower() == 'auto':
                 result.append(SSHKeyFingerprintInstance(self))
@@ -167,7 +163,6 @@ class Instance(BaseInstance):
             return proxy_command.format(**d)
 
     def get_proxy_sock(self, hostname, port):
-        paramiko = self.paramiko
         proxy_command = self.proxy_command
         if proxy_command:
             try:
@@ -187,15 +182,18 @@ class Instance(BaseInstance):
                 if (len(line) == 0) or (line[0] == '#'):
                     continue
                 try:
-                    self.paramiko.hostkeys.HostKeyEntry.from_line(line, lineno)
-                except self.paramiko.hostkeys.InvalidHostKey:
+                    paramiko.hostkeys.HostKeyEntry.from_line(line, lineno)
+                except paramiko.hostkeys.InvalidHostKey:
                     continue
                 lines.append(line + '\n')
         with open(known_hosts, 'w') as f:
             f.writelines(lines)
 
+    @property
+    def ssh_timeout(self):
+        return int(self.config.get('ssh-timeout', 5))
+
     def init_ssh_key(self, user=None):
-        paramiko = self.paramiko
         try:
             host = self.get_host()
         except KeyError:
@@ -203,6 +201,8 @@ class Instance(BaseInstance):
         port = self.get_port()
         hostname = self.sshconfig.get('hostname', host)
         port = self.sshconfig.get('port', port)
+        if not self.proxy_command:
+            wait_for_ssh(hostname, int(port), timeout=self.ssh_timeout)
         password = None
         client = paramiko.SSHClient()
         if port == '22':
@@ -215,7 +215,9 @@ class Instance(BaseInstance):
         known_hosts = self.master.known_hosts
         client.known_hosts = None
         while 1:
-            sock = self.get_proxy_sock(hostname, port)
+            sock_factory = partial(self.get_proxy_sock, hostname, port)
+            wait_for_ssh_on_sock(sock_factory, timeout=self.ssh_timeout)
+            sock = sock_factory()
             if os.path.exists(known_hosts):
                 self._fix_known_hosts(known_hosts)
                 client.load_host_keys(known_hosts)
@@ -236,10 +238,10 @@ class Instance(BaseInstance):
                     log.error('Failed to connect to %s (%s)' % (self.config_id, hostname))
                     for option in ('username', 'password', 'port', 'key_filename', 'sock'):
                         if client_args[option] is not None:
-                            log.error('%s: %r' % (option, client_args[option]))
+                            log.error('%s: %s' % (option, client_args[option]))
                     raise
                 if password is None and 'password' in self.config:
-                    password = self.config['password']
+                    password = self.config['password'].encode('utf-8')
                 else:
                     password = getpass.getpass("Password for '%s@%s:%s': " % (user, host, port))
             except paramiko.BadHostKeyException:
@@ -262,7 +264,7 @@ class Instance(BaseInstance):
                 log.error('Failed to connect to %s (%s)' % (self.config_id, hostname))
                 for option in ('username', 'password', 'port', 'key_filename', 'sock'):
                     if client_args[option] is not None:
-                        log.error('%s: %r' % (option, client_args[option]))
+                        log.error('%s: %s' % (option, client_args[option]))
                 raise
             if sock is not None:
                 sock.close()

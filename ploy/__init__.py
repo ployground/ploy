@@ -1,11 +1,18 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 import pkg_resources
+try:
+    from collections.abc import MutableMapping
+except ImportError:
+    from collections import MutableMapping
 from lazy import lazy
-from ploy.config import Config, DictMixin
-from ploy import template
+from ploy import hookspecs, template
+from ploy.common import sorted_choices
+from pluggy import PluginManager
+from traceback import format_exc
 import logging
 import argparse
 import os
+import paramiko
 import socket
 import sys
 import weakref
@@ -16,12 +23,6 @@ __all__ = [template.__name__]
 
 
 log = logging.getLogger('ploy')
-
-
-try:
-    unicode
-except NameError:  # pragma: nocover
-    unicode = str
 
 
 def versionaction_factory(ctrl):
@@ -47,7 +48,7 @@ def versionaction_factory(ctrl):
     return VersionAction
 
 
-class LazyInstanceDict(DictMixin):
+class LazyInstanceDict(MutableMapping):
     def __init__(self, ctrl):
         self._cache = dict()
         self._dict = dict()
@@ -113,13 +114,32 @@ class Controller(object):
         if progname is None:
             progname = 'ploy'
         self.progname = progname
+        self.pm = PluginManager('ploy')
+        self.pm.add_hookspecs(hookspecs)
+
+    @lazy
+    def hook(self):
+        from .config import ConfigPlugin, YamlConfigPlugin
+        self.pm.register(ConfigPlugin())
+        self.pm.register(YamlConfigPlugin())
+        for pluginname, plugin in self.plugins.items():
+            pass
+        self.pm.check_pending()
+        return self.pm.hook
 
     @lazy
     def plugins(self):
         plugins = {}
         group = 'ploy.plugins'
         for entrypoint in pkg_resources.iter_entry_points(group=group):
-            plugin = entrypoint.load()
+            try:
+                plugin = entrypoint.load()
+            except pkg_resources.DistributionNotFound:
+                continue
+            except pkg_resources.VersionConflict as e:
+                log.error(
+                    "Plugin %r could not be loaded: %s" % (entrypoint.name, e))
+                continue
             plugins[entrypoint.name] = plugin
         return plugins
 
@@ -129,9 +149,8 @@ class Controller(object):
         if not os.path.exists(configpath):
             log.error("Config '%s' doesn't exist." % configpath)
             sys.exit(1)
-        config = Config(configpath, plugins=self.plugins)
-        config.parse()
-        return config
+        plugins = self.plugins
+        return self.hook.ploy_load_config(fn=configpath, plugins=plugins)
 
     @lazy
     def masters(self):
@@ -167,18 +186,19 @@ class Controller(object):
             iconfig = config['instance'][instance_id]
             if 'master' not in iconfig:
                 log.error("Instance 'instance:%s' has no master set." % instance_id)
-                return LazyInstanceDict(self)
-            for master_id in iconfig['master'].split():
-                master = self.masters[master_id]
+                sys.exit(1)
+            masters = [self.masters[x] for x in iconfig['master'].split()]
+            for master in masters:
                 if instance_id in master.instances:
                     log.error("Instance 'instance:%s' conflicts with another instance with id '%s' in master '%s'." % (instance_id, instance_id, master.id))
-                    return LazyInstanceDict(self)
+                    sys.exit(1)
                 instance_class = master.section_info.get(None)
                 if instance_class is None:
                     log.error("Master '%s' has no default instance class." % (master.id))
-                    return LazyInstanceDict(self)
-                instance = instance_class(master, instance_id, iconfig)
-                instance.sectiongroupname = 'instance'
+                    sys.exit(1)
+                config.setdefault(instance_class.sectiongroupname, iconfig.__class__())
+                config[instance_class.sectiongroupname][instance_id] = iconfig.copy()
+                instance = instance_class(master, instance_id, config[instance_class.sectiongroupname][instance_id])
                 master.instances[instance_id] = instance
         shortname_map = {}
         for master in self.masters.values():
@@ -211,7 +231,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         args = parser.parse_args(argv)
         instance = instances[args.instance[0]]
         instance.status()
@@ -226,7 +247,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         args = parser.parse_args(argv)
         instance = instances[args.instance[0]]
         instance.stop()
@@ -242,7 +264,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         args = parser.parse_args(argv)
         instance = instances[args.instance[0]]
         if not yesno("Are you sure you want to terminate '%s'?" % instance.config_id):
@@ -277,7 +300,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         parser.add_argument("-o", "--override", nargs="*", type=str,
                             dest="overrides", metavar="OVERRIDE",
                             help="Option to override in instance config for startup script (name=value).")
@@ -309,6 +333,16 @@ class Controller(object):
                     print("    %s" % value.src)
                 print()
 
+    def cmd_conf2yaml(self, argv, help):
+        """Prints annotated config"""
+        parser = argparse.ArgumentParser(
+            prog="%s annotate" % self.progname,
+            description=help,
+        )
+        parser.parse_args(argv)
+        list(self.instances.values())  # trigger instance augmentation
+        self.config.dump_yaml()
+
     def cmd_debug(self, argv, help):
         """Prints some debug info for this script"""
         parser = argparse.ArgumentParser(
@@ -319,7 +353,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         parser.add_argument("-v", "--verbose", dest="verbose",
                             action="store_true", help="Print more info and output the startup script")
         parser.add_argument("-c", "--console-output", dest="console_output",
@@ -383,7 +418,8 @@ class Controller(object):
         parser.add_argument("list", nargs=1,
                             metavar="listname",
                             help="Name of list to show.",
-                            choices=sorted(self.list_cmds))
+                            type=str,
+                            choices=sorted_choices(self.list_cmds))
         parser.add_argument("listopts",
                             metavar="...",
                             nargs=argparse.REMAINDER,
@@ -402,7 +438,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         parser.add_argument("...", nargs=argparse.REMAINDER,
                             help="ssh options")
         iargs = enumerate(argv)
@@ -432,9 +469,9 @@ class Controller(object):
             user = instance.config.get('user')
         try:
             ssh_info = instance.init_ssh_key(user=user)
-        except (instance.paramiko.SSHException, socket.error) as e:
+        except (paramiko.SSHException, socket.error):
             log.error("Couldn't validate fingerprint for ssh connection.")
-            log.error(unicode(e))
+            log.error(''.join(format_exc()).strip())
             log.error("Is the instance finished starting up?")
             sys.exit(1)
         client = ssh_info['client']
@@ -454,7 +491,8 @@ class Controller(object):
         parser.add_argument("instance", nargs=1,
                             metavar="instance",
                             help="Name of the instance from the config.",
-                            choices=sorted(instances))
+                            type=str,
+                            choices=sorted_choices(instances))
         args = parser.parse_args(argv)
         instance = instances[args.instance[0]]
         instance.snapshot()
@@ -471,7 +509,8 @@ class Controller(object):
         parser.add_argument("command", nargs='?',
                             metavar="command",
                             help="Name of the command you want help for.",
-                            choices=self.subparsers.keys())
+                            type=str,
+                            choices=sorted_choices(self.subparsers.keys()))
         args = parser.parse_args(argv)
         if args.zsh:
             if args.command is None:
@@ -547,10 +586,26 @@ class Controller(object):
         sub_argv = argv[len(main_argv):]
         args = parser.parse_args(main_argv[1:])
         self.configfile = args.configfile
+        configfiles = self.hook.ploy_locate_config(fn=args.configfile)
+        if len(configfiles) > 1:
+            log.warning(
+                "Multiple config files found:\n%s", "\n".join(
+                    "    " + x for x in configfiles))
+            configfile = configfiles[0]
+            for fn in configfiles:
+                if fn.endswith(".conf"):
+                    configfile = fn
+                    break
+            log.info("Using config file: %s", configfile)
+            self.configfile = configfile
+        elif len(configfiles) == 1:
+            self.configfile = configfiles[0]
         if args.debug:
             logging.root.setLevel(logging.DEBUG)
         try:
             args.func(sub_argv, args.func.__doc__)
+        except Exception:
+            log.exception("Error calling command '%s':" % args.commands)
         finally:
             self.instances.close_connections()
 

@@ -1,9 +1,61 @@
 Changelog
 =========
 
-1.5.3 - Unreleased
+2.0.0 - 2022-08-17
 ------------------
 
+* Dropped support for Python 3.6.
+  [fschulze]
+
+* Added support for Python 3.10.
+  [fschulze]
+
+
+2.0.0b5 - 2021-07-17
+--------------------
+
+* Make a proper copy of the configuration for instances with multiple masters.
+  [fschulze]
+
+* Use ``format_exc`` for error reporting in ``ssh`` command for more details.
+  [fschulze]
+
+
+2.0.0b4 - 2020-05-13
+--------------------
+
+* Fix multiple master association for ``[instance:...]`` sections.
+  [fschulze]
+
+
+2.0.0b3 - 2019-06-09
+--------------------
+
+* Some Python 3.x encoding related fixes.
+  [fschulze]
+
+
+2.0.0b2 - 2019-06-03
+--------------------
+
+* Add 5 seconds default timeout to ssh connections.
+  [fschulze]
+
+* Dropped support for Python 3.4.
+  [fschulze]
+
+
+2.0.0b1 - 2018-02-06
+--------------------
+
+* Support YAML configuration files.
+  [fschulze]
+
+* Dropped support ``ssh`` lib, only ``paramiko`` is supported.
+  [fschulze]
+
+* Dropped support for Python 2.6 and 3.3.
+  [fschulze]
 
 
 1.5.2 - 2018-08-20

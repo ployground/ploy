@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from ploy.tests.dummy_plugin import Master as BaseMaster
 from ploy.tests.dummy_plugin import augment_instance, get_massagers
 from ploy.proxy import ProxyInstance

@@ -1,52 +1,50 @@
-from __future__ import print_function
-try:
-    from StringIO import StringIO
-except ImportError:  # pragma: nocover
-    from io import StringIO
-from mock import patch
+from __future__ import print_function, unicode_literals
 from ploy.config import Config
 import os
 import pytest
 
 
-try:
-    unicode
-except NameError:  # pragma: nocover
-    unicode = str
+@pytest.fixture
+def make_parsed_config(make_file_io):
+
+    def make_parsed_config(content, path=None, plugins=None):
+        return Config(
+            make_file_io(content),
+            path=path,
+            plugins=plugins).parse()
+
+    return make_parsed_config
 
 
 class TestConfig:
-    def testEmpty(self):
-        contents = StringIO("")
-        config = Config(contents).parse()
+    def testEmpty(self, make_parsed_config):
+        config = make_parsed_config(u"")
         assert config == {}
 
-    def testPlainSection(self):
-        contents = StringIO("[foo]")
-        config = Config(contents).parse()
+    def testPlainSection(self, make_parsed_config):
+        config = make_parsed_config(u"[foo]")
         assert config == {'global': {'foo': {}}}
 
-    def testGroupSection(self):
-        contents = StringIO("[bar:foo]")
-        config = Config(contents).parse()
+    def testGroupSection(self, make_parsed_config):
+        config = make_parsed_config(u"[bar:foo]")
         config == {'bar': {'foo': {}}}
 
-    def testMixedSections(self):
-        contents = StringIO("[bar:foo]\n[baz]")
-        config = Config(contents).parse()
+    def testMixedSections(self, make_parsed_config):
+        config = make_parsed_config(u"""
+            [bar:foo]
+            [baz]""")
         assert config == {
             'bar': {'foo': {}},
             'global': {'baz': {}}}
 
-    def testMacroExpansion(self):
+    def testMacroExpansion(self, make_parsed_config):
         from ploy.config import ConfigValue
-        contents = StringIO("\n".join([
-            "[macro]",
-            "macrovalue=1",
-            "[baz]",
-            "<=macro",
-            "bazvalue=2"]))
-        config = Config(contents).parse()
+        config = make_parsed_config(u"""
+            [macro]
+            macrovalue=1
+            [baz]
+            <=macro
+            bazvalue=2""")
         assert config == {
             'global': {
                 'macro': {'macrovalue': '1'},
@@ -54,29 +52,28 @@ class TestConfig:
         assert isinstance(config['global']['baz']._dict['macrovalue'], ConfigValue)
         assert isinstance(config['global']['baz']._dict['bazvalue'], ConfigValue)
 
-    def testGroupMacroExpansion(self):
-        contents = StringIO("\n".join([
-            "[group:macro]",
-            "macrovalue=1",
-            "[baz]",
-            "<=group:macro",
-            "bazvalue=2"]))
-        config = Config(contents).parse()
+    def testGroupMacroExpansion(self, make_parsed_config):
+        config = make_parsed_config(u"""
+            [group:macro]
+            macrovalue=1
+            [baz]
+            <=group:macro
+            bazvalue=2""")
         assert config == {
             'global': {
                 'baz': {'macrovalue': '1', 'bazvalue': '2'}},
             'group': {
                 'macro': {'macrovalue': '1'}}}
 
-    def testCircularMacroExpansion(self):
-        contents = StringIO("\n".join([
-            "[macro]",
-            "<=macro",
-            "macrovalue=1"]))
+    def testCircularMacroExpansion(self, make_file_io):
+        contents = make_file_io(u"""
+            [macro]
+            <=macro
+            macrovalue=1""")
         with pytest.raises(ValueError):
             Config(contents).parse()
 
-    def testMacroCleaners(self):
+    def testMacroCleaners(self, make_parsed_config):
         dummyplugin = DummyPlugin()
         plugins = dict(
             dummy=dict(
@@ -87,25 +84,25 @@ class TestConfig:
                 del macro['cleanvalue']
 
         dummyplugin.macro_cleaners = {'global': cleaner}
-        contents = StringIO("\n".join([
-            "[group:macro]",
-            "macrovalue=1",
-            "cleanvalue=3",
-            "[baz]",
-            "<=group:macro",
-            "bazvalue=2"]))
-        config = Config(contents, plugins=plugins).parse()
+        config = make_parsed_config(
+            u"""
+                [group:macro]
+                macrovalue=1
+                cleanvalue=3
+                [baz]
+                <=group:macro
+                bazvalue=2""",
+            plugins=plugins)
         assert config == {
             'global': {
                 'baz': {'macrovalue': '1', 'bazvalue': '2'}},
             'group': {
                 'macro': {'macrovalue': '1', 'cleanvalue': '3'}}}
 
-    def testOverrides(self):
-        contents = StringIO("\n".join([
-            "[section]",
-            "value=1"]))
-        config = Config(contents).parse()
+    def testOverrides(self, make_parsed_config):
+        config = make_parsed_config(u"""
+            [section]
+            value=1""")
         assert config == {'global': {'section': {'value': '1'}}}
         result = config.get_section_with_overrides(
             'global',
@@ -129,11 +126,10 @@ class TestConfig:
         # make sure nothing is changed afterwards
         assert config == {'global': {'section': {'value': '1'}}}
 
-    def testSpecialKeys(self):
-        contents = StringIO("\n".join([
-            "[section]",
-            "value=1"]))
-        config = Config(contents).parse()
+    def testSpecialKeys(self, make_parsed_config):
+        config = make_parsed_config(u"""
+            [section]
+            value=1""")
         assert config['global']['section']['__name__'] == 'section'
         assert config['global']['section']['__groupname__'] == 'global'
 
@@ -166,27 +162,32 @@ def test_value_asbool(value, expected):
 
 
 class TestMassagers:
-    @pytest.fixture(autouse=True)
-    def setup_dummyplugin(self):
-        self.dummyplugin = DummyPlugin()
-        self.plugins = dict(
-            dummy=dict(
-                get_massagers=self.dummyplugin.get_massagers))
+    @pytest.fixture
+    def plugin(self):
+        return DummyPlugin()
 
-    def testBaseMassager(self):
+    @pytest.fixture
+    def make_parsed_config_plugins(self, make_parsed_config, plugin):
+        from functools import partial
+        plugins = dict(
+            dummy=dict(
+                get_massagers=plugin.get_massagers))
+        return partial(make_parsed_config, plugins=plugins)
+
+    def testBaseMassager(self, make_parsed_config_plugins, plugin):
         from ploy.config import BaseMassager
 
-        self.dummyplugin.massagers.append(BaseMassager('section', 'value'))
-        contents = StringIO("\n".join([
-            "[section:foo]",
-            "value=1"]))
-        config = Config(contents, plugins=self.plugins).parse()
+        plugin.massagers.append(BaseMassager('section', 'value'))
+        config = make_parsed_config_plugins(
+            u"""
+                [section:foo]
+                value=1""")
         assert config['section'] == {'foo': {'value': '1'}}
 
-    def testBooleanMassager(self):
+    def testBooleanMassager(self, make_parsed_config_plugins, plugin):
         from ploy.config import BooleanMassager
 
-        self.dummyplugin.massagers.append(BooleanMassager('section', 'value'))
+        plugin.massagers.append(BooleanMassager('section', 'value'))
         test_values = (
             ('true', True),
             ('True', True),
@@ -201,63 +202,65 @@ class TestMassagers:
             ('off', False),
             ('Off', False))
         for value, expected in test_values:
-            contents = StringIO("\n".join([
-                "[section:foo]",
-                "value=%s" % value]))
-            config = Config(contents, plugins=self.plugins).parse()
+            config = make_parsed_config_plugins(
+                u"""
+                    [section:foo]
+                    value=%s""" % value)
             assert config['section'] == {'foo': {'value': expected}}
-        contents = StringIO("\n".join([
-            "[section:foo]",
-            "value=foo"]))
-        config = Config(contents, plugins=self.plugins).parse()
+        config = make_parsed_config_plugins(
+            u"""
+                [section:foo]
+                value=foo""")
         with pytest.raises(ValueError):
             config['section']['foo']['value']
 
-    def testIntegerMassager(self):
+    def testIntegerMassager(self, make_parsed_config_plugins, plugin):
         from ploy.config import IntegerMassager
 
-        self.dummyplugin.massagers.append(IntegerMassager('section', 'value'))
-        contents = StringIO("\n".join([
-            "[section:foo]",
-            "value=1"]))
-        config = Config(contents, plugins=self.plugins).parse()
+        plugin.massagers.append(IntegerMassager('section', 'value'))
+        config = make_parsed_config_plugins(
+            u"""
+                [section:foo]
+                value=1""")
         assert config['section'] == {'foo': {'value': 1}}
-        contents = StringIO("\n".join([
-            "[section:foo]",
-            "value=foo"]))
-        config = Config(contents, plugins=self.plugins).parse()
+        config = make_parsed_config_plugins(
+            u"""
+                [section:foo]
+                value=foo""")
         with pytest.raises(ValueError):
             config['section']['foo']['value']
 
-    def testPathMassager(self):
+    def testPathMassager(self, make_parsed_config_plugins, plugin):
         from ploy.config import PathMassager
 
-        self.dummyplugin.massagers.append(PathMassager('section', 'value1'))
-        self.dummyplugin.massagers.append(PathMassager('section', 'value2'))
-        contents = StringIO("\n".join([
-            "[section:foo]",
-            "value1=foo",
-            "value2=/foo"]))
-        config = Config(contents, path='/config', plugins=self.plugins).parse()
+        plugin.massagers.append(PathMassager('section', 'value1'))
+        plugin.massagers.append(PathMassager('section', 'value2'))
+        config = make_parsed_config_plugins(
+            u"""
+                [section:foo]
+                value1=foo
+                value2=/foo""",
+            path='/config')
         assert config['section'] == {
             'foo': {
                 'value1': '/config/foo',
                 'value2': '/foo'}}
 
-    def testStartupScriptMassager(self):
+    def testStartupScriptMassager(self, make_parsed_config_plugins, plugin):
         from ploy.config import StartupScriptMassager
 
-        self.dummyplugin.massagers.append(StartupScriptMassager('section', 'value1'))
-        self.dummyplugin.massagers.append(StartupScriptMassager('section', 'value2'))
-        self.dummyplugin.massagers.append(StartupScriptMassager('section', 'value3'))
-        self.dummyplugin.massagers.append(StartupScriptMassager('section', 'value4'))
-        contents = StringIO("\n".join([
-            "[section:foo]",
-            "value1=gzip:foo",
-            "value2=foo",
-            "value3=gzip:/foo",
-            "value4=/foo"]))
-        config = Config(contents, path='/config', plugins=self.plugins).parse()
+        plugin.massagers.append(StartupScriptMassager('section', 'value1'))
+        plugin.massagers.append(StartupScriptMassager('section', 'value2'))
+        plugin.massagers.append(StartupScriptMassager('section', 'value3'))
+        plugin.massagers.append(StartupScriptMassager('section', 'value4'))
+        config = make_parsed_config_plugins(
+            u"""
+                [section:foo]
+                value1=gzip:foo
+                value2=foo
+                value3=gzip:/foo
+                value4=/foo""",
+            path='/config')
         assert config['section'] == {
             'foo': {
                 'value1': {'gzip': True, 'path': '/config/foo'},
@@ -265,23 +268,23 @@ class TestMassagers:
                 'value3': {'gzip': True, 'path': '/foo'},
                 'value4': {'path': '/foo'}}}
 
-    def testUserMassager(self):
+    def testUserMassager(self, make_parsed_config_plugins, plugin):
         from ploy.config import UserMassager
         import pwd
 
-        self.dummyplugin.massagers.append(UserMassager('section', 'value1'))
-        self.dummyplugin.massagers.append(UserMassager('section', 'value2'))
-        contents = StringIO("\n".join([
-            "[section:foo]",
-            "value1=*",
-            "value2=foo"]))
-        config = Config(contents, plugins=self.plugins).parse()
+        plugin.massagers.append(UserMassager('section', 'value1'))
+        plugin.massagers.append(UserMassager('section', 'value2'))
+        config = make_parsed_config_plugins(
+            u"""
+                [section:foo]
+                value1=*
+                value2=foo""")
         assert config['section'] == {
             'foo': {
                 'value1': pwd.getpwuid(os.getuid())[0],
                 'value2': 'foo'}}
 
-    def testCustomMassager(self):
+    def testCustomMassager(self, make_parsed_config_plugins, plugin):
         from ploy.config import BaseMassager
 
         class DummyMassager(BaseMassager):
@@ -289,14 +292,14 @@ class TestMassagers:
                 value = BaseMassager.__call__(self, config, sectionname)
                 return int(value)
 
-        self.dummyplugin.massagers.append(DummyMassager('section', 'value'))
-        contents = StringIO("\n".join([
-            "[section:foo]",
-            "value=1"]))
-        config = Config(contents, plugins=self.plugins).parse()
+        plugin.massagers.append(DummyMassager('section', 'value'))
+        config = make_parsed_config_plugins(
+            u"""
+                [section:foo]
+                value=1""")
         assert config['section'] == {'foo': {'value': 1}}
 
-    def testCustomMassagerForAnyGroup(self):
+    def testCustomMassagerForAnyGroup(self, make_parsed_config_plugins, plugin):
         from ploy.config import BaseMassager
 
         class DummyMassager(BaseMassager):
@@ -304,37 +307,37 @@ class TestMassagers:
                 value = BaseMassager.__call__(self, config, sectionname)
                 return (sectiongroupname, value)
 
-        self.dummyplugin.massagers.append(DummyMassager(None, 'value'))
-        contents = StringIO("\n".join([
-            "[section1:foo]",
-            "value=1",
-            "[section2:bar]",
-            "value=2"]))
-        config = Config(contents, plugins=self.plugins).parse()
+        plugin.massagers.append(DummyMassager(None, 'value'))
+        config = make_parsed_config_plugins(
+            u"""
+                [section1:foo]
+                value=1
+                [section2:bar]
+                value=2""")
         assert config == {
             'section1': {
                 'foo': {'value': ('section1', '1')}},
             'section2': {
                 'bar': {'value': ('section2', '2')}}}
 
-    def testConflictingMassagerRegistration(self):
+    def testConflictingMassagerRegistration(self, make_parsed_config):
         from ploy.config import BooleanMassager, IntegerMassager
 
-        config = Config(StringIO('')).parse()
+        config = make_parsed_config(u"")
         config.add_massager(BooleanMassager('section', 'value'))
         with pytest.raises(ValueError) as e:
             config.add_massager(IntegerMassager('section', 'value'))
-        assert unicode(e.value) == "Massager for option 'value' in section group 'section' already registered."
+        assert str(e.value) == "Massager for option 'value' in section group 'section' already registered."
 
-    def testMassagedOverrides(self):
+    def testMassagedOverrides(self, make_parsed_config_plugins, plugin):
         from ploy.config import IntegerMassager
 
-        self.dummyplugin.massagers.append(IntegerMassager('global', 'value'))
-        self.dummyplugin.massagers.append(IntegerMassager('global', 'value2'))
-        contents = StringIO("\n".join([
-            "[section]",
-            "value=1"]))
-        config = Config(contents, plugins=self.plugins).parse()
+        plugin.massagers.append(IntegerMassager('global', 'value'))
+        plugin.massagers.append(IntegerMassager('global', 'value2'))
+        config = make_parsed_config_plugins(
+            u"""
+                [section]
+                value=1""").parse()
         assert config['global'] == {'section': {'value': 1}}
         result = config.get_section_with_overrides(
             'global',
@@ -358,13 +361,13 @@ class TestMassagers:
         # make sure nothing is changed afterwards
         assert config['global'] == {'section': {'value': 1}}
 
-    def testSectionMassagedOverrides(self):
+    def testSectionMassagedOverrides(self, make_parsed_config_plugins, plugin):
         from ploy.config import IntegerMassager
 
-        contents = StringIO("\n".join([
-            "[section]",
-            "value=1"]))
-        config = Config(contents, plugins=self.plugins).parse()
+        config = make_parsed_config_plugins(
+            u"""
+                [section]
+                value=1""")
         config['global']['section'].add_massager(IntegerMassager('global', 'value'))
         config['global']['section'].add_massager(IntegerMassager('global', 'value2'))
         assert config['global'] == {'section': {'value': 1}}
@@ -389,29 +392,6 @@ class TestMassagers:
             'value2': 2}
         # make sure nothing is changed afterwards
         assert config['global'] == {'section': {'value': 1}}
-
-
-def _make_config(massagers):
-    return Config(StringIO("\n".join([
-        "[section1]",
-        "massagers = %s" % massagers,
-        "value = 1",
-        "[section2]",
-        "value = 2",
-        "[foo:bar]",
-        "value = 3"]))).parse()
-
-
-def _expected(first, second, third):
-    return {
-        'global': {
-            'section1': {
-                'value': first('1')},
-            'section2': {
-                'value': second('2')}},
-        'foo': {
-            'bar': {
-                'value': third('3')}}}
 
 
 @pytest.mark.parametrize("description, massagers, expected", [
@@ -439,42 +419,56 @@ def _expected(first, second, third):
     (
         'for everything',
         '*:value = ploy.config.IntegerMassager', (int, int, int))])
-def test_valid_massagers_specs_in_config(description, massagers, expected):
-    config = _make_config(massagers)
-    expected = _expected(*expected)
+def test_valid_massagers_specs_in_config(description, make_parsed_config, massagers, expected):
+    config = make_parsed_config([
+        "[section1]",
+        "massagers = %s" % massagers,
+        "value = 1",
+        "[section2]",
+        "value = 2",
+        "[foo:bar]",
+        "value = 3"])
     print("Description of failed test:\n    %s\n" % description)
-    assert dict(config) == expected
+    assert dict(config) == {
+        'global': {
+            'section1': {
+                'value': expected[0]('1')},
+            'section2': {
+                'value': expected[1]('2')}},
+        'foo': {
+            'bar': {
+                'value': expected[2]('3')}}}
 
 
 class TestMassagersFromConfig:
-    def testInvalid(self):
-        contents = StringIO("\n".join([
-            "[section]",
-            "massagers = foo",
-            "value = 1"]))
-        with patch('ploy.config.log') as LogMock:
+    def testInvalid(self, make_file_io, mock):
+        contents = make_file_io(u"""
+            [section]
+            massagers = foo
+            value = 1""")
+        with mock.patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
         assert LogMock.error.call_args_list == [
             (("Invalid massager spec '%s' in section '%s:%s'.", 'foo', 'global', 'section'), {})]
 
-    def testTooManyColonsInSpec(self):
-        contents = StringIO("\n".join([
-            "[section]",
-            "massagers = :::foo=ploy.config.IntegerMassager",
-            "value = 1"]))
-        with patch('ploy.config.log') as LogMock:
+    def testTooManyColonsInSpec(self, make_file_io, mock):
+        contents = make_file_io(u"""
+            [section]
+            massagers = :::foo=ploy.config.IntegerMassager
+            value = 1""")
+        with mock.patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
         assert LogMock.error.call_args_list == [
             (("Invalid massager spec '%s' in section '%s:%s'.", ':::foo=ploy.config.IntegerMassager', 'global', 'section'), {})]
 
-    def testUnknownModuleFor(self):
-        contents = StringIO("\n".join([
-            "[section]",
-            "massagers = foo=bar",
-            "value = 1"]))
-        with patch('ploy.config.log') as LogMock:
+    def testUnknownModuleFor(self, make_file_io, mock):
+        contents = make_file_io(u"""
+            [section]
+            massagers = foo=bar
+            value = 1""")
+        with mock.patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
         assert len(LogMock.error.call_args_list) == 1
@@ -483,12 +477,12 @@ class TestMassagersFromConfig:
         assert LogMock.error.call_args_list[0][0][2].startswith('No module named')
         assert 'bar' in LogMock.error.call_args_list[0][0][2]
 
-    def testUnknownAttributeFor(self):
-        contents = StringIO("\n".join([
-            "[section]",
-            "massagers = foo=ploy.foobar",
-            "value = 1"]))
-        with patch('ploy.config.log') as LogMock:
+    def testUnknownAttributeFor(self, make_file_io, mock):
+        contents = make_file_io(u"""
+            [section]
+            massagers = foo=ploy.foobar
+            value = 1""")
+        with mock.patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
                 Config(contents).parse()
         assert len(LogMock.error.call_args_list) == 1
@@ -500,96 +494,187 @@ class TestMassagersFromConfig:
 
 
 class TestConfigExtend:
-    @pytest.fixture(autouse=True)
-    def setup_tempdir(self, tempdir):
-        self.tempdir = tempdir
-        self.directory = tempdir.directory
-
-    def _write_config(self, conf, content):
-        self.tempdir[conf].fill(content)
-
-    def testExtend(self):
-        ployconf = 'ploy.conf'
-        self._write_config(
-            ployconf,
+    def testExtend(self, confmaker):
+        ployconf = confmaker('ploy.conf')
+        ployconf.fill(
             '\n'.join([
                 '[global]',
                 'extends = foo.conf',
                 'ham = egg']))
-        self._write_config(
-            'foo.conf',
+        confmaker('foo.conf').fill(
             '\n'.join([
                 '[global]',
                 'foo = bar',
                 'ham = pork']))
-        config = Config(os.path.join(self.directory, ployconf)).parse()
+        config = Config(ployconf.path).parse()
         assert config == {
             'global': {
                 'global': {
                     'foo': 'bar', 'ham': 'egg'}}}
 
-    def testDoubleExtend(self):
-        ployconf = 'ploy.conf'
-        self._write_config(
-            ployconf,
+    def testCircularExtend(self, confext, confmaker, mock):
+        ployconf = confmaker('ploy.conf')
+        ployconf.fill(
             '\n'.join([
                 '[global]',
                 'extends = foo.conf',
                 'ham = egg']))
-        self._write_config(
-            'foo.conf',
+        confmaker('foo.conf').fill(
+            '\n'.join([
+                '[global]',
+                'extends = foo.conf',
+                'ham = pork']))
+        with mock.patch('ploy.config.log') as LogMock:
+            with pytest.raises(SystemExit):
+                Config(ployconf.path).parse()
+        path = os.path.join(ployconf.directory, 'foo.conf')
+        path = path.replace('.conf', confext)
+        assert LogMock.error.call_args_list == [
+            (("Circular config file extension on '%s'.", path), {})]
+
+    def testDoubleExtend(self, confmaker):
+        ployconf = confmaker('ploy.conf')
+        ployconf.fill(
+            '\n'.join([
+                '[global]',
+                'extends = foo.conf',
+                'ham = egg']))
+        confmaker('foo.conf').fill(
             '\n'.join([
                 '[global]',
                 'extends = bar.conf',
                 'foo = blubber',
                 'ham = pork']))
-        self._write_config(
-            'bar.conf',
+        confmaker('bar.conf').fill(
             '\n'.join([
                 '[global]',
                 'foo = bar',
                 'ham = pork']))
-        config = Config(os.path.join(self.directory, ployconf)).parse()
+        config = Config(ployconf.path).parse()
         assert config == {
             'global': {
                 'global': {
                     'foo': 'blubber', 'ham': 'egg'}}}
 
-    def testExtendFromDifferentDirectoryWithMassager(self):
+    def testExtendFromDifferentDirectoryWithMassager(self, confmaker):
         from ploy.config import PathMassager
-        os.mkdir(os.path.join(self.directory, 'bar'))
-        ployconf = 'ploy.conf'
-        self._write_config(
-            ployconf,
+        ployconf = confmaker('ploy.conf')
+        os.mkdir(os.path.join(ployconf.directory, 'bar'))
+        ployconf.fill(
             '\n'.join([
                 '[global]',
                 'extends = bar/foo.conf',
                 'ham = egg']))
-        self._write_config(
-            'bar/foo.conf',
+        confmaker('bar/foo.conf').fill(
             '\n'.join([
                 '[global]',
                 'foo = blubber',
                 'ham = pork']))
-        config = Config(os.path.join(self.directory, ployconf)).parse()
+        config = Config(ployconf.path).parse()
         config.add_massager(PathMassager('global', 'foo'))
         config.add_massager(PathMassager('global', 'ham'))
         assert config == {
             'global': {
                 'global': {
-                    'foo': os.path.join(self.directory, 'bar', 'blubber'),
-                    'ham': os.path.join(self.directory, 'egg')}}}
+                    'foo': os.path.join(ployconf.directory, 'bar', 'blubber'),
+                    'ham': os.path.join(ployconf.directory, 'egg')}}}
 
-    def testExtendFromMissingFile(self):
-        ployconf = 'ploy.conf'
-        self._write_config(
-            ployconf,
+    def testExtendFromMissingFile(self, confext, confmaker, mock):
+        ployconf = confmaker('ploy.conf')
+        ployconf.fill(
             '\n'.join([
                 '[global:global]',
                 'extends = foo.conf',
                 'ham = egg']))
-        with patch('ploy.config.log') as LogMock:
+        with mock.patch('ploy.config.log') as LogMock:
             with pytest.raises(SystemExit):
-                Config(os.path.join(self.directory, ployconf)).parse()
+                Config(ployconf.path).parse()
+        path = os.path.join(ployconf.directory, 'foo.conf')
+        path = path.replace('.conf', confext)
         assert LogMock.error.call_args_list == [
-            (("Config file '%s' doesn't exist.", os.path.join(self.directory, 'foo.conf')), {})]
+            (("Config file '%s' doesn't exist.", path), {})]
+
+
+class TestYAMLConversion:
+    @pytest.fixture
+    def make_config_obj(self, tempdir):
+
+        def make_config_obj(content, name='ploy.conf'):
+            tempdir[name].fill(content, allow_conf=True)
+            config = Config(tempdir[name].path)
+            config.parse()
+            return config
+
+        return make_config_obj
+
+    def testEmpty(self, make_config_obj, tempdir, yaml_dumper):
+        config = make_config_obj(u"")
+        config._dump_yaml(yaml_dumper)
+        assert yaml_dumper.output == {}
+
+    def testEmptySection(self, make_file_content, make_config_obj, tempdir, yaml_dumper):
+        config = make_config_obj(u"[instance:foo]")
+        config._dump_yaml(yaml_dumper)
+        assert yaml_dumper.output == {
+            'ploy.yml': make_file_content(u"""\
+                instance:
+                    foo: {}
+                """)}
+
+    def testComments(self, make_file_content, make_config_obj, tempdir, yaml_dumper):
+        config = make_config_obj(u"""\
+            # starting comment
+            REM a comment
+
+            [global]
+
+            # macros
+
+            [macros:bar]
+
+            # instances
+
+            # foo
+
+            [instance:foo]
+            #section comment
+            ham1 = bar1; not an option comment
+            ham2 = bar2# not an option comment
+            ham3 = bar3 # not an option comment
+            ham = bar ; option comment
+            remark = not a comment
+
+            # bar
+
+            [instance:bar]
+            ham = foo
+
+            ; ending comment
+            rem another comment
+            """)
+        config._dump_yaml(yaml_dumper)
+        assert list(yaml_dumper.output.keys()) == ['ploy.yml']
+        assert yaml_dumper.output['ploy.yml'] == make_file_content(u"""\
+            global:
+                # starting comment
+                # a comment
+                global: {}
+            macros:
+                # macros
+                bar: {}
+            instance:
+                # instances
+                # foo
+                foo:
+                    #section comment
+                    ham1: bar1; not an option comment
+                    ham2: bar2# not an option comment
+                    ham3: 'bar3 # not an option comment'
+                    ham: bar  # option comment
+                    remark: not a comment
+                # bar
+                bar:
+                    ham: foo
+            # ending comment
+            # another comment
+            """)

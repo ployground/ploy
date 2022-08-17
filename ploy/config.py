@@ -1,13 +1,18 @@
+from __future__ import unicode_literals
 from ploy.common import Hooks
 try:
-    from configparser import RawConfigParser
+    import configparser
 except ImportError:  # pragma: nocover
-    from ConfigParser import RawConfigParser
+    import ConfigParser as configparser  # for Python 2.7
 try:
-    from collections import MutableMapping as DictMixin
-except ImportError:  # pragma: nocover
-    from UserDict import DictMixin
+    from collections.abc import MutableMapping
+except ImportError:
+    from collections import MutableMapping
+from io import BytesIO
+from ploy.common import split_option
+from pluggy import HookimplMarker
 from weakref import proxy
+import attr
 import inspect
 import logging
 import os
@@ -16,12 +21,13 @@ import warnings
 
 
 log = logging.getLogger('ploy')
+hookimpl = HookimplMarker("ploy")
 
 
 try:
-    unicode
+    basestring
 except NameError:  # pragma: nocover
-    unicode = str
+    basestring = str
 
 
 _marker = object()
@@ -54,10 +60,10 @@ class BaseMassager(object):
 class BooleanMassager(BaseMassager):
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
-        value = value_asbool(value)
-        if value is None:
-            raise ValueError("Unknown value %s for %s in %s:%s." % (value, self.key, self.sectiongroupname, sectionname))
-        return value
+        result = value_asbool(value)
+        if result is None:
+            raise ValueError("Can't convert '%s' to boolean for %s in %s:%s." % (value, self.key, self.sectiongroupname, sectionname))
+        return result
 
 
 class IntegerMassager(BaseMassager):
@@ -74,6 +80,8 @@ def expand_path(value, base):
 
 
 class PathMassager(BaseMassager):
+    _massage_for_yaml = False
+
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
         return expand_path(value, self.path(config, sectionname))
@@ -82,13 +90,15 @@ class PathMassager(BaseMassager):
 def resolve_dotted_name(value):
     if '.' in value:
         prefix, name = value.rsplit('.', 1)
-        _temp = __import__(prefix, globals(), locals(), [name])
+        _temp = __import__(prefix, globals(), locals(), [str(name)])
         return getattr(_temp, name)
     else:
         return __import__(value, globals(), locals(), [])
 
 
 class HooksMassager(BaseMassager):
+    _massage_for_yaml = False
+
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
         hooks = Hooks()
@@ -98,6 +108,8 @@ class HooksMassager(BaseMassager):
 
 
 class StartupScriptMassager(BaseMassager):
+    _massage_for_yaml = False
+
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
         if not value:
@@ -113,6 +125,8 @@ class StartupScriptMassager(BaseMassager):
 
 
 class UserMassager(BaseMassager):
+    _massage_for_yaml = False
+
     def __call__(self, config, sectionname):
         value = BaseMassager.__call__(self, config, sectionname)
         if value == "*":
@@ -121,13 +135,12 @@ class UserMassager(BaseMassager):
         return value
 
 
+@attr.s(slots=True)
 class ConfigValue(object):
-    __slots__ = ('path', 'value', 'src')
-
-    def __init__(self, path, value, src=None):
-        self.path = path
-        self.value = value
-        self.src = src
+    path = attr.ib()
+    value = attr.ib()
+    src = attr.ib(default=None)
+    comment = attr.ib(default=None)
 
 
 def get_package_name(module):
@@ -166,7 +179,7 @@ def get_caller_src():
     sys.exit(0)
 
 
-class ConfigSection(DictMixin):
+class ConfigSection(MutableMapping):
     def __init__(self, *args, **kw):
         self._dict = {}
         for k, v in dict(*args, **kw).items():
@@ -197,11 +210,7 @@ class ConfigSection(DictMixin):
                 return default
         return self._dict[key].path
 
-    def __getitem__(self, key):
-        if key == '__groupname__':
-            return self.sectiongroupname
-        if key == '__name__':
-            return self.sectionname
+    def _get_massager(self, key):
         if key in self._dict:
             if self._config is not None:
                 massage = self._config.massagers.get((self.sectiongroupname, key))
@@ -209,14 +218,24 @@ class ConfigSection(DictMixin):
                     massage = self._config.massagers.get((None, key))
                     if callable(massage):
                         if len(inspect.getargspec(massage.__call__).args) == 3:
-                            return massage(self, self.sectionname)
+                            return (massage, (self.sectionname,))
                         else:
-                            return massage(self, self.sectiongroupname, self.sectionname)
+                            return (massage, (self.sectiongroupname, self.sectionname))
                 else:
-                    return massage(self, self.sectionname)
+                    return (massage, (self.sectionname,))
             massage = self.massagers.get((self.sectiongroupname, key))
             if callable(massage):
-                return massage(self, self.sectionname)
+                return (massage, (self.sectionname, ))
+        return (None, None)
+
+    def __getitem__(self, key):
+        if key == '__groupname__':
+            return self.sectiongroupname
+        if key == '__name__':
+            return self.sectionname
+        (massager, args) = self._get_massager(key)
+        if massager is not None:
+            return massager(self, *args)
         value = self._dict[key]
         if isinstance(value, ConfigValue):
             return value.value
@@ -229,6 +248,9 @@ class ConfigSection(DictMixin):
                 src = get_caller_src()
             value = ConfigValue(None, value, src=src)
         self._dict[key] = value
+        if self._config is not None:
+            self._config._values.append(
+                (self.sectiongroupname, self.sectionname, key, value))
 
     def keys(self):
         return self._dict.keys()
@@ -250,6 +272,301 @@ class ConfigSection(DictMixin):
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, dict(self))
+
+
+class ConfigParser(configparser.RawConfigParser):
+    def optionxform(self, s):
+        return s
+
+
+@attr.s(slots=True)
+class _RawConfigValue(object):
+    src = attr.ib()
+    path = attr.ib()
+    section = attr.ib()
+    key = attr.ib()
+    value = attr.ib()
+    comments = attr.ib(default=(None, None))
+
+
+class _ConfigDict(configparser._default_dict):
+    prefix_comment = None
+    key_prefix_comments = None
+    key_comments = None
+
+    def set_prefix_comment(self, value):
+        self.prefix_comment = value
+
+    def set_key_prefix_comment(self, key, value):
+        if self.key_prefix_comments is None:
+            self.key_prefix_comments = dict()
+        self.key_prefix_comments[key] = value
+
+    def set_key_comment(self, key, value):
+        if self.key_comments is None:
+            self.key_comments = dict()
+        self.key_comments[key] = value
+
+
+class CommentedConfigParser(configparser.RawConfigParser):
+    def _read(self, fp, fpname):
+        self._dict = _ConfigDict
+        cursect = None                        # None, or a dictionary
+        optname = None
+        lineno = 0
+        e = None                              # None, or an exception
+        comments = []
+        while True:
+            line = fp.readline()
+            if not line:
+                if comments:
+                    self.comments = comments
+                break
+            lineno = lineno + 1
+            # blank line?
+            if line.strip() == '':
+                continue
+            # comment?
+            if line[0] in '#;':
+                comments.append((line[0:1], line[1:]))
+                continue
+            if line.split(None, 1)[0].lower() == 'rem' and line[0] in "rR":
+                comments.append((line[0:3], line[3:]))
+                # no leading whitespace
+                continue
+            # continuation line?
+            if line[0].isspace() and cursect is not None and optname:
+                value = line.strip()
+                if value:
+                    cursect[optname].append(value)
+            # a section header or option header?
+            else:
+                # is it a section header?
+                mo = self.SECTCRE.match(line)
+                if mo:
+                    sectname = mo.group('header')
+                    if sectname in self._sections:
+                        cursect = self._sections[sectname]
+                    elif sectname == configparser.DEFAULTSECT:
+                        cursect = self._defaults
+                    else:
+                        cursect = self._dict()
+                        cursect['__name__'] = sectname
+                        self._sections[sectname] = cursect
+                    if comments:
+                        cursect.set_prefix_comment(comments)
+                        comments = []
+                    # So sections can't start with a continuation line
+                    optname = None
+                # no section header in the file?
+                elif cursect is None:
+                    raise configparser.MissingSectionHeaderError(fpname, lineno, line)
+                # an option line?
+                else:
+                    mo = self._optcre.match(line)
+                    if mo:
+                        optname, vi, optval = mo.group('option', 'vi', 'value')
+                        optname = optname.rstrip()
+                        if comments:
+                            cursect.set_key_prefix_comment(optname, comments)
+                            comments = []
+                        # This check is fine because the OPTCRE cannot
+                        # match if it would set optval to None
+                        if optval is not None:
+                            if vi in ('=', ':') and ';' in optval:
+                                # ';' is a comment delimiter only if it follows
+                                # a spacing character
+                                pos = optval.find(';')
+                                if pos != -1 and optval[pos - 1].isspace():
+                                    cursect.set_key_comment(
+                                        optname, [(optval[pos:pos + 1], optval[pos + 1:])])
+                                    optval = optval[:pos]
+                            optval = optval.strip()
+                            # allow empty values
+                            if optval == '""':
+                                optval = ''
+                            cursect[optname] = [optval]
+                        else:
+                            # valueless option handling
+                            cursect[optname] = optval
+                    else:
+                        # a non-fatal parsing error occurred.  set up the
+                        # exception but keep going. the exception will be
+                        # raised at the end of the file and will contain a
+                        # list of all bogus lines
+                        if not e:
+                            e = configparser.ParsingError(fpname)
+                        e.append(lineno, repr(line))
+        # if any parsing errors occurred, raise an exception
+        if e:
+            raise e
+
+        # join the multi-line values collected while reading
+        all_sections = [self._defaults]
+        all_sections.extend(self._sections.values())
+        for options in all_sections:
+            for name, val in options.items():
+                if isinstance(val, list):
+                    options[name] = '\n'.join(val)
+
+
+def _read_config(config, path, parser, shallow=False):
+    result = []
+    stack = [config]
+    seen = set()
+    while 1:
+        config = stack.pop()
+        if config in seen:
+            log.error("Circular config file extension on '%s'.", config)
+            sys.exit(1)
+        seen.add(config)
+        src = None
+        if isinstance(config, basestring):
+            src = os.path.relpath(config)
+        try:
+            _config = parser(
+                strict=False,
+                comment_prefixes=('#', ';', 'REM ', 'rem ', 'REm ', 'ReM ', 'rEM ', 'Rem ', 'rEm ', 'reM '),
+                inline_comment_prefixes=(';',))
+        except TypeError:
+            _config = parser(strict=False)
+        if getattr(config, 'read', None) is not None:
+            if hasattr(_config, 'read_file'):
+                _config.read_file(config)
+            else:
+                _config.readfp(config)
+            config.seek(0)
+        else:
+            if not os.path.exists(config):
+                log.error("Config file '%s' doesn't exist.", config)
+                sys.exit(1)
+            _config.read(config)
+            path = os.path.dirname(config)
+        comments = getattr(_config, 'comments', None)
+        if comments is not None:
+            assert not isinstance(_config, ConfigParser)
+            result.append(_RawConfigValue(
+                src=src,
+                path=path,
+                section=None,
+                key=None,
+                value=None,
+                comments=(comments, None)))
+        for sectionname, section in reversed(list(_config._sections.items())):
+            key_comments = getattr(section, 'key_comments', None) or {}
+            key_prefix_comments = getattr(section, 'key_prefix_comments', None) or {}
+            for key, value in reversed(list(section.items())):
+                if key == '__name__':
+                    continue
+                result.append(_RawConfigValue(
+                    src=src,
+                    path=path,
+                    section=sectionname,
+                    key=key,
+                    value=value,
+                    comments=(key_prefix_comments.get(key), key_comments.get(key))))
+            prefix_comment = getattr(section, 'prefix_comment', None)
+            result.append(_RawConfigValue(
+                src=src,
+                path=path,
+                section=sectionname,
+                key=None,
+                value=None,
+                comments=(prefix_comment, None)))
+        if _config.has_option('global', 'extends'):
+            extends = _config.get('global', 'extends').split()
+        elif _config.has_option('global:global', 'extends'):
+            extends = _config.get('global:global', 'extends').split()
+        else:
+            break
+        if shallow:
+            break
+        stack[0:0] = [
+            os.path.abspath(os.path.join(path, x))
+            for x in reversed(extends)]
+    return list(reversed(result))
+
+
+def read_config(config, path, shallow=False):
+    _control_config = _read_config(config, path, ConfigParser, shallow=shallow)
+    _config = _read_config(config, path, CommentedConfigParser, shallow=shallow)
+    index = 0
+    for item in _config:
+        if item.section is None:
+            assert item.key is None
+            assert item.value is None
+            continue
+        if _control_config[index].comments != (None, None):
+            assert _control_config[index].comments == item.comments
+        index += 1
+    return _config
+
+
+def read_yml_config(config, path):
+    from ruamel.yaml import YAML
+    result = []
+    stack = [config]
+    seen = set()
+    while 1:
+        config = stack.pop()
+        if config in seen:
+            log.error("Circular config file extension on '%s'.", config)
+            sys.exit(1)
+        seen.add(config)
+        yaml = YAML(typ='rt')
+        if getattr(config, 'read', None) is not None:
+            _config = yaml.load(config)
+        else:
+            if not os.path.exists(config):
+                log.error("Config file '%s' doesn't exist.", config)
+                sys.exit(1)
+            with open(config, 'r') as f:
+                _config = yaml.load(f)
+            path = os.path.dirname(config)
+        if not _config:
+            _config = {}
+        src = None
+        if isinstance(config, basestring):
+            src = os.path.relpath(config)
+        for sectiongroupname in reversed(list(_config.keys())):
+            for sectionname in reversed(list(_config[sectiongroupname].keys())):
+                for key, value in reversed(list(_config[sectiongroupname][sectionname].items())):
+                    result.append(_RawConfigValue(
+                        src=src,
+                        path=path,
+                        section="%s:%s" % (sectiongroupname, sectionname),
+                        key=key,
+                        value=value))
+                result.append(_RawConfigValue(
+                    src=src,
+                    path=path,
+                    section="%s:%s" % (sectiongroupname, sectionname),
+                    key=None,
+                    value=None))
+        extends = None
+        if 'global' in _config:
+            if 'extends' in _config['global']:
+                extends = _config['global']['extends'].split()
+            elif 'global' in _config['global'] and 'extends' in _config['global']['global']:
+                extends = _config['global']['global']['extends'].split()
+        if not extends:
+            break
+        stack[0:0] = [
+            os.path.abspath(os.path.join(path, x))
+            for x in reversed(extends)]
+    return reversed(result)
+
+
+def _make_comment(value, indent):
+    from ruamel import yaml
+    result = []
+    for item in value.split('\n'):
+        result.append(
+            yaml.tokens.CommentToken(
+                "#%s\n" % item,
+                yaml.error.CommentMark(indent),
+                yaml.error.CommentMark(0)))
+    return result
 
 
 class Config(ConfigSection):
@@ -276,8 +593,9 @@ class Config(ConfigSection):
         # properly detected
         del section['<']
 
-    def __init__(self, config, path=None, bbb_config=False, plugins=None):
+    def __init__(self, config, path=None, plugins=None):
         ConfigSection.__init__(self)
+        self._values = []
         self.config = config
         if path is None:
             if getattr(config, 'read', None) is None:
@@ -291,40 +609,6 @@ class Config(ConfigSection):
                 if 'get_macro_cleaners' in plugin:
                     self.macro_cleaners.update(plugin['get_macro_cleaners'](self))
 
-    def read_config(self, config):
-        result = []
-        stack = [config]
-        while 1:
-            config = stack.pop()
-            src = None
-            if isinstance(config, (str, unicode)):
-                src = os.path.relpath(config)
-            _config = RawConfigParser()
-            _config.optionxform = lambda s: s
-            if getattr(config, 'read', None) is not None:
-                _config.readfp(config)
-                path = self.path
-            else:
-                if not os.path.exists(config):
-                    log.error("Config file '%s' doesn't exist.", config)
-                    sys.exit(1)
-                _config.read(config)
-                path = os.path.dirname(config)
-            for section in reversed(_config.sections()):
-                for key, value in reversed(_config.items(section)):
-                    result.append((src, path, section, key, value))
-                result.append((src, path, section, None, None))
-            if _config.has_option('global', 'extends'):
-                extends = _config.get('global', 'extends').split()
-            elif _config.has_option('global:global', 'extends'):
-                extends = _config.get('global:global', 'extends').split()
-            else:
-                break
-            stack[0:0] = [
-                os.path.abspath(os.path.join(path, x))
-                for x in reversed(extends)]
-        return reversed(result)
-
     def get_section(self, sectiongroupname, sectionname):
         sectiongroup = self[sectiongroupname]
         if sectionname not in sectiongroup:
@@ -335,20 +619,25 @@ class Config(ConfigSection):
             sectiongroup[sectionname] = section
         return sectiongroup[sectionname]
 
-    def parse(self):
-        _config = self.read_config(self.config)
-        for src, path, configsection, key, value in _config:
-            if ':' in configsection:
-                sectiongroupname, sectionname = configsection.split(':')
+    def _parse(self, _config):
+        for info in _config:
+            if info.section is None:
+                self._values.append((None, None, None, ConfigValue(info.path, None, src=info.src, comment=info.comments)))
+                continue
+            if ':' in info.section:
+                sectiongroupname, sectionname = info.section.split(':')
             else:
-                sectiongroupname, sectionname = 'global', configsection
-            if sectiongroupname == 'global' and sectionname == 'global' and key == 'extends':
+                sectiongroupname, sectionname = 'global', info.section
+            if sectiongroupname == 'global' and sectionname == 'global' and info.key == 'extends':
+                self._values.append((sectiongroupname, sectionname, info.key, ConfigValue(info.path, info.value, src=info.src, comment=info.comments)))
                 continue
             sectiongroup = self.setdefault(sectiongroupname, ConfigSection())
             self.get_section(sectiongroupname, sectionname)
-            if key is not None:
-                if key == 'massagers':
-                    for spec in value.splitlines():
+            if info.key is None:
+                self._values.append((sectiongroupname, sectionname, info.key, ConfigValue(info.path, info.value, src=info.src, comment=info.comments)))
+            else:
+                if info.key == 'massagers':
+                    for spec in info.value.splitlines():
                         spec = spec.strip()
                         if not spec:
                             continue
@@ -380,10 +669,10 @@ class Config(ConfigSection):
                         try:
                             massager = resolve_dotted_name(massager)
                         except ImportError as e:
-                            log.error("Can't import massager from '%s'.\n%s", massager, unicode(e))
+                            log.error("Can't import massager from '%s'.\n%s", massager, str(e))
                             sys.exit(1)
                         except AttributeError as e:
-                            log.error("Can't import massager from '%s'.\n%s", massager, unicode(e))
+                            log.error("Can't import massager from '%s'.\n%s", massager, str(e))
                             sys.exit(1)
                         massager = massager(massager_sectiongroupname, massager_key)
                         if massager_sectionname is None:
@@ -393,7 +682,8 @@ class Config(ConfigSection):
                                 sectiongroupname, massager_sectionname)
                             massager_section.add_massager(massager)
                 else:
-                    sectiongroup[sectionname][key] = ConfigValue(path, value, src=src)
+                    sectiongroup[sectionname][info.key] = ConfigValue(
+                        info.path, info.value, src=info.src, comment=info.comments)
         if 'plugin' in self:  # pragma: no cover
             warnings.warn("The 'plugin' section isn't used anymore.")
             del self['plugin']
@@ -406,8 +696,136 @@ class Config(ConfigSection):
                     self._expand(sectiongroupname, sectionname, section, seen)
         return self
 
+    def parse(self):
+        if isinstance(self.config, basestring) and self.config.endswith('.yml'):
+            _config = read_yml_config(self.config, self.path)
+        else:
+            _config = read_config(self.config, self.path)
+        return self._parse(_config)
+
     def get_section_with_overrides(self, sectiongroupname, sectionname, overrides):
         config = self[sectiongroupname][sectionname].copy()
         if overrides is not None:
             config._dict.update(overrides)
+        return config
+
+    def _dump_yaml(self, writer):
+        from ruamel.yaml import YAML
+        from ruamel.yaml.comments import CommentedMap, CommentedSeq
+        configs = dict()
+        sectiongroup = None
+        section = None
+        for sectiongroupname, sectionname, key, value in self._values:
+            if value.comment:
+                (prefix_comment, comment) = value.comment
+            else:
+                (prefix_comment, comment) = (None, None)
+            if prefix_comment:
+                prefix_comment = "\n".join(x[1].rstrip() for x in prefix_comment)
+            if comment:
+                comment = "\n".join(x[1][1:].rstrip() for x in comment)
+            if value.path:
+                conf_key = os.path.abspath(value.src)
+            else:
+                conf_key = None
+            conf = configs.setdefault(conf_key, CommentedMap())
+            if sectiongroupname is None:
+                assert sectionname is None
+                if prefix_comment:
+                    conf._yaml_add_comment([None, None])
+                    conf.yaml_end_comment_extend(_make_comment(prefix_comment, 0))
+                    pass
+                continue
+            sectiongroup = conf.setdefault(sectiongroupname, CommentedMap())
+            section = sectiongroup.setdefault(sectionname, CommentedMap())
+            if key is not None:
+                configsection = self[sectiongroupname][sectionname]
+                out_value = value.value
+                _get_massager = getattr(configsection, '_get_massager', None)
+                if _get_massager is not None:
+                    (massager, args) = configsection._get_massager(key)
+                    _massage_for_yaml = getattr(massager, '_massage_for_yaml', True)
+                    if _massage_for_yaml:
+                        try:
+                            out_value = configsection[key]
+                        except KeyError:
+                            pass
+                if isinstance(out_value, basestring):
+                    if key == 'extends':
+                        out_value = out_value.replace('.conf', '.yml')
+                    if '\n' in out_value:
+                        out_value = split_option(out_value)
+                if isinstance(out_value, (tuple, set)):
+                    out_value = list(out_value)
+                if isinstance(out_value, list):
+                    for index, item in enumerate(out_value):
+                        if isinstance(item, dict):
+                            out_value[index] = CommentedMap(item.items())
+                        if isinstance(item, tuple):
+                            out_value[index] = CommentedSeq(item)
+                            out_value[index].fa.set_flow_style()
+                        if isinstance(item, list):
+                            out_value[index] = CommentedSeq(item)
+                section[key] = out_value
+                if prefix_comment:
+                    section._yaml_add_comment([None, _make_comment(prefix_comment, 8)], key=key)
+                if comment:
+                    section.yaml_add_eol_comment(comment, key=key)
+            else:
+                if prefix_comment:
+                    sectiongroup._yaml_add_comment([None, _make_comment(prefix_comment, 4)], key=sectionname)
+        for conf in configs:
+            if conf is None:
+                dirname = None
+                basename = None
+            else:
+                dirname, basename = os.path.split(conf)
+            yaml = YAML(typ='rt')
+            content = BytesIO()
+            yaml.indent(mapping=4, sequence=4, offset=2)
+            yaml.dump(configs[conf], content)
+            writer(dirname, basename, content.getvalue())
+
+    def dump_yaml(self):
+        def writer(dirname, basename, value):
+            if dirname is None:
+                return
+            filename = os.path.join(dirname, basename.replace('.conf', '.yml'))
+            with open(filename, 'w') as f:
+                f.write(value)
+            log.info('Wrote %s', os.path.relpath(filename))
+        self._dump_yaml(writer)
+        sys.exit(0)
+
+
+class ConfigPlugin:
+    @hookimpl
+    def ploy_locate_config(self, fn):
+        if fn.endswith('.conf') and os.path.exists(fn):
+            return fn
+
+    @hookimpl
+    def ploy_load_config(self, fn, plugins):
+        if not fn.endswith('.conf'):
+            return
+        config = Config(fn, plugins=plugins)
+        _config = read_config(config.config, config.path)
+        config._parse(_config)
+        return config
+
+
+class YamlConfigPlugin:
+    @hookimpl
+    def ploy_locate_config(self, fn):
+        fn = os.path.splitext(fn)[0] + '.yml'
+        if fn.endswith('.yml') and os.path.exists(fn):
+            return fn
+
+    @hookimpl
+    def ploy_load_config(self, fn, plugins):
+        if not fn.endswith('.yml'):
+            return
+        config = Config(fn, plugins=plugins)
+        _config = read_yml_config(config.config, config.path)
+        config._parse(_config)
         return config
