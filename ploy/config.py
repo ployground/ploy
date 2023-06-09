@@ -217,7 +217,7 @@ class ConfigSection(MutableMapping):
                 if not callable(massage):
                     massage = self._config.massagers.get((None, key))
                     if callable(massage):
-                        if len(inspect.getargspec(massage.__call__).args) == 3:
+                        if len(inspect.getfullargspec(massage.__call__).args) == 3:
                             return (massage, (self.sectionname,))
                         else:
                             return (massage, (self.sectiongroupname, self.sectionname))
