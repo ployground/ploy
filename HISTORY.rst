@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.0.1 - Unreleased
+------------------
+
+* Fix getargspec deprecation warning with Python 3.x.
+  [kappeck, fschulze]
+
+
 2.0.0 - 2022-08-17
 ------------------
 

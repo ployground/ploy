@@ -8,12 +8,15 @@ try:
     from collections.abc import MutableMapping
 except ImportError:
     from collections import MutableMapping
+try:
+    from inspect import getfullargspec
+except ImportError:
+    from inspect import getargspec as getfullargspec
 from io import BytesIO
 from ploy.common import split_option
 from pluggy import HookimplMarker
 from weakref import proxy
 import attr
-import inspect
 import logging
 import os
 import sys
@@ -217,7 +220,7 @@ class ConfigSection(MutableMapping):
                 if not callable(massage):
                     massage = self._config.massagers.get((None, key))
                     if callable(massage):
-                        if len(inspect.getargspec(massage.__call__).args) == 3:
+                        if len(getfullargspec(massage.__call__).args) == 3:
                             return (massage, (self.sectionname,))
                         else:
                             return (massage, (self.sectiongroupname, self.sectionname))
