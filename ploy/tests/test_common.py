@@ -176,7 +176,7 @@ class TestStartupScript:
 
 
 class TestBaseMaster:
-    @pytest.yield_fixture
+    @pytest.fixture
     def ctrl(self, ployconf):
         from ploy import Controller
         import ploy.tests.dummy_plugin

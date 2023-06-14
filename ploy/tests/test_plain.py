@@ -104,7 +104,7 @@ class TestPlain:
             ['ssh', '-o', 'Forwardagent=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UserKnownHostsFile=%s' % known_hosts, '-l', 'root', '-p', '22', 'localhost'])
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def sshclient(mock):
     with mock.patch("ploy.plain.wait_for_ssh"):
         with mock.patch("ploy.plain.wait_for_ssh_on_sock"):
