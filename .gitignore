@@ -5,9 +5,10 @@
 /.mr.developer.cfg
 /.tox/
 /bin/
+/build/
 /coverage/
 /coverage.ini
 /develop-eggs/
+/dist/
 /htmlcov*/
-dist
 /setuptools_git-*.egg
