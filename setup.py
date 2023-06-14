@@ -9,11 +9,11 @@ HISTORY = open(os.path.join(here, 'HISTORY.rst')).read()
 
 install_requires = [
     'attrs',
+    'importlib.metadata;python_version<"3.8"',
     'lazy',
     'paramiko',
     'pluggy',
-    'ruamel.yaml',
-    'setuptools']
+    'ruamel.yaml']
 
 setup(
     version=version,

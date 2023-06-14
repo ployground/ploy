@@ -1,9 +1,16 @@
 from __future__ import print_function, unicode_literals
-import pkg_resources
 try:
     from collections.abc import MutableMapping
 except ImportError:
     from collections import MutableMapping
+try:
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import distribution
+    from importlib.metadata import entry_points
+except ImportError:
+    from importlib_metadata import PackageNotFoundError
+    from importlib_metadata import distribution
+    from importlib_metadata import entry_points
 from lazy import lazy
 from ploy import hookspecs, template
 from ploy.common import sorted_choices
@@ -25,6 +32,13 @@ __all__ = [template.__name__]
 log = logging.getLogger('ploy')
 
 
+def package_version_info(name):
+    dist = distribution(name)
+    return " ".join((
+        name, dist.version,
+        "(%s)" % dist.locate_file('.').as_posix()))
+
+
 def versionaction_factory(ctrl):
     class VersionAction(argparse.Action):
         def __init__(self, *args, **kw):
@@ -33,15 +47,14 @@ def versionaction_factory(ctrl):
 
         def __call__(self, parser, namespace, values, option_string=None):
             import inspect
-            versions = [repr(pkg_resources.get_distribution("ploy"))]
+            versions = [package_version_info("ploy")]
             for plugin in ctrl.plugins.values():
                 for item in plugin.values():
                     module = inspect.getmodule(item)
                     try:
-                        pkg = pkg_resources.get_distribution(module.__name__)
-                    except pkg_resources.DistributionNotFound:
+                        versions.append(package_version_info(module.__name__))
+                    except PackageNotFoundError:
                         continue
-                    versions.append(repr(pkg))
                     break
             print('\n'.join(sorted(versions)))
             sys.exit(0)
@@ -131,12 +144,12 @@ class Controller(object):
     def plugins(self):
         plugins = {}
         group = 'ploy.plugins'
-        for entrypoint in pkg_resources.iter_entry_points(group=group):
+        for entrypoint in entry_points()[group]:
             try:
                 plugin = entrypoint.load()
-            except pkg_resources.DistributionNotFound:
+            except PackageNotFoundError:
                 continue
-            except pkg_resources.VersionConflict as e:
+            except Exception as e:
                 log.error(
                     "Plugin %r could not be loaded: %s" % (entrypoint.name, e))
                 continue
