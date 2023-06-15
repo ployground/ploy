@@ -17,7 +17,6 @@ import select
 import socket
 import subprocess
 import sys
-import time
 
 
 log = logging.getLogger('ploy')
@@ -646,34 +645,18 @@ def parse_ssh_keygen(text):
 
 
 def wait_for_ssh(host, port, timeout=5):
-    while timeout > 0:
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-            try:
-                s.settimeout(1)
-                if s.connect_ex((host, port)) == 0:
-                    if s.recv(128).startswith(b'SSH-2'):
-                        return
-            except socket.timeout:
-                timeout -= 1
-                if timeout <= 0:
-                    raise
-        time.sleep(1)
-        timeout -= 1
+    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+        s.settimeout(timeout)
+        if s.connect_ex((host, port)) == 0:
+            if s.recv(128).startswith(b'SSH-2'):
+                return
 
 
 def wait_for_ssh_on_sock(socket_factory, timeout=5):
-    while timeout > 0:
-        sock = socket_factory()
-        if sock is None:
+    sock = socket_factory()
+    if sock is None:
+        return
+    with closing(sock) as s:
+        s.settimeout(timeout)
+        if s.recv(128).startswith(b'SSH-2'):
             return
-        with closing(sock) as s:
-            try:
-                s.settimeout(1)
-                if s.recv(128).startswith(b'SSH-2'):
-                    return
-            except socket.timeout:
-                timeout -= 1
-                if timeout <= 0:
-                    raise
-        time.sleep(1)
-        timeout -= 1
