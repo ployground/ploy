@@ -4,6 +4,9 @@ Changelog
 2.0.1 - Unreleased
 ------------------
 
+* Fix ssh timeout handling.
+  [witsch, fschulze]
+
 * Fix getargspec deprecation warning with Python 3.x.
   [kappeck, fschulze]
 
