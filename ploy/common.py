@@ -239,18 +239,22 @@ class BaseInstance(object):
     def sshconfig(self):
         return self._sshconfig.lookup(self.get_host())
 
-    @property
-    def conn(self):
-        if getattr(self, '_conn', None) is not None:
-            if self._conn.get_transport() is not None:
-                return self._conn
+    @lazy
+    def default_ssh_info(self):
+        if getattr(self, '_default_ssh_info', None) is None:
+            self._init_conn()
+        return self._default_ssh_info
+
+    def _init_conn(self):
         try:
             ssh_info = self.init_ssh_key()
         except paramiko.SSHException as e:
             log.error("Couldn't connect to %s." % (self.config_id))
             log.error(str(e))
             sys.exit(1)
-        self._conn = ssh_info['client']
+        client = ssh_info.pop('client')
+        self._default_ssh_info = ssh_info
+        self._conn = client
         ssh_options = dict(
             (k.lower(), v)
             for k, v in ssh_info.items()
@@ -258,6 +262,13 @@ class BaseInstance(object):
         config_agent = self.sshconfig.get('forwardagent', 'no').lower() == 'yes'
         forward_agent = ssh_options.get('forwardagent', 'no').lower() == 'yes'
         self._conn._ploy_forward_agent = forward_agent or config_agent
+
+    @property
+    def conn(self):
+        if getattr(self, '_conn', None) is not None:
+            if self._conn.get_transport() is not None:
+                return self._conn
+        self._init_conn()
         return self._conn
 
     def close_conn(self):
@@ -289,7 +300,7 @@ class BaseInstance(object):
         return additional_args
 
     def proxycommand_with_instance(self, instance):
-        instance_ssh_info = instance.init_ssh_key()
+        instance_ssh_info = instance.default_ssh_info
         instance_ssh_args = instance.ssh_args_from_info(instance_ssh_info)
         ssh_args = ['nohup', 'ssh']
         ssh_args.extend(instance_ssh_args)
