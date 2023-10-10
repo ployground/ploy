@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.1.0 - Unreleased
+------------------
+
+* Avoid unnecessary connection delay due to a timeout with some SSH servers.
+  [fschulze]
+
+
 2.0.1 - 2023-06-19
 ------------------
 

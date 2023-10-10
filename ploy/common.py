@@ -648,7 +648,7 @@ def wait_for_ssh(host, port, timeout=5):
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
         s.settimeout(timeout)
         if s.connect_ex((host, port)) == 0:
-            if s.recv(128).startswith(b'SSH-2'):
+            if s.recv(5).startswith(b'SSH-2'):
                 return
 
 
@@ -658,5 +658,5 @@ def wait_for_ssh_on_sock(socket_factory, timeout=5):
         return
     with closing(sock) as s:
         s.settimeout(timeout)
-        if s.recv(128).startswith(b'SSH-2'):
+        if s.recv(5).startswith(b'SSH-2'):
             return
