@@ -4,6 +4,10 @@ Changelog
 2.1.0 - Unreleased
 ------------------
 
+* Add ``exec`` command which runs a command on an instance using the Paramiko
+  connection, which is faster than invoking an additional ssh call.
+  [fschulze]
+
 * Avoid unnecessary connection delay due to a timeout with some SSH servers.
   [fschulze]
 

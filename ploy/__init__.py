@@ -13,6 +13,7 @@ except ImportError:
     from importlib_metadata import entry_points
 from lazy import lazy
 from ploy import hookspecs, template
+from ploy.common import InstanceExecutor
 from ploy.common import sorted_choices
 from pluggy import PluginManager
 from traceback import format_exc
@@ -440,6 +441,28 @@ class Controller(object):
         args = parser.parse_args(argv)
         for name, func in sorted(self.list_cmds[args.list[0]]):
             func(args.listopts, func.__doc__)
+
+    def cmd_exec(self, argv, help):
+        """Execute a command on the instance using the paramiko connection"""
+        parser = argparse.ArgumentParser(
+            prog="%s exec" % self.progname,
+            description=help,
+        )
+        instances = self.get_instances(command='init_ssh_key')
+        parser.add_argument("instance", nargs=1,
+                            metavar="instance",
+                            help="Name of the instance from the config.",
+                            type=str,
+                            choices=sorted_choices(instances))
+        parser.add_argument("remainder", nargs=argparse.REMAINDER,
+                            metavar="...",
+                            help="command")
+        args = parser.parse_args(argv)
+        instance = instances[args.instance[0]]
+        executor = InstanceExecutor(instance)
+        (rc, out, err) = executor(
+            *args.remainder, stdout=sys.stdout, stderr=sys.stderr)
+        sys.exit(rc)
 
     def cmd_ssh(self, argv, help):
         """Log into the instance with ssh using the automatically generated known hosts"""
