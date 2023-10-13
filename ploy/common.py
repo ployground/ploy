@@ -323,7 +323,7 @@ class BaseExecutor:
         out = kw.pop('out', None)
         err = kw.pop('err', None)
         stdin = kw.pop('stdin', None)
-        (_rc, _out, _err) = self._run(args, stdin)
+        (_rc, _out, _err) = self._run(args, stdin, **kw)
         result = []
         if rc is None:
             result.append(_rc)
@@ -336,27 +336,25 @@ class BaseExecutor:
             if rc != _rc:
                 raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
         if out is None:
-            if self.splitlines:
-                result.append(_out.decode('utf-8').splitlines())
-            else:
-                result.append(_out)
-        else:
-            if out != _out:
-                if _rc == 0:
-                    log.error(_out.decode('utf-8'))
-                    log.error(_err.decode('utf-8'))
-                raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
+            result.append(
+                _out.decode('utf-8').splitlines()
+                if self.splitlines else
+                _out)
+        elif out != _out:
+            if _rc == 0:
+                log.error(_out.decode('utf-8'))
+                log.error(_err.decode('utf-8'))
+            raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
         if err is None:
-            if self.splitlines:
-                result.append(_err.decode('utf-8').splitlines())
-            else:
-                result.append(_err)
-        else:
-            if err != _err:
-                if _rc == 0:
-                    log.error(_out.decode('utf-8'))
-                    log.error(_err.decode('utf-8'))
-                raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
+            result.append(
+                _err.decode('utf-8').splitlines()
+                if self.splitlines else
+                _err)
+        elif err != _err:
+            if _rc == 0:
+                log.error(_out.decode('utf-8'))
+                log.error(_err.decode('utf-8'))
+            raise subprocess.CalledProcessError(_rc, ' '.join(args), _err)
         if len(result) == 0:
             return
         elif len(result) == 1:
@@ -368,9 +366,15 @@ class LocalExecutor(BaseExecutor):
     def __init__(self, **kw):
         BaseExecutor.__init__(self, **kw)
 
-    def _run(self, args, stdin):
+    def _run(self, args, stdin, stdout=None, stderr=None):
         log.debug('Executing locally:\n%s', args)
-        popen_kw = dict(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if stdout is None:
+            stdout = subprocess.PIPE
+        if stderr is None:
+            stderr = subprocess.PIPE
+        if stdout == stderr:
+            stderr = stdout
+        popen_kw = dict(stdout=stdout, stderr=stderr)
         if stdin is not None:
             popen_kw['stdin'] = subprocess.PIPE
         proc = subprocess.Popen(args, **popen_kw)
@@ -384,7 +388,7 @@ class InstanceExecutor(BaseExecutor):
         BaseExecutor.__init__(self, **kw)
         self.instance = instance
 
-    def _run(self, args, stdin):
+    def _run(self, args, stdin, stdout=None, stderr=None):
         cmd = shjoin(args)
         log.debug('Executing on instance %s:\n%s', self.instance.uid, cmd)
         chan = self.instance.conn.get_transport().open_session()
@@ -402,8 +406,8 @@ class InstanceExecutor(BaseExecutor):
             rin.close()
             del rin
             chan.shutdown_write()
-        out_chunks = []
-        err_chunks = []
+        _stdout = BytesIO() if stdout is None else stdout
+        _stderr = BytesIO() if stderr is None else stderr
         assert chan == rout.channel
         assert chan == rerr.channel
         while 1:
@@ -413,10 +417,10 @@ class InstanceExecutor(BaseExecutor):
             (readq, _, _) = select.select([chan], [], [])
             assert len(readq) == 1 and readq[0] == chan
             if chan.recv_ready():
-                out_chunks.append(chan.recv(len(chan.in_buffer)))
+                _stdout.write(chan.recv(len(chan.in_buffer)))
                 should_break = False
             if chan.recv_stderr_ready():
-                err_chunks.append(chan.recv_stderr(len(chan.in_stderr_buffer)))
+                _stderr.write(chan.recv_stderr(len(chan.in_stderr_buffer)))
                 should_break = False
             should_break = (
                 should_break
@@ -432,7 +436,10 @@ class InstanceExecutor(BaseExecutor):
         rerr.close()
         if forward is not None:
             forward.close()
-        return (rc, b''.join(out_chunks), b''.join(err_chunks))
+        return (
+            rc,
+            _stdout.getvalue() if stdout is None else None,
+            _stderr.getvalue() if stderr is None else None)
 
 
 def Executor(instance=None, **kw):
