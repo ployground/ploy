@@ -663,9 +663,13 @@ def parse_ssh_keygen(text):
 
 
 def wait_for_ssh(host, port, timeout=5):
-    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+    addrinfos = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
+    if not addrinfos:
+        raise socket.gaierror
+    addrinfo = addrinfos[0]
+    with closing(socket.socket(*addrinfo[:3])) as s:
         s.settimeout(timeout)
-        if s.connect_ex((host, port)) == 0:
+        if s.connect_ex(addrinfo[4]) == 0:
             if s.recv(5).startswith(b'SSH-2'):
                 return
 

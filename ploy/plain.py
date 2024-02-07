@@ -64,6 +64,8 @@ class Instance(BaseInstance):
 
     def get_host(self):
         if 'host' not in self.config:
+            if 'ip' not in self.config:
+                return self.config['ipv6']
             return self.config['ip']
         return self.config['host']
 
