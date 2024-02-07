@@ -638,6 +638,8 @@ class Controller(object):
             self.configfile = configfiles[0]
         if args.debug:
             logging.root.setLevel(logging.DEBUG)
+            plog = logging.getLogger('paramiko.transport')
+            plog.setLevel(logging.DEBUG)
         try:
             args.func(sub_argv, args.func.__doc__)
         except Exception:
