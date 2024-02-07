@@ -461,7 +461,7 @@ class Controller(object):
         instance = instances[args.instance[0]]
         executor = InstanceExecutor(instance)
         (rc, out, err) = executor(
-            *args.remainder, stdout=sys.stdout, stderr=sys.stderr)
+            *args.remainder, stdout=sys.stdout, stderr=sys.stderr, use_shjoin=False)
         sys.exit(rc)
 
     def cmd_ssh(self, argv, help):

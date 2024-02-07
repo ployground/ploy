@@ -388,8 +388,8 @@ class InstanceExecutor(BaseExecutor):
         BaseExecutor.__init__(self, **kw)
         self.instance = instance
 
-    def _run(self, args, stdin, stdout=None, stderr=None):
-        cmd = shjoin(args)
+    def _run(self, args, stdin, stdout=None, stderr=None, use_shjoin=True):
+        cmd = shjoin(args) if use_shjoin else ' '.join(args)
         log.debug('Executing on instance %s:\n%s', self.instance.uid, cmd)
         chan = self.instance.conn.get_transport().open_session()
         if stdin is not None:
