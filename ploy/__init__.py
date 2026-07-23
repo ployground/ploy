@@ -145,7 +145,7 @@ class Controller(object):
     def plugins(self):
         plugins = {}
         group = 'ploy.plugins'
-        for entrypoint in entry_points()[group]:
+        for entrypoint in entry_points().select(group=group):
             try:
                 plugin = entrypoint.load()
             except PackageNotFoundError:
