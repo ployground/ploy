@@ -257,7 +257,7 @@ def test_yesno(default, mock, all, question, answer, expected):
 
     with mock.patch('ploy.common.get_input') as RawInput:
         RawInput.side_effect = get_input_result
-        if type(expected) == type and issubclass(expected, Exception):
+        if type(expected) == type and issubclass(expected, Exception):  # noqa: E721
             with pytest.raises(expected):
                 yesno('Foo', default, all)
         else:

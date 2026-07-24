@@ -1,8 +1,11 @@
 Changelog
 =========
 
-2.1.0 - Unreleased
+3.0.0 - Unreleased
 ------------------
+
+* Dropped support for Python <= 3.7.
+  [fschulze]
 
 * Set debug logging for paramiko when using ``--debug`` option.
   [fschulze]

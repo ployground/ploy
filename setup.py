@@ -1,7 +1,7 @@
 from setuptools import setup
 import os
 
-version = "2.1.0.dev0"
+version = "3.0.0.dev0"
 
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
@@ -9,7 +9,6 @@ HISTORY = open(os.path.join(here, 'HISTORY.rst')).read()
 
 install_requires = [
     'attrs',
-    'importlib.metadata;python_version<"3.8"',
     'lazy',
     'paramiko',
     'pluggy',
@@ -25,20 +24,19 @@ setup(
     license="BSD 3-Clause License",
     url="http://github.com/ployground/ploy",
     classifiers=[
-        'Environment :: Console',
-        'Intended Audience :: System Administrators',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
-        'Topic :: System :: Installation/Setup',
-        'Topic :: System :: Systems Administration'],
+        "Environment :: Console",
+        "Intended Audience :: System Administrators",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Topic :: System :: Installation/Setup",
+        "Topic :: System :: Systems Administration",
+    ],
     include_package_data=True,
     zip_safe=False,
-    packages=['ploy', 'ploy.tests', 'ploy_pytest_plugin'],
+    packages=["ploy", "ploy.tests", "ploy_pytest_plugin"],
     install_requires=install_requires,
-    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, !=3.6.*',
+    python_requires=">=3.8",
     entry_points="""
         [console_scripts]
         ploy = ploy:ploy
@@ -47,4 +45,5 @@ setup(
         plain = ploy.plain:plugin
         [pytest11]
         ploy_pytest_plugin = ploy_pytest_plugin
-    """)
+    """,
+)
