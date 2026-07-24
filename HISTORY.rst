@@ -7,6 +7,9 @@ Changelog
 * Dropped support for Python <= 3.7.
   [fschulze]
 
+* Added support for Python 3.11 to 3.14.
+  [fschulze]
+
 * Set debug logging for paramiko when using ``--debug`` option.
   [fschulze]
 

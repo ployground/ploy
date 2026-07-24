@@ -144,8 +144,14 @@ class Controller(object):
     @lazy
     def plugins(self):
         plugins = {}
+        all_entry_points = entry_points()
         group = 'ploy.plugins'
-        for entrypoint in entry_points()[group]:
+        ploy_entry_points = (
+            all_entry_points[group]
+            if isinstance(all_entry_points, dict)
+            else all_entry_points.select(group=group)
+        )
+        for entrypoint in ploy_entry_points:
             try:
                 plugin = entrypoint.load()
             except PackageNotFoundError:
