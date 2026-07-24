@@ -114,7 +114,10 @@ class TestPloy:
             with pytest.raises(SystemExit):
                 ctrl(['./bin/ploy', 'ssh', 'bar'])
         output = "".join(x[0][0] for x in StdErrMock.write.call_args_list)
-        assert "(choose from 'default-foo', 'plain-foo')" in output
+        assert (
+            "(choose from 'default-foo', 'plain-foo')" in output
+            or "(choose from default-foo, plain-foo)" in output
+        )
 
     def testInvalidInstanceName(self, ctrl_dummy_plugin, mock, ployconf):
         ployconf.fill([
