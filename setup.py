@@ -20,10 +20,10 @@ setup(
     description="A tool to manage servers through a central configuration. Plugins allow provisioning, configuration and other management tasks.",
     long_description=README + "\n\n" + HISTORY,
     name="ploy",
-    author='Florian Schulze',
-    author_email='florian.schulze@gmx.net',
+    author="Florian Schulze",
+    author_email="mail@florian-schulze.net",
     license="BSD 3-Clause License",
-    url='http://github.com/ployground/ploy',
+    url="http://github.com/ployground/ploy",
     classifiers=[
         'Environment :: Console',
         'Intended Audience :: System Administrators',
